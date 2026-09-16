@@ -1,3 +1,4 @@
+import { headers } from 'next/headers';
 import { Brand } from '@/components/brand';
 import { SiteFooter } from '@/components/site-chrome';
 import { formatBytes } from '@/lib/api';
@@ -57,8 +58,14 @@ function Frame({ children }: { children: React.ReactNode }) {
 export default async function SharePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
 
+  // This fetch runs on the web server, so without help the API would see every visitor as
+  // the web container and apply one shared rate limit to all of them. server.mjs has already
+  // set X-Forwarded-For to the visitor's socket address; pass it on (the API trusts it only
+  // from this container).
+  const clientIp = (await headers()).get('x-forwarded-for') ?? '';
   const response = await fetch(`${API}/api/shares/${encodeURIComponent(token)}`, {
     cache: 'no-store',
+    headers: clientIp ? { 'x-forwarded-for': clientIp } : {},
   });
 
   if (!response.ok) {

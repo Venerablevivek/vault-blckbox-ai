@@ -39,7 +39,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   // route-registration signature in the modules incompatible.
   const app = Fastify({
     loggerInstance: logger as unknown as FastifyBaseLogger,
-    trustProxy: true,
+    // Only the configured proxies may speak for the client — see TRUSTED_PROXIES in config.ts.
+    trustProxy: config.TRUSTED_PROXIES,
     bodyLimit: 1_048_576,
   });
 

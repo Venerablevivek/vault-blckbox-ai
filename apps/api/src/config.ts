@@ -13,6 +13,20 @@ const booleanish = z
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+
+  /**
+   * Addresses allowed to set X-Forwarded-For. Only a request whose socket address is in
+   * this list has its forwarded client IP believed; everyone else is identified by their
+   * own socket address. Trusting every sender (`trustProxy: true`) let any client pick
+   * its own IP, which defeated per-IP rate limiting and faked share-link viewer counts.
+   *
+   * In Compose this is the web container's fixed address. Loopback is the default so a
+   * locally run web server can still pass the browser's address through.
+   */
+  TRUSTED_PROXIES: z
+    .string()
+    .default('127.0.0.1,::1')
+    .transform((value) => value.split(',').map((entry) => entry.trim()).filter(Boolean)),
   API_PORT: z.coerce.number().int().positive().default(4000),
   WEB_URL: z.string().url().default('http://localhost:3000'),
 

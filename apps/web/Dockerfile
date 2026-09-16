@@ -11,12 +11,14 @@ COPY . .
 RUN npm run build
 
 # ---- runtime ----------------------------------------------------------------
-# Next's standalone output ships only the files the server actually needs.
 FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=build /app/.next/standalone ./
-COPY --from=build /app/.next/static ./.next/static
+COPY package.json package-lock.json* ./
+RUN npm install --omit=dev && npm cache clean --force
+COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
+COPY next.config.mjs server.mjs ./
 EXPOSE 3000
-CMD ["node", "server.js"]
+# server.mjs replaces any client-supplied X-Forwarded-For with the socket address.
+CMD ["node", "server.mjs"]

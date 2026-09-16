@@ -56,6 +56,8 @@ services:
       IP_HASH_PEPPER: ${IP_HASH_PEPPER:-dev-only-pepper-change-me}
       EXPOSE_INVITE_LINKS: ${EXPOSE_INVITE_LINKS:-true}
       SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+      # Only the web container may set X-Forwarded-For. Its address is pinned below.
+      TRUSTED_PROXIES: 10.203.14.10
     ports:
       - "4000:4000"
     depends_on:
@@ -86,6 +88,16 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    networks:
+      default:
+        # Fixed so the API can trust exactly this address as its proxy (TRUSTED_PROXIES).
+        ipv4_address: 10.203.14.10
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 10.203.14.0/24
 
 volumes:
   postgres-data:

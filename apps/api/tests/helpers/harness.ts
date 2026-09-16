@@ -68,7 +68,10 @@ export interface Harness {
   objectExists(key: string): Promise<boolean>;
 }
 
-export async function createHarness(options?: { storage?: FileStorage }): Promise<Harness> {
+export async function createHarness(options?: {
+  storage?: FileStorage;
+  env?: Record<string, string>;
+}): Promise<Harness> {
   const databaseUrl = await ensureTestDatabase();
   const bucket = `test-${Date.now()}-${Math.floor(Math.random() * 10_000)}`;
 
@@ -84,6 +87,7 @@ export async function createHarness(options?: { storage?: FileStorage }): Promis
     S3_ACCESS_KEY: 'minioadmin',
     S3_SECRET_KEY: 'minioadmin',
     SEED_DEMO_DATA: 'false',
+    ...options?.env,
   } as NodeJS.ProcessEnv);
 
   const pool = createPool(databaseUrl);
@@ -111,9 +115,22 @@ export async function createHarness(options?: { storage?: FileStorage }): Promis
     clock,
     config,
     async truncate() {
-      await pool.query(
-        'TRUNCATE invitations, shares, documents, workspace_members, workspaces, sessions, users CASCADE',
-      );
+      // Audit, notification and share-access writes are fire-and-forget by design, so the
+      // previous test's writes can still be landing when the next test truncates. TRUNCATE
+      // then deadlocks against those inserts. Retrying on deadlock (40P01) makes the reset
+      // deterministic without making production writes blocking just to suit the tests.
+      for (let attempt = 1; ; attempt += 1) {
+        try {
+          await pool.query(
+            `TRUNCATE notifications, audit_events, share_access_events, invitations, shares,
+                      documents, workspace_members, workspaces, sessions, users CASCADE`,
+          );
+          return;
+        } catch (error) {
+          if ((error as { code?: string }).code !== '40P01' || attempt >= 5) throw error;
+          await new Promise((resolve) => setTimeout(resolve, 50 * attempt));
+        }
+      }
     },
     async close() {
       await app.close();
