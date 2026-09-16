@@ -1,0 +1,14 @@
+{
+  "name": "file-storage-sharing",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Document storage, external sharing, workspaces and invitations.",
+  "scripts": {
+    "install:all": "npm --prefix apps/api install && npm --prefix apps/web install",
+    "dev:api": "npm --prefix apps/api run dev",
+    "dev:web": "npm --prefix apps/web run dev",
+    "test": "npm --prefix apps/api test",
+    "test:unit": "npm --prefix apps/api run test:unit",
+    "lint": "npm --prefix apps/api run lint"
+  }
+}

@@ -1,0 +1,39 @@
+import pino, { type LoggerOptions } from 'pino';
+
+/**
+ * Bearer tokens must never reach the logs. Session cookies and share/invite tokens are
+ * stripped both by key (cookie, authorization, password) and by pattern, because a
+ * share token also appears inside URLs (`/api/shares/shr_...`).
+ */
+const TOKEN_PATTERN = /\b(shr|inv|ses)_[A-Za-z0-9_-]{16,}/g;
+
+function redactTokens(value: string): string {
+  return value.replace(TOKEN_PATTERN, '$1_[REDACTED]');
+}
+
+export function buildLoggerOptions(env: string): LoggerOptions {
+  return {
+    level: env === 'test' ? 'silent' : env === 'production' ? 'info' : 'debug',
+    redact: {
+      paths: [
+        'req.headers.cookie',
+        'req.headers.authorization',
+        'res.headers["set-cookie"]',
+        'body.password',
+        '*.password',
+        '*.token',
+      ],
+      censor: '[REDACTED]',
+    },
+    serializers: {
+      req(req: { method: string; url: string; id: string }) {
+        return { method: req.method, url: redactTokens(req.url), id: req.id };
+      },
+    },
+    ...(env === 'development'
+      ? { transport: { target: 'pino-pretty', options: { colorize: true, translateTime: 'HH:MM:ss' } } }
+      : {}),
+  };
+}
+
+export { pino, redactTokens };
