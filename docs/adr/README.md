@@ -12,14 +12,14 @@ because "the spec said so" is not an answer in a code walkthrough.
 
 **Context.** The blueprint specifies Node.js + TypeScript + Fastify, *"lightweight REST API with good
 validation and structure."*
-**Decision.** Fastify 5 with `fastify-type-provider-zod`.
-**Consequences.** One Zod schema per route gives validation, response serialisation, static types and
-the OpenAPI document — no duplicated DTOs. Encapsulated plugin scopes let the session plugin be
-registered on the private routes only, so `GET /api/shares/:token` physically cannot read a session.
-Multipart handling via `@fastify/multipart` enforces the 25 MB limit at the stream level rather than
-after buffering.
-**Trade-off.** Smaller ecosystem than Express, and the Zod type provider is third-party glue on the
-critical path.
+**Decision.** Fastify 5, with Zod schemas parsed explicitly inside each handler.
+**Consequences.** Validation is visible at the point of use, with no type-provider plugin to explain.
+There is no generated OpenAPI document (`fastify-type-provider-zod` was planned and dropped).
+Sessions are resolved by one global hook that only sets `req.user`; each authenticated route opts in
+with `preHandler: requireSession`, and public routes don't. `@fastify/multipart` stops reading at the
+25 MB limit; an accepted file is buffered in memory so its bytes can be sniffed.
+**Trade-off.** Smaller ecosystem than Express, and authorization is opted into per route rather than
+inherited, so a forgotten check is caught by the cross-tenant tests rather than by the framework.
 
 ## ADR-002 — Raw `pg` with parameterized SQL, no ORM
 

@@ -253,5 +253,6 @@ UPDATE invitations SET accepted_at = now()
 RETURNING workspace_id, email, role;
 ```
 
-Every one is parameterized. There is no string-built SQL anywhere in the codebase, and a lint rule
-bans template literals inside `db.query(...)`.
+Every one is parameterized: user input never reaches SQL text. The one interpolation into a query
+string anywhere in the codebase is a compile-time constant — the file-type `CASE` expression in
+`overview.service.ts`. This is checked by review; there is no lint rule enforcing it.

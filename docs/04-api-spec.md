@@ -29,7 +29,9 @@ document: it would mean a type-provider plugin and a second way of declaring eve
 - `logout` — deletes the session row; the cookie is cleared.
 - `me` — `{ user: { id, email }, workspaces: [{ id, name, role }] }`. One call boots the UI.
 
-Rate limited: register 5/hour/IP, login 10/15min/IP **and** 5/15min/email.
+Rate limited per client IP: register 10/hour, login 20 per 15 minutes. There is no per-email limit,
+so a distributed attempt against one account is limited only per source address. The client IP comes
+from `X-Forwarded-For` only when the request arrives from a trusted proxy (`TRUSTED_PROXIES`).
 
 ## Workspaces & members
 
@@ -73,7 +75,8 @@ signed-in account's email doesn't match the invited address.
 | ✚ GET | `/api/documents/:id/shares` | List a document's live links (never their tokens) |
 
 - **Upload** — `multipart/form-data`, one `file` part. Enforces 25 MB via `@fastify/multipart`
-  limits (the body is aborted mid-stream, never buffered) and the MIME allowlist against sniffed
+  limits (reading stops at the limit and the upload is rejected; an accepted file is buffered in
+  memory, at most 25 MB) and the MIME allowlist against sniffed
   magic bytes. Streams to MinIO, then inserts the row; if the insert fails the object is deleted and
   the request fails, so **no metadata is persisted for a failed upload**.
   Returns `201 { id, filename, mimeType, size, uploadedBy, createdAt }`.
@@ -88,8 +91,9 @@ signed-in account's email doesn't match the invited address.
 
 Note that `DELETE` and `GET download` are addressed by document id **without** a workspace in the
 path, exactly as the blueprint lists. The workspace is therefore resolved *from the document row* and
-membership checked against it — the check is in the service, and the cross-tenant test suite covers
-both of these routes specifically because they are the two that don't get it from the URL prefix.
+membership checked against it in the documents service. Routes with a workspace in the path call
+`workspaces.requireMember()` explicitly instead — no route inherits a check automatically, which is why
+the cross-tenant suite enumerates every route, including these two.
 
 ## Shares
 
@@ -115,10 +119,11 @@ route cannot be both. Both are public and both re-check every rule.
   `{ accessedAt, outcome, userAgent, viewer }`, where `viewer` is an 8-character prefix of the hashed
   address: a stable marker for "the same visitor", never an address. See
   [`09-product-improvement.md`](09-product-improvement.md).
-- **Resolve / download** — **public, no session**. Hard rate-limited (20/min/IP). Checks
-  `revoked_at`, `expires_at` and the document's `deleted_at` in one query. `?download=1` returns a
-  `302` to a 60-second signed URL; without it, JSON metadata for the landing page:
-  `{ filename, size, mimeType, expiresAt }`.
+- **Resolve / view / download** — **public, no session**. Each rate-limited to 30/min per IP. Each
+  checks `revoked_at`, `expires_at` and the document's `deleted_at` in one query.
+  `GET /api/shares/:token` returns JSON metadata for the landing page
+  (`{ filename, size, mimeType, expiresAt }`); `GET /api/shares/:token/download` returns a `302` to a
+  60-second signed URL; `POST /api/shares/:token/view` records a page view.
 
 Never returned by any share route: the object key, the bucket, the workspace id, or the uploader's
 identity.

@@ -10,8 +10,8 @@ two roles instead of four, six tables instead of ten, no versioning, no design s
 
 ## M0 — Skeleton that boots (1.5h)
 
-- Workspace with `apps/api` and `apps/web`, TypeScript strict, ESLint with the layering
-  `no-restricted-imports` rule, Prettier
+- Workspace with `apps/api` and `apps/web`, TypeScript strict. *(Planned but not done: ESLint with a
+  layering `no-restricted-imports` rule, and Prettier.)*
 - `config.ts` (Zod-parsed env, fail-fast), Pino with the token-redaction serialiser
 - Fastify app: helmet, cookie, rate-limit, the error envelope, `/health`, `/ready`
 - `db/pool.ts`, `db/tx.ts`, **`db/migrate.ts`** — the ordered-SQL runner with an advisory lock
@@ -34,7 +34,8 @@ two roles instead of four, six tables instead of ten, no versioning, no design s
 
 - `002_workspaces_members.sql` — including the composite primary key that prevents duplicate membership
 - `POST /api/workspaces` · `GET /api/workspaces` · `GET /api/workspaces/:id/members`
-- `workspaceGuard` on the prefix; `requireOwner()` helper
+- Explicit `workspaces.requireMember()` in each handler *(planned as a prefix guard; not built that
+  way)*; `requireOwner()` helper
 - **`tests/security/cross-tenant.test.ts` starts here** and grows with every later milestone
 
 **Why before documents:** the authorization skeleton must exist first, or documents get written

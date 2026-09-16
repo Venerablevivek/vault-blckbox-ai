@@ -11,13 +11,13 @@ three questions the original brief's rubric asks, and then what is **knowingly l
 | --- | --- |
 | Password hashing (Argon2/bcrypt) | **Argon2id**, OWASP-baseline parameters, per-password salt |
 | HttpOnly + Secure cookies in production | `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` when `NODE_ENV=production`, 7-day expiry |
-| Server-side authorization on **every** workspace/document action | `sessionPlugin` → `workspaceGuard` on the route prefix → `requireOwner()` where needed. Never a client-supplied role, never a claim in a token |
-| Parameterized SQL | `pg` placeholders throughout. Zero string-built SQL; a lint rule bans template literals inside `db.query(...)` |
-| Upload size validation | 25 MB enforced by `@fastify/multipart` limits — the body is **aborted mid-stream**, never buffered |
+| Server-side authorization on **every** workspace/document action | `requireSession` on each authenticated route → an explicit `workspaces.requireMember()` (or `authorizeById()` for id-addressed documents) in each handler → `requireOwner()` / `Permissions` where needed. Never a client-supplied role, never a claim in a token |
+| Parameterized SQL | `pg` placeholders throughout; user input never reaches SQL text. The only interpolation into a query is a compile-time constant in `overview.service.ts`. Kept by review — there is no lint rule |
+| Upload size validation | 25 MB enforced by `@fastify/multipart` limits — reading stops at the limit and the upload is rejected. An accepted file is buffered in memory (at most 25 MB) so its bytes can be checked |
 | Upload type validation | MIME allowlist checked against **sniffed magic bytes**, not the client's declared `Content-Type` |
 | Opaque random share/invitation tokens | `crypto.randomBytes(32)` → base64url, **256 bits** |
 | Store token hashes, not raw tokens | `sha256(token)` in `bytea`, unique-indexed. Plaintext returned once at creation and never stored |
-| **Never make the MinIO bucket public** | The API asserts the bucket's anonymous policy is `none` at boot rather than assuming a default. No credentials ever reach the browser |
+| **Never make the MinIO bucket public** | No read policy is ever applied, so the bucket keeps MinIO's private default (an anonymous request returns 403). The policy is **not** re-verified at boot. No credentials ever reach the browser |
 
 ---
 
@@ -27,14 +27,16 @@ three questions the original brief's rubric asks, and then what is **knowingly l
 
 1. **One ownership model.** `documents.workspace_id` is `NOT NULL`; registration auto-creates a
    workspace. No nullable owner, no fallback branch, no second authorization path.
-2. **The tenant is in the route prefix** for listing and upload, and `workspaceGuard` is registered
-   on the prefix — not opted into per handler.
+2. **Membership is checked explicitly in every handler.** Workspace-scoped routes call
+   `workspaces.requireMember()`; there is no guard registered on a route prefix, so protection depends
+   on each route making the call — and the cross-tenant suite checks that every route does.
 3. **`DELETE /api/documents/:id` and `GET /api/documents/:id/download` are addressed without a
    workspace in the path** (as the blueprint specifies), so the service resolves the workspace *from
    the document row* and checks membership against it. These two routes get their own explicit tests,
-   because they are the two that don't inherit the check from the URL.
-4. **Repositories take `workspaceId` first**: `findDocument(workspaceId, documentId)` puts the tenant
-   in the `WHERE` clause. The object id alone is never sufficient to load a row.
+   because the workspace comes from the row rather than the URL.
+4. **Nothing is returned before authorization.** A document looked up by id is checked against the
+   caller's membership of its own workspace before any data is returned or changed; listing queries
+   carry `workspace_id` in the `WHERE` clause.
 
 **Verification.** `tests/security/cross-tenant.test.ts` is table-driven: user B attempts every
 document, share, member and invitation route against user A's resources. Expected **404**. Adding a
@@ -54,7 +56,7 @@ resource exists. A member lacking OWNER gets `403`, because they already know it
 | At rest | **`sha256(token)` only**, unique-indexed. A leaked backup or a read-only SQL injection yields no usable links |
 | In transit | A path segment, not a query parameter — query strings leak into referrers and proxy logs |
 | In logs | A Pino serialiser strips `shr_…` / `inv_…` before anything is written |
-| Rate limit | 20/min/IP on resolve. Brute force is already infeasible; this keeps the logs readable |
+| Rate limit | 30/min per client IP on resolve, view and download. Brute force is already infeasible; this bounds automated probing. The client IP is taken from `X-Forwarded-For` only when the request comes from the trusted web proxy |
 | Revocation | `revoked_at`, re-checked on **every** resolve, never cached |
 | Expiry | 7-day default |
 | Deleted document | The resolve query joins `documents` and requires `deleted_at IS NULL`, so deletion kills every link to it instantly |
@@ -66,7 +68,8 @@ workspace, not the uploader, not the object key, not other documents.
 
 **No.**
 
-- The bucket is private, and the API **asserts** that at boot.
+- The bucket is private: no read policy is ever applied, and an anonymous request returns 403. The
+  policy is not actively re-verified at boot.
 - No credentials reach the browser. The only thing a client receives is a signed URL for one key,
   valid for **60 seconds**.
 - Object keys are server-generated UUID paths — `workspaces/{uuid}/documents/{uuid}` — with **no

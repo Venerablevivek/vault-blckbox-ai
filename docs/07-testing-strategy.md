@@ -64,8 +64,9 @@ DELETE /api/shares/:Ashare
 ```
 
 All expect **404**. The last four matter most: they are addressed by object id without a workspace in
-the URL, so the check lives in the service rather than the route prefix. Adding a route without
-wiring the check breaks this suite.
+the URL, so the check uses the workspace on the document row. No route inherits a membership check
+from its path — each calls it explicitly — so adding a route without wiring the check is exactly what
+this suite exists to catch.
 
 Also: a MEMBER calling `POST /api/workspaces/:id/invitations` expects **403**, not 404 — they are a
 member, so the honest answer is "insufficient role".

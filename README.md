@@ -217,8 +217,8 @@ UI.
 
 Note that `DELETE /api/documents/:id` and its download route carry no workspace in the path. The
 workspace is therefore read from the document row and membership checked against it, inside the
-service — and those two routes get their own explicit cross-tenant tests, because they are the ones
-that do not inherit the check from a route prefix.
+service. Workspace-scoped routes check membership explicitly too — no route inherits a check from
+its path — so the cross-tenant suite enumerates every route, including these two.
 
 ---
 

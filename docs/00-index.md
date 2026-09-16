@@ -37,7 +37,8 @@ These documents hold the reasoning behind it, including the alternatives conside
   expiring, revocable, no account needed. Never a long-lived signed URL.
 - **Bytes stream through the API**: object written first, row second, object deleted if the row fails.
   Deletion goes the other way — row first, then bytes.
-- **The bucket is never public**, and the API asserts that at boot. Downloads are 60-second signed URLs.
+- **The bucket is never public** — no read policy is ever applied, so it stays at MinIO's private default
+  (not actively re-verified at boot). Downloads are 60-second signed URLs.
 - **25 MB cap** and a MIME allowlist checked against sniffed magic bytes, not the client's header.
 - **Tests aim at the five areas the blueprint names**, against a real Postgres and a real MinIO.
 - **Share links report their own use** — opens, estimated viewers, and a forwarding signal, with the

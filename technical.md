@@ -147,10 +147,14 @@ multi-gigabyte sizes, where streaming with a rolling prefix check is the answer.
 │           └── lib/               # tokens, errors, mime allowlist, logger redaction
 ```
 
-**Layering rule:** a route may call a service; a service may call repos and `FileStorage`; nothing
-calls upward. `pg` imports are legal only under `db/` and `*.repo.ts`; `@aws-sdk` imports only under
-`storage/`. Enforced by an ESLint `no-restricted-imports` rule — which is how *"storage and auth
-aren't tangled into request handlers"* stays true after the third feature.
+**Layering convention:** a route may call a service; a service may call repositories and
+`FileStorage`; nothing calls upward. `@aws-sdk` is imported only under `storage/`, and SQL lives in
+`*.repo.ts` files — with one exception: `overview.service.ts` runs its dashboard aggregation queries
+directly rather than through a repository.
+
+This is a convention kept by review, **not enforced by tooling** — the project has no ESLint
+configuration. An ESLint `no-restricted-imports` rule would be the way to make it mechanical, and is
+listed as a follow-up.
 
 ---
 
@@ -158,22 +162,31 @@ aren't tangled into request handlers"* stays true after the third feature.
 
 ```
 request
-  → helmet · cookie · rate-limit · pino (requestId, token redaction)
-  → sessionPlugin        cookie → sha256 → SELECT session → req.user        | else 401
-  → workspaceGuard       (routes under /workspaces/:id)
-                         SELECT role FROM workspace_members → req.membership | else 404
-  → Zod validation       params, query, body
-  → route handler        requireOwner() where the action needs it            | else 403
-                         → service (transaction boundary) → repo
-  → error plugin         one envelope: { error: { code, message } }
+  → helmet · cookie · rate-limit (per route) · pino (requestId, token redaction)
+  → session hook (global, onRequest)  cookie → sha256 → SELECT session → req.user, or null
+  → preHandler: requireSession        on every authenticated route                 | else 401
+  → route handler
+      workspaces.requireMember(id)    SELECT role FROM workspace_members           | else 404
+      requireOwner() / Permissions    where the action needs a role or ownership   | else 403
+      Zod validation                  params, query, body
+      → service (transaction boundary) → repository
+  → error handler                     one envelope: { error: { code, message } }
 ```
 
-Two deliberate properties:
+How it actually works, stated precisely because the walkthrough will test it:
 
-1. **`workspaceGuard` is registered on the route prefix**, not opted into per handler — a document
-   route cannot be written without the membership check running.
-2. **Role checks are one helper**, not scattered `if`s. With only OWNER and MEMBER the rule set is
-   small enough to read in one screen, which is exactly why the blueprint chose two roles.
+1. **Identity is resolved globally; enforcement is per route.** The session hook runs on every
+   request, including public ones, and only sets `req.user`. Each authenticated route opts in with
+   `preHandler: requireSession`. Public routes (share resolve/view/download, invitation preview,
+   login, register) simply don't.
+2. **Membership is checked explicitly in each handler**, by calling `workspaces.requireMember()` for
+   workspace-scoped routes, or by `authorizeById()` in the documents service for routes addressed by
+   document id. There is no guard registered on a route prefix, so a new route that forgets the call
+   would not be protected automatically — which is why `tests/security/cross-tenant.test.ts`
+   enumerates every route and asserts 404 for an outsider.
+3. **Authorization runs before body validation**, so a non-member receives the same 404 whether or not
+   the request was well-formed.
+4. **Role checks are one small module** (`policy.ts`), not scattered `if`s.
 
 ---
 
@@ -192,7 +205,9 @@ const { rows } = await db.query(
 );
 ```
 
-- **Repositories take `workspaceId` first**: `findDocument(workspaceId, documentId)`. The object id
+- **Documents addressed by id are authorized against their own workspace**: `authorizeById()` loads
+  the row by id, then checks the caller's membership of `document.workspace_id` before anything is
+  returned or changed. Listing queries are scoped by `workspace_id` directly. The object id
   alone is never sufficient to load a row — the structural defence against IDOR.
 - **Every live-row query carries `deleted_at IS NULL`.** There is no ORM to do it for us, so it's a
   review checklist item and there's a test that soft-deletes a document and asserts it disappears
@@ -225,7 +240,10 @@ Both UUIDs. **No user-controlled path segment**, so traversal via a crafted file
 construction rather than sanitised away. The original filename lives in the `documents` row and is
 re-attached at download time via `response-content-disposition`.
 
-**Never make the bucket public.** The API asserts this at boot rather than assuming a default.
+**Never make the bucket public.** The API creates the bucket at boot if it is missing and never applies
+a read policy, so it keeps MinIO's default: private. It does **not** actively verify the policy at
+boot — a bucket made public by hand would not be detected. Verified manually: an anonymous request to
+the bucket returns 403.
 
 ### The MinIO signing gotcha (documented up front because it costs everyone an hour)
 
@@ -241,10 +259,11 @@ to a browser), both `forcePathStyle: true`.
 
 ```
 POST /api/workspaces/:id/documents        multipart/form-data
-  1. validate user        — sessionPlugin
-  2. validate workspace   — workspaceGuard: caller is a member
-  3. validate file        — size ≤ 25 MB (enforced by @fastify/multipart limits,
-                            so an oversize body is aborted mid-stream, not buffered)
+  1. validate user        — requireSession
+  2. validate workspace   — workspaces.requireMember(): caller is a member
+  3. validate file        — size ≤ 25 MB (@fastify/multipart stops reading at the limit
+                            and flags the part as truncated; the accepted file is
+                            buffered in memory, up to 25 MB, so its bytes can be sniffed)
                           — MIME allowlist, checked against sniffed magic bytes,
                             not the client's declared header
   4. upload object        — storage.upload(key, stream, contentType)
@@ -343,7 +362,8 @@ URLs: UI `http://localhost:3000` · API `http://localhost:4000` · MinIO console
 - A redaction serialiser strips `cookie`, `authorization`, `password`, and anything matching
   `shr_[A-Za-z0-9_-]+` / `inv_[A-Za-z0-9_-]+`. Tokens in logs are a real leak path and the cheapest
   one to close.
-- `GET /health` (liveness) and `GET /ready` (DB + storage reachable) back the compose healthchecks.
+- `GET /health` is a liveness check and backs the Compose healthcheck. `GET /ready` checks that the
+  database answers; it does **not** check object storage, and nothing in Compose uses it.
 
 ---
 
