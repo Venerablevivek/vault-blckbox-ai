@@ -251,7 +251,7 @@ function LinkRow({
   onRevoke: () => void;
 }) {
   const { activity } = link;
-  const opened = activity.opens > 0;
+  const opened = activity.opens > 0 || activity.downloads > 0;
   const forwarded = activity.distinctViewers >= FORWARDING_THRESHOLD;
 
   return (
@@ -276,6 +276,7 @@ function LinkRow({
           <>
             <div className="flex gap-8">
               <Stat value={activity.opens} label="opens" />
+              <Stat value={activity.downloads} label="downloads" />
               <Stat value={`~${activity.distinctViewers}`} label="viewers" />
             </div>
             <p className="mt-2.5 text-xs text-ink-muted">
@@ -287,7 +288,8 @@ function LinkRow({
             {/* Viewer counts are estimated from network, not identity. Saying so is more
                 honest than presenting an approximation as a fact. */}
             <p className="mt-1 text-[11px] text-ink-subtle">
-              Viewers are estimated by network, so the count is approximate.
+              Viewers are estimated by network, so the count is approximate. Repeat visits
+              within 30 minutes and link-preview bots are not counted.
             </p>
           </>
         ) : (

@@ -28,8 +28,8 @@ async function viewersAfterSpoofedOpens(h: Harness, remoteAddress: string): Prom
 
   for (const spoofed of ['203.0.113.1', '203.0.113.2', '203.0.113.3']) {
     await h.app.inject({
-      method: 'GET',
-      url: `/api/shares/${token}`,
+      method: 'POST',
+      url: `/api/shares/${token}/view`,
       remoteAddress,
       headers: { 'x-forwarded-for': spoofed },
     });

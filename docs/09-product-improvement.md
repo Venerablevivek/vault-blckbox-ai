@@ -60,8 +60,12 @@ CREATE TABLE share_access_events (
 CREATE INDEX share_access_events_share_id_idx ON share_access_events (share_id, accessed_at DESC);
 ```
 
-One insert on the existing public resolve and download paths — written **fire-and-forget**, because
-a failure to record telemetry must never stop someone downloading a document they are entitled to.
+Views are recorded by a beacon the share page sends from the recipient's browser
+(`POST /api/shares/:token/view`), and downloads when they happen — never during the server-side render,
+where every visitor would appear to be the web container. Repeat views by the same visitor within 30
+minutes count once, and crawler/link-preview user agents are ignored. Writes are **fire-and-forget**,
+because a failure to record telemetry must never stop someone downloading a document they are
+entitled to.
 Two read paths: a rollup joined into the document list, and `GET /api/shares/:id/events` for detail.
 
 **Three things in the UI:**

@@ -95,7 +95,7 @@ describe('audit trail and notifications', () => {
     });
     const token = share.json().share.url.split('/s/')[1];
 
-    await h.app.inject({ method: 'GET', url: `/api/shares/${token}` });
+    await h.app.inject({ method: 'POST', url: `/api/shares/${token}/view` });
     await settle();
 
     const events = (await auditFor(alice.workspaceId, alice.cookie)).json().events;
@@ -143,8 +143,8 @@ describe('audit trail and notifications', () => {
     expect((await inbox(alice.cookie)).unread).toBe(0);
 
     await h.app.inject({
-      method: 'GET',
-      url: `/api/shares/${token}`,
+      method: 'POST',
+      url: `/api/shares/${token}/view`,
       headers: { 'x-forwarded-for': '203.0.113.5' },
     });
     await settle();
@@ -167,8 +167,8 @@ describe('audit trail and notifications', () => {
 
     for (let i = 0; i < 4; i += 1) {
       await h.app.inject({
-        method: 'GET',
-        url: `/api/shares/${token}`,
+        method: 'POST',
+        url: `/api/shares/${token}/view`,
         headers: { 'x-forwarded-for': '203.0.113.5' },
       });
       await settle();
@@ -190,8 +190,8 @@ describe('audit trail and notifications', () => {
 
     for (const ip of ['203.0.113.5', '198.51.100.9', '192.0.2.77']) {
       await h.app.inject({
-        method: 'GET',
-        url: `/api/shares/${token}`,
+        method: 'POST',
+        url: `/api/shares/${token}/view`,
         headers: { 'x-forwarded-for': ip },
       });
       await settle();
@@ -242,7 +242,7 @@ describe('audit trail and notifications', () => {
       payload: { documentId: upload.json().document.id },
     });
     const token = share.json().share.url.split('/s/')[1];
-    await h.app.inject({ method: 'GET', url: `/api/shares/${token}` });
+    await h.app.inject({ method: 'POST', url: `/api/shares/${token}/view` });
     await settle();
 
     const before = await inbox(alice.cookie);

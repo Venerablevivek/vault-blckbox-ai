@@ -69,7 +69,7 @@ export const documentsRepo = {
          JOIN users u ON u.id = d.uploaded_by
          LEFT JOIN LATERAL (
            SELECT COUNT(DISTINCT sh.id) AS link_count,
-                  COUNT(e.id)      FILTER (WHERE e.outcome IN ('resolved','downloaded')) AS opens,
+                  COUNT(e.id)      FILTER (WHERE e.outcome = 'resolved') AS opens,
                   MAX(e.accessed_at) FILTER (WHERE e.outcome IN ('resolved','downloaded')) AS last_accessed_at
              FROM shares sh
              LEFT JOIN share_access_events e ON e.share_id = sh.id

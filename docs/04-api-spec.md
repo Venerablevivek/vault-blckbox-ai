@@ -97,7 +97,8 @@ both of these routes specifically because they are the two that don't get it fro
 | --- | --- | --- |
 | POST | `/api/shares` | Create share link |
 | DELETE | `/api/shares/:id` | Revoke share link |
-| GET | `/api/shares/:token` | Resolve a shared file (metadata) |
+| GET | `/api/shares/:token` | Resolve a shared file (metadata; records nothing) |
+| ✚ POST | `/api/shares/:token/view` | Page-view beacon from the recipient's browser (204; 410/404 for dead/unknown links) |
 | ✚ GET | `/api/shares/:token/download` | Download a shared file |
 | ✚ GET | `/api/shares/:id/events` | Access history for one link (product improvement) |
 

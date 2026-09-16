@@ -1,6 +1,7 @@
 import { headers } from 'next/headers';
 import { Brand } from '@/components/brand';
 import { SiteFooter } from '@/components/site-chrome';
+import { ViewBeacon } from '@/components/view-beacon';
 import { formatBytes } from '@/lib/api';
 
 /**
@@ -75,6 +76,8 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
     const gone = response.status === 410;
     return (
       <Frame>
+        {/* Attempts on a dead link are recorded too — useful signal for the sender. */}
+        {gone ? <ViewBeacon token={token} /> : null}
         <div className="panel p-8 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
             <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" aria-hidden>
@@ -103,6 +106,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
 
   return (
     <Frame>
+      <ViewBeacon token={token} />
       <div className="panel overflow-hidden">
         <div className="bg-gradient-to-br from-brand-600 to-brand-700 px-8 py-9 text-center">
           <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 text-sm font-bold tracking-tight text-white ring-1 ring-white/25 backdrop-blur">

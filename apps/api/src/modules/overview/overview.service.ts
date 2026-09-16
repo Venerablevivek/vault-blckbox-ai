@@ -57,7 +57,7 @@ export function createOverviewService(deps: { pool: Pool; clock: Clock; audit: A
                   AND (s.expires_at IS NULL OR s.expires_at > $2)) AS live_links,
              (SELECT COUNT(*) FROM share_access_events e
                 JOIN shares s ON s.id = e.share_id JOIN documents d ON d.id = s.document_id
-                WHERE d.workspace_id = $1 AND e.outcome IN ('resolved','downloaded')) AS opens,
+                WHERE d.workspace_id = $1 AND e.outcome = 'resolved') AS opens,
              (SELECT COUNT(*) FROM invitations
                 WHERE workspace_id = $1 AND accepted_at IS NULL AND expires_at > $2) AS pending_invites`,
           [workspaceId, now],
@@ -86,14 +86,14 @@ export function createOverviewService(deps: { pool: Pool; clock: Clock; audit: A
                SELECT e.id, e.accessed_at FROM share_access_events e
                  JOIN shares s ON s.id = e.share_id
                  JOIN documents doc ON doc.id = s.document_id
-                WHERE doc.workspace_id = $1 AND e.outcome IN ('resolved','downloaded')
+                WHERE doc.workspace_id = $1 AND e.outcome = 'resolved'
              ) e ON e.accessed_at::date = d.day::date
             GROUP BY d.day ORDER BY d.day`,
           [workspaceId, since, now],
         ),
         pool.query<{ id: string; filename: string; mime_type: string; opens: string; viewers: string; last_at: Date | null }>(
           `SELECT d.id, d.filename, d.mime_type,
-                  COUNT(e.id) AS opens,
+                  COUNT(e.id) FILTER (WHERE e.outcome = 'resolved') AS opens,
                   COUNT(DISTINCT e.ip_hash) AS viewers,
                   MAX(e.accessed_at) AS last_at
              FROM documents d
@@ -101,7 +101,8 @@ export function createOverviewService(deps: { pool: Pool; clock: Clock; audit: A
              JOIN share_access_events e ON e.share_id = s.id AND e.outcome IN ('resolved','downloaded')
             WHERE d.workspace_id = $1 AND d.deleted_at IS NULL
             GROUP BY d.id
-            ORDER BY COUNT(e.id) DESC
+            HAVING COUNT(e.id) FILTER (WHERE e.outcome = 'resolved') > 0
+            ORDER BY COUNT(e.id) FILTER (WHERE e.outcome = 'resolved') DESC
             LIMIT 5`,
           [workspaceId],
         ),

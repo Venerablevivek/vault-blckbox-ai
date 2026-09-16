@@ -75,7 +75,18 @@ export function registerShareRoutes(
     config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
     handler: async (request) => {
       const { token } = z.object({ token: z.string().min(10).max(200) }).parse(request.params);
-      return shares.resolvePublic(token, visitorOf(request));
+      return shares.resolvePublic(token);
+    },
+  });
+
+  // Page-view beacon, sent by the share page in the browser. 204 when counted (or ignored as
+  // a repeat), 410/404 for dead or unknown links — dead-link attempts are still recorded.
+  app.post('/api/shares/:token/view', {
+    config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
+    handler: async (request, reply) => {
+      const { token } = z.object({ token: z.string().min(10).max(200) }).parse(request.params);
+      await shares.recordView(token, visitorOf(request));
+      return reply.status(204).send();
     },
   });
 

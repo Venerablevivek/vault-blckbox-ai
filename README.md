@@ -201,7 +201,8 @@ and are recorded as deliberate overrides in §9, not as drift.
 | GET | `/api/documents/:id/preview` | Inline preview — PDF and raster images only |
 | GET | `/api/notifications` | The caller's notifications + unread count |
 | POST | `/api/notifications/read` | Mark one (`{ id }`) or all as read |
-| GET | `/api/shares/:token` | **Public** — resolve a link (metadata only) |
+| GET | `/api/shares/:token` | **Public** — resolve a link (metadata only, records nothing) |
+| POST | `/api/shares/:token/view` | **Public** — page-view beacon sent by the recipient's browser |
 | GET | `/api/shares/:token/download` | **Public** — download (302 → signed URL) |
 | GET | `/api/invitations/:token` | **Public** — preview an invitation |
 | POST | `/api/invitations/:token/accept` | Accept an invitation |
@@ -393,15 +394,30 @@ search were all out of scope by instruction; folders and quotas are plumbing wit
 ### What shipped
 
 **One table** (`share_access_events`): share id, timestamp, hashed IP, user agent, and an outcome of
-`resolved` · `downloaded` · `expired` · `revoked` · `document_deleted`. One insert on the existing
-public resolve/download path, written fire-and-forget so telemetry failing can never stop a legitimate
-download.
+`resolved` · `downloaded` · `expired` · `revoked` · `document_deleted`. Written fire-and-forget so
+telemetry failing can never stop a legitimate download.
+
+**What counts as an open.** A view is recorded by a small request the share page sends *from the
+recipient's browser* once it has loaded (`POST /api/shares/:token/view`); a download is recorded when
+it happens. The server-side render of the page records nothing. Three rules keep the numbers honest:
+
+- **Real addresses.** The browser request reaches the API through the web proxy with the visitor's
+  address. The first version counted during the server-side render, where every visitor looked like
+  the web container — three different people showed up as one viewer, so "someone else opened your
+  link" and the forwarding warning never fired in practice. Tests had missed it because they called
+  the API directly; it was caught by reproducing real traffic.
+- **No refresh inflation.** Repeat views by the same visitor within 30 minutes count once.
+- **No bots.** Link unfurlers (Slack, LinkedIn, WhatsApp) don't run JavaScript, so they never send
+  the view request, and known crawler user agents are excluded from downloads too.
+
+Views and downloads are counted separately, so opening a link and then downloading is one open and
+one download, not two opens.
 
 **Three things in the interface:**
 
 1. **In the document list** — `2 links · 6 opens · last 3 minutes ago`, or `2 links · unopened`. The
    question is answerable without opening anything, via a lateral join that keeps it one query.
-2. **In the share dialog** — per-link opens, estimated distinct viewers, first and last access, and an
+2. **In the share dialog** — per-link opens, downloads, estimated distinct viewers, first and last access, and an
    expandable history showing each event with an opaque viewer marker.
 3. **A forwarding signal** — three or more distinct networks on a link you sent to one person raises a
    warning with a one-click path to revoke and reissue. Attempts on an already-dead link are counted

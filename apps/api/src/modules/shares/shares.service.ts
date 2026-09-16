@@ -15,6 +15,27 @@ import { sharesRepo, type AccessOutcome, type ShareActivity } from './shares.rep
 /** Distinct networks on a link before forwarding is worth flagging. */
 const FORWARDING_THRESHOLD = 3;
 
+/**
+ * Repeat views by the same visitor inside this window count once. Without it every refresh
+ * was an "open", so a single person reloading a page looked like sustained interest.
+ */
+export const VIEW_DEDUPE_MS = 30 * 60 * 1000;
+
+/**
+ * Link unfurlers and crawlers fetch shared URLs without a person behind them. The page
+ * view is already counted by a browser-side request that these do not execute; this also
+ * keeps them out of download counts and notifications.
+ */
+// Deliberately narrow: names like "LinkedIn" or "Telegram" also appear in the in-app browsers
+// real people use, so only crawler and link-preview agents are matched ("Slackbot",
+// "LinkedInBot", "TelegramBot" and "Discordbot" all end in "bot").
+const BOT_USER_AGENT =
+  /bot\b|crawler|spider|slurp|facebookexternalhit|embedly|whatsapp\/|skypeuripreview/i;
+
+export function isBot(userAgent: string | null): boolean {
+  return userAgent !== null && BOT_USER_AGENT.test(userAgent);
+}
+
 export interface SharesServiceOptions {
   pool: Pool;
   storage: FileStorage;
@@ -49,12 +70,19 @@ export function createSharesService(opts: SharesServiceOptions) {
     outcome: AccessOutcome,
     context?: { workspaceId: string; documentId: string; filename: string; createdBy: string },
   ): void {
+    if (isBot(visitor.userAgent)) return;
+
     // The raw address is never stored — only a keyed hash, which is enough to count
     // distinct viewers and useless for identifying anyone.
     const ipHash = hashIp(visitor.ip, opts.ipHashPepper);
 
     void (async () => {
       const successful = outcome === 'resolved' || outcome === 'downloaded';
+
+      if (outcome === 'resolved') {
+        const since = new Date(clock.now().getTime() - VIEW_DEDUPE_MS);
+        if (await sharesRepo.hasRecentView(pool, shareId, ipHash, since)) return;
+      }
 
       // Ask before writing: "is this a viewer we have seen on this link?" decides whether
       // the sender hears about it, and the answer changes the moment the row lands.
@@ -118,17 +146,21 @@ export function createSharesService(opts: SharesServiceOptions) {
   /**
    * Resolves a public token to a live share, or throws.
    *
-   * A token that exists but is dead gets 410 and an access event recorded against it —
-   * someone repeatedly hitting a revoked link is exactly the signal the sender wants.
-   * A token that never existed gets 404 and no event, because there is nothing to attach
-   * it to.
+   * With a visit, access is recorded: a token that exists but is dead gets 410 and an event
+   * against it (someone hitting a revoked link is exactly the signal the sender wants); an
+   * unknown token gets 404 and no event, because there is nothing to attach it to.
+   * Without a visit (the server-rendered metadata lookup) nothing is recorded.
    */
-  async function resolveOrThrow(token: string, visitor: Visitor, outcome: 'resolved' | 'downloaded') {
+  async function resolveOrThrow(
+    token: string,
+    visit?: { visitor: Visitor; outcome: 'resolved' | 'downloaded' },
+  ) {
     const tokenHash = hashToken(token);
 
     const share = await sharesRepo.resolveLive(pool, tokenHash, clock.now());
     if (share) {
-      record(share.share_id, visitor, outcome, {
+      if (!visit) return share;
+      record(share.share_id, visit.visitor, visit.outcome, {
         workspaceId: share.workspace_id,
         documentId: share.document_id,
         filename: share.filename,
@@ -145,7 +177,7 @@ export function createSharesService(opts: SharesServiceOptions) {
       : state.document_deleted_at
         ? 'document_deleted'
         : 'expired';
-    record(state.id, visitor, reason);
+    if (visit) record(state.id, visit.visitor, reason);
 
     throw Errors.gone('This link is no longer available.');
   }
@@ -199,6 +231,7 @@ export function createSharesService(opts: SharesServiceOptions) {
       );
       const empty: ShareActivity = {
         opens: 0,
+        downloads: 0,
         distinctViewers: 0,
         firstAccessedAt: null,
         lastAccessedAt: null,
@@ -248,9 +281,15 @@ export function createSharesService(opts: SharesServiceOptions) {
       });
     },
 
-    /** Public: metadata only. Never the object key, workspace, or uploader identity. */
-    async resolvePublic(token: string, visitor: Visitor) {
-      const share = await resolveOrThrow(token, visitor, 'resolved');
+    /**
+     * Public: metadata only. Never the object key, workspace, or uploader identity.
+     *
+     * Records nothing. This is called by the web server while rendering the share page, so
+     * the address it sees is the web container's, not the visitor's; counting here made
+     * every visitor look like the same person and counted every render and link preview.
+     */
+    async resolvePublic(token: string) {
+      const share = await resolveOrThrow(token);
       return {
         filename: share.filename,
         mimeType: share.mime_type,
@@ -259,9 +298,18 @@ export function createSharesService(opts: SharesServiceOptions) {
       };
     },
 
+    /**
+     * Public: records one page view. Called by the recipient's browser once the share page
+     * has loaded, so it arrives through the web proxy with the visitor's real address, and
+     * link-preview bots (which do not run JavaScript) never send it.
+     */
+    async recordView(token: string, visitor: Visitor): Promise<void> {
+      await resolveOrThrow(token, { visitor, outcome: 'resolved' });
+    },
+
     /** Public: re-validates everything, then mints a short-lived signed URL. */
     async downloadUrl(token: string, visitor: Visitor): Promise<string> {
-      const share = await resolveOrThrow(token, visitor, 'downloaded');
+      const share = await resolveOrThrow(token, { visitor, outcome: 'downloaded' });
       return storage.getSignedUrl(share.storage_key, opts.signedUrlTtlSeconds, {
         filename: share.filename,
         contentType: share.mime_type,

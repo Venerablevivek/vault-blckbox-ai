@@ -52,15 +52,17 @@ describe('share access visibility', () => {
     expect(await activity()).toMatchObject({ opens: 0, distinctViewers: 0, lastAccessedAt: null });
   });
 
-  it('counts opens and downloads by an anonymous visitor', async () => {
+  it('counts a view and a download separately, as one visitor', async () => {
     const { token } = await createShare();
 
-    await h.app.inject({ method: 'GET', url: `/api/shares/${token}` });
+    await h.app.inject({ method: 'POST', url: `/api/shares/${token}/view` });
     await h.app.inject({ method: 'GET', url: `/api/shares/${token}/download` });
     await settle();
 
     const result = await activity();
-    expect(result.opens).toBe(2);
+    // Previously a view followed by a download counted as two "opens".
+    expect(result.opens).toBe(1);
+    expect(result.downloads).toBe(1);
     expect(result.distinctViewers).toBe(1);
     expect(result.firstAccessedAt).not.toBeNull();
     expect(result.lastAccessedAt).not.toBeNull();
@@ -71,24 +73,85 @@ describe('share access visibility', () => {
 
     for (const ip of ['203.0.113.10', '203.0.113.11', '198.51.100.7', '203.0.113.10']) {
       await h.app.inject({
-        method: 'GET',
-        url: `/api/shares/${token}`,
+        method: 'POST',
+        url: `/api/shares/${token}/view`,
         headers: { 'x-forwarded-for': ip },
       });
     }
     await settle();
 
     const result = await activity();
-    expect(result.opens).toBe(4);
-    // Three distinct addresses, one of them repeated.
+    // Three distinct addresses; the repeat visit inside 30 minutes is not a new open.
+    expect(result.opens).toBe(3);
     expect(result.distinctViewers).toBe(3);
+  });
+
+  it('does not count the server-rendered metadata lookup at all', async () => {
+    const { token } = await createShare();
+
+    // This is what the web server calls while rendering the share page. Its address is the
+    // web container's, so counting it made every visitor look like the same person.
+    for (const ip of ['203.0.113.10', '198.51.100.7']) {
+      const response = await h.app.inject({
+        method: 'GET',
+        url: `/api/shares/${token}`,
+        headers: { 'x-forwarded-for': ip },
+      });
+      expect(response.statusCode).toBe(200);
+    }
+    await settle();
+
+    expect(await activity()).toMatchObject({ opens: 0, downloads: 0, distinctViewers: 0 });
+  });
+
+  it('counts a refresh once, then again after 30 minutes', async () => {
+    const { token } = await createShare();
+    const view = () =>
+      h.app.inject({
+        method: 'POST',
+        url: `/api/shares/${token}/view`,
+        headers: { 'x-forwarded-for': '203.0.113.10' },
+      });
+
+    await view();
+    await settle();
+    await view();
+    await settle();
+    await view();
+    await settle();
+    expect((await activity()).opens).toBe(1);
+
+    h.clock.advanceHours(0.6); // 36 minutes
+    await view();
+    await settle();
+    expect((await activity()).opens).toBe(2);
+  });
+
+  it('ignores link-preview bots', async () => {
+    const { token } = await createShare();
+
+    for (const agent of ['Slackbot-LinkExpanding 1.0', 'LinkedInBot/1.0', 'WhatsApp/2.23.20.0']) {
+      await h.app.inject({
+        method: 'POST',
+        url: `/api/shares/${token}/view`,
+        headers: { 'user-agent': agent },
+      });
+      await h.app.inject({
+        method: 'GET',
+        url: `/api/shares/${token}/download`,
+        headers: { 'user-agent': agent },
+      });
+    }
+    await settle();
+
+    expect(await activity()).toMatchObject({ opens: 0, downloads: 0, distinctViewers: 0 });
   });
 
   it('records attempts on a revoked link, which is the point of keeping them', async () => {
     const { id, token } = await createShare();
 
     await h.app.inject({ method: 'DELETE', url: `/api/shares/${id}`, headers: { cookie: alice.cookie } });
-    expect((await h.app.inject({ method: 'GET', url: `/api/shares/${token}` })).statusCode).toBe(410);
+    expect((await h.app.inject({ method: 'POST', url: `/api/shares/${token}/view` })).statusCode).toBe(410);
     await settle();
 
     // A revoked link drops out of the document's live list, so its history is read from
@@ -111,7 +174,7 @@ describe('share access visibility', () => {
       url: `/api/documents/${documentId}`,
       headers: { cookie: alice.cookie },
     });
-    expect((await h.app.inject({ method: 'GET', url: `/api/shares/${token}` })).statusCode).toBe(410);
+    expect((await h.app.inject({ method: 'POST', url: `/api/shares/${token}/view` })).statusCode).toBe(410);
     await settle();
 
     const response = await h.app.inject({
@@ -125,8 +188,8 @@ describe('share access visibility', () => {
   it('never stores a raw IP address', async () => {
     const { token } = await createShare();
     await h.app.inject({
-      method: 'GET',
-      url: `/api/shares/${token}`,
+      method: 'POST',
+      url: `/api/shares/${token}/view`,
       headers: { 'x-forwarded-for': '203.0.113.42' },
     });
     await settle();
@@ -141,8 +204,8 @@ describe('share access visibility', () => {
   it('exposes an access history without exposing the visitor', async () => {
     const { id, token } = await createShare();
     await h.app.inject({
-      method: 'GET',
-      url: `/api/shares/${token}`,
+      method: 'POST',
+      url: `/api/shares/${token}/view`,
       headers: { 'x-forwarded-for': '203.0.113.42', 'user-agent': 'Mozilla/5.0 (test)' },
     });
     await settle();
@@ -176,7 +239,7 @@ describe('share access visibility', () => {
 
   it('deletes access history along with the document', async () => {
     const { token } = await createShare();
-    await h.app.inject({ method: 'GET', url: `/api/shares/${token}` });
+    await h.app.inject({ method: 'POST', url: `/api/shares/${token}/view` });
     await settle();
     expect(await h.query('SELECT 1 FROM share_access_events')).toHaveLength(1);
 

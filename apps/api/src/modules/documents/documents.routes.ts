@@ -155,6 +155,7 @@ export function registerDocumentRoutes(
           expiresAt: share.expires_at,
           activity: {
             opens: activity.opens,
+            downloads: activity.downloads,
             // Labelled an estimate in the UI: NAT merges viewers, network hopping splits them.
             distinctViewers: activity.distinctViewers,
             firstAccessedAt: activity.firstAccessedAt,

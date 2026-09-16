@@ -15,7 +15,10 @@ export interface ShareState {
 }
 
 export interface ShareActivity {
+  /** Page views, one per visitor per 30 minutes. */
   opens: number;
+  /** Actual downloads. Counted separately so a view followed by a download is one open. */
+  downloads: number;
   distinctViewers: number;
   firstAccessedAt: Date | null;
   lastAccessedAt: Date | null;
@@ -155,13 +158,15 @@ export const sharesRepo = {
     const { rows } = await db.query<{
       share_id: string;
       opens: string;
+      downloads: string;
       viewers: string;
       first_at: Date | null;
       last_at: Date | null;
       blocked: string;
     }>(
       `SELECT share_id,
-              COUNT(*)                  FILTER (WHERE outcome IN ('resolved','downloaded')) AS opens,
+              COUNT(*)                  FILTER (WHERE outcome = 'resolved') AS opens,
+              COUNT(*)                  FILTER (WHERE outcome = 'downloaded') AS downloads,
               COUNT(DISTINCT ip_hash)   FILTER (WHERE outcome IN ('resolved','downloaded')) AS viewers,
               MIN(accessed_at)          FILTER (WHERE outcome IN ('resolved','downloaded')) AS first_at,
               MAX(accessed_at)          FILTER (WHERE outcome IN ('resolved','downloaded')) AS last_at,
@@ -177,6 +182,7 @@ export const sharesRepo = {
         r.share_id,
         {
           opens: Number(r.opens),
+          downloads: Number(r.downloads),
           distinctViewers: Number(r.viewers),
           firstAccessedAt: r.first_at,
           lastAccessedAt: r.last_at,
@@ -199,6 +205,17 @@ export const sharesRepo = {
         WHERE share_id = $1 AND ip_hash = $2 AND outcome IN ('resolved','downloaded')
         LIMIT 1`,
       [shareId, ipHash],
+    );
+    return (rowCount ?? 0) > 0;
+  },
+
+  /** Has this visitor viewed the link since `since`? Backs the refresh de-duplication. */
+  async hasRecentView(db: Db, shareId: string, ipHash: Buffer, since: Date): Promise<boolean> {
+    const { rowCount } = await db.query(
+      `SELECT 1 FROM share_access_events
+        WHERE share_id = $1 AND ip_hash = $2 AND outcome = 'resolved' AND accessed_at > $3
+        LIMIT 1`,
+      [shareId, ipHash, since],
     );
     return (rowCount ?? 0) > 0;
   },

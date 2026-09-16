@@ -100,7 +100,9 @@ export interface DocumentDto {
 }
 
 export interface ShareActivity {
+  /** Page views, one per visitor per 30 minutes. */
   opens: number;
+  downloads: number;
   /** An estimate: NAT merges viewers, network hopping splits them. Labelled as such. */
   distinctViewers: number;
   firstAccessedAt: string | null;
