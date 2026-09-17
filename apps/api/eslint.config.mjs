@@ -41,7 +41,7 @@ export default tseslint.config(
   },
   {
     // Process entry points: printing a fatal startup error is the one legitimate console use.
-    files: ['src/main.ts', 'src/maintenance.ts', 'src/worker.ts'],
+    files: ['src/main.ts', 'src/maintenance.ts', 'src/worker.ts', 'src/migrate-cli.ts'],
     rules: { 'no-console': 'off' },
   },
   { files: ['eslint.config.mjs'], ...tseslint.configs.disableTypeChecked },

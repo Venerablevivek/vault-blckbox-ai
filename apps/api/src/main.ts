@@ -22,7 +22,7 @@ async function main(): Promise<void> {
   const { pool } = db;
   const storage = S3Storage.fromConfig(config);
 
-  await runMigrations(db.directPool, path.resolve(__dirname, '../migrations'), logger);
+  if (config.MIGRATE_ON_START) await runMigrations(db.directPool, path.resolve(__dirname, '../migrations'), logger);
   await storage.ensureBucket();
   logger.info({ bucket: config.S3_BUCKET }, 'object storage ready');
 

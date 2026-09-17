@@ -16,7 +16,7 @@ async function main(): Promise<void> {
   const logger = pino(buildLoggerOptions(config.NODE_ENV));
   const db = createDatabase(config, 'vault-maintenance');
   const { pool } = db;
-  await runMigrations(db.directPool, path.resolve(__dirname, '../migrations'), logger);
+  if (config.MIGRATE_ON_START) await runMigrations(db.directPool, path.resolve(__dirname, '../migrations'), logger);
 
   const storage = S3Storage.fromConfig(config);
   const services = createServices({

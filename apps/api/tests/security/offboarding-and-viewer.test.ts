@@ -1,8 +1,7 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHarness, registerUser, uploadDocument, type Harness } from '../helpers/harness';
 
 type User = Awaited<ReturnType<typeof registerUser>>;
-const settle = () => new Promise((resolve) => setTimeout(resolve, 100));
 
 /**
  * What happens to someone's access when they leave or are downgraded, and what a VIEWER can
@@ -78,19 +77,24 @@ describe('offboarding and the viewer role', () => {
     it('stops showing them notifications that name workspace documents', async () => {
       const { token } = await bobSharesADocument();
       await call('POST', `/api/shares/${token}/view`);
-      await settle();
-      const before = (await call('GET', '/api/notifications', bob.cookie)).json();
-      expect(before.notifications.some((n: { title: string }) => n.title.includes('Confidential-Roadmap.pdf'))).toBe(
-        true,
+      const titlesFor = async () =>
+        (await call('GET', '/api/notifications', bob.cookie))
+          .json()
+          .notifications.map((n: { title: string }) => n.title) as string[];
+      // Notifications are written asynchronously; wait for them rather than for a fixed time.
+      await vi.waitFor(async () =>
+        expect((await titlesFor()).some((t) => t.includes('Confidential-Roadmap.pdf'))).toBe(true),
       );
 
       await call('DELETE', `/api/workspaces/${alice.workspaceId}/members/${bob.userId}`, alice.cookie);
 
+      // The removal notice itself has no workspace attached, so it is still shown.
+      await vi.waitFor(async () =>
+        expect((await titlesFor()).some((t) => t.startsWith('You were removed'))).toBe(true),
+      );
       const after = (await call('GET', '/api/notifications', bob.cookie)).json();
       const titles = after.notifications.map((n: { title: string }) => n.title);
       expect(titles.some((t: string) => t.includes('Confidential-Roadmap.pdf'))).toBe(false);
-      // The removal notice itself has no workspace attached, so it is still shown.
-      expect(titles.some((t: string) => t.startsWith('You were removed'))).toBe(true);
       expect(after.unread).toBe(after.notifications.filter((n: { read: boolean }) => !n.read).length);
     });
 

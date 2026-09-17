@@ -2,9 +2,13 @@ x-api-environment: &api-environment
   NODE_ENV: ${NODE_ENV:-development}
   API_PORT: 4000
   WEB_URL: ${WEB_URL:-http://localhost:3000}
+  # The API and worker connect as vault_app, a least-privilege role created by the migrate service:
+  # no DDL, no TRUNCATE, no changes to the audit trail, and subject to row-level security.
   # COMPOSE_* names, not DATABASE_URL, so a DATABASE_URL in .env meant for running outside Docker
   # (localhost) never leaks into the containers.
-  DATABASE_URL: ${COMPOSE_DATABASE_URL:-postgres://${POSTGRES_USER:-filesharing}:${POSTGRES_PASSWORD:-filesharing}@postgres:5432/${POSTGRES_DB:-filesharing}}
+  DATABASE_URL: ${COMPOSE_DATABASE_URL:-postgres://vault_app:${APP_DB_PASSWORD:-dev-only-app-password}@postgres:5432/${POSTGRES_DB:-filesharing}}
+  # Migrations run once, in the migrate service, as the database owner.
+  MIGRATE_ON_START: 'false'
   # Set both when DATABASE_URL goes through PgBouncer (see the pgbouncer service below).
   DATABASE_DIRECT_URL: ${COMPOSE_DATABASE_DIRECT_URL:-}
   DATABASE_READ_URL: ${COMPOSE_DATABASE_READ_URL:-}
@@ -104,8 +108,8 @@ services:
     ports:
       - '4000:4000'
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       minio:
         condition: service_healthy
       mailpit:
@@ -121,9 +125,31 @@ services:
       retries: 10
       start_period: 15s
 
+  # Applies migrations as the database owner, then creates/updates the vault_app role and its
+  # privileges. Runs to completion before the API and worker start; they never see owner credentials.
+  migrate:
+    build:
+      context: ./apps/api
+    command: ['node', 'dist/migrate-cli.js']
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      DATABASE_URL: postgres://${POSTGRES_USER:-filesharing}:${POSTGRES_PASSWORD:-filesharing}@postgres:5432/${POSTGRES_DB:-filesharing}
+      DATABASE_ADMIN_URL: postgres://${POSTGRES_USER:-filesharing}:${POSTGRES_PASSWORD:-filesharing}@postgres:5432/${POSTGRES_DB:-filesharing}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-dev-only-app-password}
+      # Required by config validation; the migrate command doesn't use storage.
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: http://localhost:9000
+      S3_BUCKET: ${S3_BUCKET:-documents}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
   # Optional connection pooler for many API/worker replicas. Off by default; to use it:
-  #   COMPOSE_DATABASE_URL=postgres://filesharing:filesharing@pgbouncer:5432/filesharing \
-  #   COMPOSE_DATABASE_DIRECT_URL=postgres://filesharing:filesharing@postgres:5432/filesharing \
+  #   COMPOSE_DATABASE_URL=postgres://vault_app:dev-only-app-password@pgbouncer:5432/filesharing \
+  #   COMPOSE_DATABASE_DIRECT_URL=postgres://vault_app:dev-only-app-password@postgres:5432/filesharing \
   #   docker compose --profile pgbouncer up -d
   # Transaction pooling can't carry sessions, so LISTEN, advisory locks and migrations use
   # DATABASE_DIRECT_URL. Statement timeouts are enforced here, since PgBouncer drops the
@@ -132,7 +158,8 @@ services:
     image: edoburu/pgbouncer:v1.25.2-p0
     profiles: ['pgbouncer']
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-filesharing}:${POSTGRES_PASSWORD:-filesharing}@postgres:5432/${POSTGRES_DB:-filesharing}
+      # PgBouncer authenticates clients against this user: the application role.
+      DATABASE_URL: postgres://vault_app:${APP_DB_PASSWORD:-dev-only-app-password}@postgres:5432/${POSTGRES_DB:-filesharing}
       AUTH_TYPE: scram-sha-256
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 2000
@@ -143,8 +170,8 @@ services:
     ports:
       - '6432:5432' # inside the Compose network it is pgbouncer:5432
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   # Background jobs: email, notification fan-out, checksums, workspace purges and scheduled
   # maintenance. Same image as the API. Scale with `docker compose up --scale worker=3`.
@@ -155,8 +182,8 @@ services:
     environment:
       <<: *api-environment
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       minio:
         condition: service_healthy
       mailpit:

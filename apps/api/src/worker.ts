@@ -20,7 +20,7 @@ async function main(): Promise<void> {
   const logger = pino(buildLoggerOptions(config.NODE_ENV)).child({ process: 'worker' });
   const db = createDatabase(config, 'vault-worker');
   const { pool } = db;
-  await runMigrations(db.directPool, path.resolve(__dirname, '../migrations'), logger);
+  if (config.MIGRATE_ON_START) await runMigrations(db.directPool, path.resolve(__dirname, '../migrations'), logger);
 
   const storage = S3Storage.fromConfig(config);
   const mailer = config.SMTP_URL ? new SmtpMailer(config.SMTP_URL, config.MAIL_FROM) : new LogMailer(logger);

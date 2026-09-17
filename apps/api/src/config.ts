@@ -52,6 +52,18 @@ const schema = z.object({
   /** A read replica for lag-tolerant reads (dashboard, audit trail). Defaults to DATABASE_URL. */
   DATABASE_READ_URL: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(1).optional()),
   DB_POOL_MAX: z.coerce.number().int().min(1).max(200).default(10),
+  /**
+   * The database owner, used only by the migrate command (dist/migrate-cli.js). The API and worker
+   * connect as the least-privilege vault_app role and never need this.
+   */
+  DATABASE_ADMIN_URL: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(1).optional()),
+  /** Password the migrate command sets on the vault_app role. Unset: the role isn't managed. */
+  APP_DB_PASSWORD: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(12).optional()),
+  /**
+   * Apply migrations when the API or worker starts. Convenient for `npm run dev` with one database
+   * user; Compose turns it off and runs the migrate service instead.
+   */
+  MIGRATE_ON_START: booleanish.default(true),
   /** Per-statement limit for request queries, in milliseconds. 0 disables it. */
   DB_STATEMENT_TIMEOUT_MS: z.coerce.number().int().min(0).default(15_000),
 

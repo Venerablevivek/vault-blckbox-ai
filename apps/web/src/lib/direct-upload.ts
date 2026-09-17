@@ -31,6 +31,14 @@ export async function directUpload(input: {
   const resumeKey = `vault-upload:${workspaceId}:${folderId ?? 'root'}:${file.name}:${file.size}:${file.lastModified}`;
 
   const { upload, received } = await openOrResume();
+  // Cancel can be pressed while the upload is still being opened, before its id is known to the
+  // page. Once it exists, the upload cancels itself, so its reserved storage is always released.
+  const cancelled = async () => {
+    forget();
+    await api.del(`/api/uploads/${upload.id}`).catch(() => undefined);
+    return new UploadCancelled();
+  };
+  if (signal.aborted) throw await cancelled();
   const done = new Map<number, number>(received);
   const inFlight = new Map<number, number>();
   const report = () => {
@@ -95,8 +103,10 @@ export async function directUpload(input: {
     await Promise.all(workers);
   } catch (error) {
     queue.length = 0;
+    if (error instanceof UploadCancelled || signal.aborted) throw await cancelled();
     throw error;
   }
+  if (signal.aborted) throw await cancelled();
 
   const result = await api.post<UploadResult>(`/api/uploads/${upload.id}/complete`);
   forget();

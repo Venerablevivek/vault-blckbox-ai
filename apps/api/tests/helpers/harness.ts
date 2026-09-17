@@ -2,6 +2,7 @@ import path from 'node:path';
 import { Client, type Pool } from 'pg';
 import { pino } from 'pino';
 import type { FastifyInstance } from 'fastify';
+import { ensureAppRole } from '../../src/db/app-role';
 import { createDatabase, createPool } from '../../src/db/pool';
 import { runMigrations } from '../../src/db/migrate';
 import { buildApp } from '../../src/server';
@@ -30,6 +31,8 @@ const TEST_DB = process.env.TEST_PG_DATABASE ?? 'filesharing_test';
 const S3_ENDPOINT = process.env.TEST_S3_ENDPOINT ?? 'http://localhost:9000';
 
 export const TEST_PASSWORD = 'password123';
+/** The application runs as the least-privilege role, exactly as in Compose. */
+const APP_DB_PASSWORD = 'vault-app-test-password';
 
 /** A clock the tests can move forward, so expiry is tested without sleeping. */
 export const TEST_EPOCH = new Date('2026-01-01T12:00:00Z');
@@ -69,8 +72,10 @@ export interface Harness {
   config: Config;
   /** Every email the app sent during the current test. */
   mailer: MemoryMailer;
-  /** The application's own pool, for tests that need a transaction. */
+  /** The application's own pool (connected as vault_app), for tests that need a transaction. */
   pool: Pool;
+  /** A pool connected as the database owner, for setup and for reading behind the app's back. */
+  adminPool: Pool;
   /** Runs every ready background job now (emails, notification fan-out, purges). */
   runJobs(): Promise<number>;
   /**
@@ -98,7 +103,8 @@ export async function createHarness(options?: {
     NODE_ENV: 'test',
     API_PORT: '4001',
     WEB_URL: 'http://localhost:3000',
-    DATABASE_URL: databaseUrl,
+    // The app connects as vault_app, not as the owner: every test exercises its real privileges.
+    DATABASE_URL: databaseUrl.replace(`${PG_USER}:${PG_PASSWORD}@`, `vault_app:${APP_DB_PASSWORD}@`),
     S3_ENDPOINT,
     S3_PUBLIC_ENDPOINT: S3_ENDPOINT,
     S3_BUCKET: bucket,
@@ -112,12 +118,17 @@ export async function createHarness(options?: {
   // Pools are built exactly as in production, so env overrides (a read replica URL, a statement
   // timeout) take effect in tests too. Migrations use a plain pool: a test may point the direct
   // or read URL somewhere unreachable on purpose.
+  const logger = pino({ level: 'silent' });
+  const adminPool = createPool(databaseUrl, { max: 3, applicationName: 'vault-test-admin' });
+  await runMigrations(adminPool, path.resolve(__dirname, '../../migrations'), logger);
+  const setupClient = await adminPool.connect();
+  try {
+    await ensureAppRole(setupClient, APP_DB_PASSWORD);
+  } finally {
+    setupClient.release();
+  }
   const db = createDatabase(config, 'vault-test');
   const { pool } = db;
-  const logger = pino({ level: 'silent' });
-  const migrationPool = createPool(databaseUrl, { max: 2 });
-  await runMigrations(migrationPool, path.resolve(__dirname, '../../migrations'), logger);
-  await migrationPool.end();
 
   const realStorage = new S3Storage({
     endpoint: config.S3_ENDPOINT,
@@ -156,6 +167,7 @@ export async function createHarness(options?: {
     config,
     mailer,
     pool,
+    adminPool,
     runJobs: () => app.services.jobs.runReady(app.jobHandlers, 1000),
     async drainJobs(timeoutMs = 5000) {
       const deadline = Date.now() + timeoutMs;
@@ -177,7 +189,7 @@ export async function createHarness(options?: {
       // deterministic without making production writes blocking just to suit the tests.
       for (let attempt = 1; ; attempt += 1) {
         try {
-          await pool.query(
+          await adminPool.query(
             `TRUNCATE notifications, audit_events, share_access_events, invitations, shares,
                       documents, folders, login_failures, password_resets, workspace_members,
                       workspaces, sessions, users, jobs, rate_limits CASCADE`,
@@ -196,9 +208,10 @@ export async function createHarness(options?: {
       await stopWorker();
       await app.close();
       await db.end();
+      await adminPool.end();
     },
     async query<T extends Record<string, unknown>>(sql: string, params: unknown[] = []) {
-      const { rows } = await pool.query(sql, params);
+      const { rows } = await adminPool.query(sql, params);
       return rows as T[];
     },
     async objectExists(key: string) {

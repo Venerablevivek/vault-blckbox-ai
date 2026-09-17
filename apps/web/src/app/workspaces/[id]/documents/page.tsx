@@ -281,8 +281,9 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
   async function cancelUpload() {
     const current = uploadControl.current;
     if (!current) return;
+    // The upload releases its own reserved storage when it sees the abort, including one that was
+    // still being opened; this also covers an upload that had already been saved for resuming.
     current.controller.abort();
-    // Releases the storage reserved for the file; without this the upload stays resumable.
     await cancelDirectUpload(workspaceId, current.folderId, current.file);
   }
 

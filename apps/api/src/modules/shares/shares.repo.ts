@@ -266,21 +266,10 @@ export const sharesRepo = {
   async maintainEventPartitions(db: Db, now: Date, monthsAhead: number, retentionMonths: number): Promise<string[]> {
     await db.query('SELECT ensure_share_event_partitions($1, $2)', [now, monthsAhead + 1]);
     const cutoff = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - retentionMonths, 1));
-    const cutoffName = `share_access_events_${cutoff.getUTCFullYear()}_${String(cutoff.getUTCMonth() + 1).padStart(2, '0')}`;
-    const { rows } = await db.query<{ name: string }>(
-      `SELECT c.relname AS name
-         FROM pg_inherits i
-         JOIN pg_class c ON c.oid = i.inhrelid
-         JOIN pg_class p ON p.oid = i.inhparent
-        WHERE p.relname = 'share_access_events' AND c.relname ~ '^share_access_events_[0-9]{4}_[0-9]{2}$'
-          AND c.relname < $1
-        ORDER BY c.relname`,
-      [cutoffName],
-    );
-    for (const { name } of rows) {
-      // The name comes from pg_class and matched the strict pattern above; quote it anyway.
-      await db.query(`DROP TABLE ${'"' + name.replace(/"/g, '""') + '"'}`);
-    }
+    // Runs as the table owner (SECURITY DEFINER): the application role can't drop tables itself.
+    const { rows } = await db.query<{ name: string }>('SELECT drop_share_event_partitions_before($1) AS name', [
+      cutoff,
+    ]);
     return rows.map((r) => r.name);
   },
 

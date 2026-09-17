@@ -72,6 +72,27 @@ test('cancelling an upload releases its reserved storage', async ({ page }) => {
   expect(listing.documents).toHaveLength(0);
 });
 
+test('cancelling while the upload is still starting also releases its storage', async ({ page }) => {
+  forbidNativeDialogs(page);
+  await registerViaApi(page.request, uniqueEmail('early-cancel'));
+  const workspaceId = await firstWorkspaceId(page.request);
+  await openDocuments(page, workspaceId);
+
+  // Hold the "start upload" response, so Cancel is pressed before the page knows the upload's id.
+  await page.route(/\/api\/workspaces\/[^/]+\/uploads$/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue();
+  });
+  await page.locator('input[type="file"]').setInputFiles(pdfFile('early.pdf', 9 * MiB));
+  await page.getByRole('status').getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByText('early.pdf: upload cancelled')).toBeVisible({ timeout: 10_000 });
+
+  await expect(async () => {
+    const storage = await (await page.request.get(`/api/workspaces/${workspaceId}/storage`)).json();
+    expect(storage.storage.usedBytes).toBe(0);
+  }).toPass({ timeout: 10_000 });
+});
+
 test('a file whose content is not what its name says is refused', async ({ page }) => {
   forbidNativeDialogs(page);
   await registerViaApi(page.request, uniqueEmail('mislabel'));
