@@ -4,12 +4,14 @@ import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, LogOut, Pencil, ShieldCheck } from 'lucide-react';
 import { api, ApiRequestError } from '@/lib/api';
+import { useDialogs } from '@/components/dialog';
 import { toast } from '@/components/toast';
 import { RoleBadge, Shell, useSession, WorkspaceAvatar } from '@/components/ui';
 
 export default function SettingsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: workspaceId } = use(params);
   const router = useRouter();
+  const dialogs = useDialogs();
   const session = useSession(workspaceId);
   const workspace = session.workspaces.find((w) => w.id === workspaceId);
   const isOwner = workspace?.role === 'OWNER';
@@ -36,7 +38,13 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
   }
 
   async function leave() {
-    if (!confirm(`Leave “${workspace?.name}”? You will lose access to its documents immediately.`)) return;
+    const ok = await dialogs.confirm({
+      title: `Leave “${workspace?.name}”?`,
+      body: 'You lose access to its documents immediately, and any share links you created stop working. Documents you uploaded stay in the workspace.',
+      confirmLabel: 'Leave workspace',
+      tone: 'danger',
+    });
+    if (!ok) return;
     try {
       await api.del(`/api/workspaces/${workspaceId}/members/${session.userId}`);
       toast('You left the workspace', 'success');

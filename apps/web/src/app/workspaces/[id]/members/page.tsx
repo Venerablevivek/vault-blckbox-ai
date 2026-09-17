@@ -1,13 +1,14 @@
 'use client';
 
 import { use, useCallback, useEffect, useState } from 'react';
-import { Copy, Crown, Mail, Send, ShieldCheck, UserMinus, UserPlus, Users, X } from 'lucide-react';
-import { api, ApiRequestError, formatDate } from '@/lib/api';
+import { Copy, Crown, Eye, Mail, Send, ShieldCheck, UserMinus, UserPlus, Users, X } from 'lucide-react';
+import { api, ApiRequestError, formatDate, type Role } from '@/lib/api';
+import { useDialogs } from '@/components/dialog';
 import { toast } from '@/components/toast';
 import { EmptyState, ErrorNote, RoleBadge, Shell, Skeleton, useSession } from '@/components/ui';
 
-interface Member { userId: string; email: string; role: 'OWNER' | 'MEMBER'; joinedAt: string }
-interface Invitation { id: string; email: string; role: 'OWNER' | 'MEMBER'; expiresAt: string }
+interface Member { userId: string; email: string; role: Role; joinedAt: string }
+interface Invitation { id: string; email: string; role: Role; expiresAt: string }
 
 export default function MembersPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: workspaceId } = use(params);
@@ -15,18 +16,19 @@ export default function MembersPage({ params }: { params: Promise<{ id: string }
 
   const [members, setMembers] = useState<Member[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [role, setRole] = useState<'OWNER' | 'MEMBER'>('MEMBER');
+  const dialogs = useDialogs();
+  const [role, setRole] = useState<Role>('MEMBER');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'MEMBER' | 'OWNER'>('MEMBER');
+  const [inviteRole, setInviteRole] = useState<Role>('MEMBER');
   const [inviteBusy, setInviteBusy] = useState(false);
   const [lastInviteUrl, setLastInviteUrl] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const data = await api.get<{ role: 'OWNER' | 'MEMBER'; members: Member[]; invitations: Invitation[] }>(
+      const data = await api.get<{ role: Role; members: Member[]; invitations: Invitation[] }>(
         `/api/workspaces/${workspaceId}/members`,
       );
       setRole(data.role);
@@ -69,10 +71,23 @@ export default function MembersPage({ params }: { params: Promise<{ id: string }
     }
   }
 
-  async function changeRole(member: Member, next: 'OWNER' | 'MEMBER') {
+  async function changeRole(member: Member, next: Role) {
+    if (next === 'VIEWER') {
+      // Downgrading revokes the person's share links, so say so before doing it.
+      const ok = await dialogs.confirm({
+        title: `Make ${member.email} a viewer?`,
+        body: 'Viewers can view and download, but not upload, share or change anything. Any share links they created will stop working.',
+        confirmLabel: 'Make viewer',
+        tone: 'danger',
+      });
+      if (!ok) {
+        await load();
+        return;
+      }
+    }
     try {
       await api.patch(`/api/workspaces/${workspaceId}/members/${member.userId}`, { role: next });
-      toast(`${member.email} is now ${next === 'OWNER' ? 'an owner' : 'a member'}`, 'success');
+      toast(`${member.email} is now ${next === 'OWNER' ? 'an owner' : next === 'MEMBER' ? 'a member' : 'a viewer'}`, 'success');
       await load();
     } catch (err) {
       toast(err instanceof ApiRequestError ? err.message : 'Could not change role.', 'error');
@@ -81,7 +96,13 @@ export default function MembersPage({ params }: { params: Promise<{ id: string }
   }
 
   async function removeMember(member: Member) {
-    if (!confirm(`Remove ${member.email}? They lose access immediately. Documents they uploaded stay in the workspace.`)) return;
+    const ok = await dialogs.confirm({
+      title: `Remove ${member.email}?`,
+      body: 'They lose access immediately, and any share links they created stop working. Documents they uploaded stay in the workspace.',
+      confirmLabel: 'Remove member',
+      tone: 'danger',
+    });
+    if (!ok) return;
     try {
       await api.del(`/api/workspaces/${workspaceId}/members/${member.userId}`);
       toast(`${member.email} removed`, 'success');
@@ -155,6 +176,7 @@ export default function MembersPage({ params }: { params: Promise<{ id: string }
                           >
                             <option value="OWNER">Owner</option>
                             <option value="MEMBER">Member</option>
+                            <option value="VIEWER">Viewer</option>
                           </select>
                           <button
                             className="btn-ghost h-8 px-2 hover:text-danger"
@@ -218,8 +240,9 @@ export default function MembersPage({ params }: { params: Promise<{ id: string }
               </p>
               <form onSubmit={invite} className="mt-4 space-y-3">
                 <input type="email" required placeholder="colleague@company.com" className="input" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} aria-label="Email address" />
-                <select className="input" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as 'MEMBER' | 'OWNER')} aria-label="Role">
+                <select className="input" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as Role)} aria-label="Role">
                   <option value="MEMBER">Member — upload, download, share</option>
+                  <option value="VIEWER">Viewer — view and download only</option>
                   <option value="OWNER">Owner — also manage people</option>
                 </select>
                 <button type="submit" className="btn-primary h-10 w-full" disabled={inviteBusy}>
@@ -248,7 +271,11 @@ export default function MembersPage({ params }: { params: Promise<{ id: string }
               </li>
               <li className="flex gap-2.5">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-hidden />
-                <span><span className="font-medium text-ink">Member</span> — upload, download, preview and share. Rename or delete only what they uploaded.</span>
+                <span><span className="font-medium text-ink">Member</span> — upload, download, preview, share and create folders. Rename, move or delete only what they created.</span>
+              </li>
+              <li className="flex gap-2.5">
+                <Eye className="mt-0.5 h-4 w-4 shrink-0 text-warn" aria-hidden />
+                <span><span className="font-medium text-ink">Viewer</span> — view and download only. Can't upload, share or change anything, so documents can't leave the workspace through them.</span>
               </li>
             </ul>
           </div>

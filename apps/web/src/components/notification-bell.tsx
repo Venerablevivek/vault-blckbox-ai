@@ -64,11 +64,27 @@ export function NotificationBell() {
   }, []);
 
   useEffect(() => {
-    void load();
-    // Polling rather than websockets: this is a modular monolith, and two indexed queries
-    // every twenty seconds is far cheaper than the connection management a socket needs.
-    const timer = setInterval(() => void load(), POLL_MS);
-    return () => clearInterval(timer);
+    // Polling rather than websockets: two indexed queries every twenty seconds is far cheaper
+    // than the connection management a socket needs. Polling stops while the tab is hidden
+    // (nobody can see the badge) and catches up immediately when the tab comes back.
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (timer) return;
+      void load();
+      timer = setInterval(() => void load(), POLL_MS);
+    };
+    const stop = () => {
+      if (timer) clearInterval(timer);
+      timer = null;
+    };
+    const onVisibility = () => (document.visibilityState === 'visible' ? start() : stop());
+
+    if (document.visibilityState === 'visible') start();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [load]);
 
   async function markAllRead() {

@@ -81,11 +81,37 @@ export const api = {
     }),
 };
 
+export type Role = 'OWNER' | 'MEMBER' | 'VIEWER';
+
 export interface Workspace {
   id: string;
   name: string;
-  role: 'OWNER' | 'MEMBER';
+  role: Role;
 }
+
+export interface FolderDto {
+  id: string;
+  name: string;
+  parentId: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  documentCount?: number;
+  folderCount?: number;
+}
+
+export interface DocumentListResponse {
+  role: Role;
+  documents: DocumentDto[];
+  nextCursor: string | null;
+  folders: FolderDto[];
+  path: FolderDto[];
+  counts: { all: number; shared: number; mine: number; trash: number };
+}
+
+/** Owners and members contribute; viewers only read. Mirrors the API's policy.ts. */
+export const canContribute = (role: Role): boolean => role === 'OWNER' || role === 'MEMBER';
+export const ownsOrAdministers = (role: Role, createdBy: string | null, userId: string): boolean =>
+  role === 'OWNER' || (role === 'MEMBER' && createdBy === userId);
 
 export interface DocumentDto {
   id: string;
@@ -95,6 +121,9 @@ export interface DocumentDto {
   uploadedBy: string;
   uploadedByEmail?: string;
   createdAt: string;
+  folderId: string | null;
+  deletedAt: string | null;
+  deletedByEmail: string | null;
   /** Rollup of this document's live share links. */
   links?: { count: number; opens: number; lastAccessedAt: string | null };
 }
@@ -112,14 +141,18 @@ export interface ShareActivity {
 
 export interface ShareSummary {
   id: string;
+  createdBy: string;
   createdAt: string;
   expiresAt: string | null;
+  hasPassword: boolean;
+  maxDownloads: number | null;
+  downloadCount: number;
   activity: ShareActivity;
 }
 
 export interface ShareEvent {
   accessedAt: string;
-  outcome: 'resolved' | 'downloaded' | 'expired' | 'revoked' | 'document_deleted';
+  outcome: 'resolved' | 'downloaded' | 'expired' | 'revoked' | 'document_deleted' | 'exhausted' | 'bad_password';
   userAgent: string | null;
   /** Opaque, stable marker for "the same viewer". Never an address. */
   viewer: string;

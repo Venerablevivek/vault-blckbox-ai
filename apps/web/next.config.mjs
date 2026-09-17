@@ -11,8 +11,9 @@ const apiTarget = process.env.API_INTERNAL_URL ?? 'http://localhost:4000';
 
 /** @type {import('next').NextConfig} */
 export default {
-  // No `output: 'standalone'`: the container runs server.mjs, a small custom server that
-  // sets the client address before Next.js handles the request.
+  // Standalone output traces only the files the server needs, which keeps the image small.
+  // The container runs server.mjs (a custom server) against that trimmed output.
+  output: 'standalone',
   async rewrites() {
     return [{ source: '/api/:path*', destination: `${apiTarget}/api/:path*` }];
   },

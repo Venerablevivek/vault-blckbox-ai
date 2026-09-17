@@ -139,6 +139,8 @@ export function registerDocumentRoutes(
         folders: result.folders.map(toFolderDto),
         path: result.path.map(toFolderDto),
         counts: result.counts,
+        // So the trash view can say when each document will be purged.
+        trashRetentionDays: config.TRASH_RETENTION_DAYS,
       };
     },
   });

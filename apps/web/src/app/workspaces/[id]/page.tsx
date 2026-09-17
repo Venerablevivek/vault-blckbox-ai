@@ -21,7 +21,7 @@ import { EmptyState, ErrorNote, FileGlyph, Shell, useSession } from '@/component
 import { describeAuditEvent, AUDIT_STYLE, type AuditEvent } from '@/components/audit';
 
 interface Overview {
-  role: 'OWNER' | 'MEMBER';
+  role: 'OWNER' | 'MEMBER' | 'VIEWER';
   totals: { documents: number; bytes: number; members: number; liveLinks: number; opens: number; pendingInvites: number };
   storageByType: Array<{ category: string; count: number; bytes: number }>;
   series: Array<{ day: string; uploads: number; opens: number }>;
@@ -74,7 +74,9 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
 
   const load = useCallback(async () => {
     try {
-      setData(await api.get<Overview>(`/api/workspaces/${workspaceId}/overview`));
+      // Charts group activity by calendar day in the viewer's own time zone.
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      setData(await api.get<Overview>(`/api/workspaces/${workspaceId}/overview?tz=${encodeURIComponent(tz)}`));
       setError(null);
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 401) return;
@@ -98,10 +100,12 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
       title="Overview"
       subtitle={workspace?.name}
       actions={
-        <Link href={`/workspaces/${workspaceId}/documents?upload=1`} className="btn-primary">
-          <Upload className="h-4 w-4" aria-hidden />
-          <span className="hidden sm:inline">Upload</span>
-        </Link>
+        data && data.role !== 'VIEWER' ? (
+          <Link href={`/workspaces/${workspaceId}/documents?upload=1`} className="btn-primary">
+            <Upload className="h-4 w-4" aria-hidden />
+            <span className="hidden sm:inline">Upload</span>
+          </Link>
+        ) : null
       }
     >
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
@@ -122,9 +126,15 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Link href={`/workspaces/${workspaceId}/documents?upload=1`} className="btn h-10 bg-white text-brand-700 hover:bg-brand-50">
-                <Upload className="h-4 w-4" aria-hidden /> Upload file
-              </Link>
+              {data?.role !== 'VIEWER' ? (
+                <Link href={`/workspaces/${workspaceId}/documents?upload=1`} className="btn h-10 bg-white text-brand-700 hover:bg-brand-50">
+                  <Upload className="h-4 w-4" aria-hidden /> Upload file
+                </Link>
+              ) : (
+                <Link href={`/workspaces/${workspaceId}/documents`} className="btn h-10 bg-white text-brand-700 hover:bg-brand-50">
+                  Browse documents
+                </Link>
+              )}
               {isOwner ? (
                 <Link href={`/workspaces/${workspaceId}/members`} className="btn h-10 bg-white/15 text-white ring-1 ring-white/30 hover:bg-white/25">
                   <UserPlus className="h-4 w-4" aria-hidden /> Invite

@@ -18,7 +18,8 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
-import { api, ApiRequestError, type Workspace } from '@/lib/api';
+import { api, ApiRequestError, type Role, type Workspace } from '@/lib/api';
+import { useDialogs } from './dialog';
 import { Brand } from './brand';
 import { NotificationBell } from './notification-bell';
 import { Toaster, toast } from './toast';
@@ -72,8 +73,9 @@ export function Skeleton({ rows = 3 }: { rows?: number }) {
   );
 }
 
-export function RoleBadge({ role }: { role: 'OWNER' | 'MEMBER' }) {
-  return <span className={role === 'OWNER' ? 'chip-brand' : 'chip'}>{role === 'OWNER' ? 'Owner' : 'Member'}</span>;
+export function RoleBadge({ role }: { role: Role }) {
+  const label = role === 'OWNER' ? 'Owner' : role === 'MEMBER' ? 'Member' : 'Viewer';
+  return <span className={role === 'OWNER' ? 'chip-brand' : role === 'VIEWER' ? 'chip-warn' : 'chip'}>{label}</span>;
 }
 
 /**
@@ -176,6 +178,7 @@ export function Shell({
   const pathname = usePathname();
   const router = useRouter();
 
+  const dialogs = useDialogs();
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -193,8 +196,15 @@ export function Shell({
 
   async function createWorkspace() {
     setSwitcherOpen(false);
-    const name = prompt('Name the new workspace');
-    if (!name?.trim()) return;
+    const name = await dialogs.prompt({
+      title: 'New workspace',
+      body: 'A separate space with its own documents, members and share links.',
+      label: 'Workspace name',
+      placeholder: 'e.g. Marketing',
+      confirmLabel: 'Create workspace',
+      maxLength: 120,
+    });
+    if (!name) return;
     try {
       const result = await api.post<{ workspace: { id: string } }>('/api/workspaces', { name: name.trim() });
       toast(`Created “${name.trim()}”`, 'success');
@@ -229,7 +239,7 @@ export function Shell({
           {active ? <WorkspaceAvatar id={active.id} name={active.name} /> : null}
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-semibold">{active?.name ?? 'Workspace'}</span>
-            <span className="block text-[11px] text-ink-muted">{active?.role === 'OWNER' ? 'Owner' : 'Member'}</span>
+            <span className="block text-[11px] text-ink-muted">{active?.role === 'OWNER' ? 'Owner' : active?.role === 'VIEWER' ? 'Viewer · read only' : 'Member'}</span>
           </span>
           <ChevronsUpDown className="h-4 w-4 text-ink-subtle" aria-hidden />
         </button>

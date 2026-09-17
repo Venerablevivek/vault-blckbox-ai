@@ -1,6 +1,7 @@
 import { headers } from 'next/headers';
 import { Brand } from '@/components/brand';
 import { SiteFooter } from '@/components/site-chrome';
+import { SharePasswordForm } from '@/components/share-password-form';
 import { ViewBeacon } from '@/components/view-beacon';
 import { formatBytes } from '@/lib/api';
 
@@ -15,12 +16,17 @@ export const dynamic = 'force-dynamic';
 
 const API = process.env.API_INTERNAL_URL ?? 'http://localhost:4000';
 
-interface ShareMeta {
-  filename: string;
-  mimeType: string;
-  size: number;
-  expiresAt: string | null;
-}
+type ShareMeta =
+  | { requiresPassword: true; expiresAt: string | null }
+  | {
+      requiresPassword: false;
+      passwordProtected: boolean;
+      filename: string;
+      mimeType: string;
+      size: number;
+      expiresAt: string | null;
+      downloadsRemaining: number | null;
+    };
 
 function expiryLabel(expiresAt: string | null): string {
   if (!expiresAt) return 'This link does not expire';
@@ -63,10 +69,15 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   // the web container and apply one shared rate limit to all of them. server.mjs has already
   // set X-Forwarded-For to the visitor's socket address; pass it on (the API trusts it only
   // from this container).
-  const clientIp = (await headers()).get('x-forwarded-for') ?? '';
+  //
+  // The browser's cookies are forwarded too: a password-protected link is unlocked by an
+  // HttpOnly cookie the API set, and the API needs to see it to reveal the document.
+  const incoming = await headers();
+  const clientIp = incoming.get('x-forwarded-for') ?? '';
+  const cookie = incoming.get('cookie') ?? '';
   const response = await fetch(`${API}/api/shares/${encodeURIComponent(token)}`, {
     cache: 'no-store',
-    headers: clientIp ? { 'x-forwarded-for': clientIp } : {},
+    headers: { ...(clientIp ? { 'x-forwarded-for': clientIp } : {}), ...(cookie ? { cookie } : {}) },
   });
 
   if (!response.ok) {
@@ -74,6 +85,8 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
     // Saying so — rather than showing a 404 — tells the recipient it is worth asking the
     // sender for a new one.
     const gone = response.status === 410;
+    const body = (await response.json().catch(() => ({}))) as { error?: { message?: string } };
+    const usedUp = gone && /download limit/i.test(body.error?.message ?? '');
     return (
       <Frame>
         {/* Attempts on a dead link are recorded too — useful signal for the sender. */}
@@ -89,12 +102,14 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
             </svg>
           </div>
           <h1 className="mt-5 text-base font-semibold">
-            {gone ? 'This link is no longer available' : 'Link not found'}
+            {usedUp ? 'This link has already been used' : gone ? 'This link is no longer available' : 'Link not found'}
           </h1>
           <p className="mt-2 text-sm text-ink-muted">
-            {gone
-              ? 'It may have expired or been revoked by the sender. Ask them for a new one.'
-              : 'Please double-check the link you were given.'}
+            {usedUp
+              ? 'It could only be downloaded a limited number of times. Ask the sender for a new one.'
+              : gone
+                ? 'It may have expired or been revoked by the sender. Ask them for a new one.'
+                : 'Please double-check the link you were given.'}
           </p>
         </div>
       </Frame>
@@ -102,6 +117,32 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
   }
 
   const meta = (await response.json()) as ShareMeta;
+
+  if (meta.requiresPassword) {
+    // Nothing about the document is known yet: the API withholds the name, size and type
+    // until the password is entered. No view is counted for a locked page either.
+    return (
+      <Frame>
+        <div className="panel overflow-hidden">
+          <div className="bg-gradient-to-br from-brand-600 to-brand-700 px-8 py-9 text-center">
+            <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 text-white ring-1 ring-white/25" aria-hidden>
+              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none">
+                <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" strokeWidth="1.7" />
+                <path d="M8 11V8a4 4 0 1 1 8 0v3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+              </svg>
+            </span>
+            <h1 className="mt-4 text-lg font-semibold text-white">This file is password protected</h1>
+            <p className="mt-1 text-sm text-brand-100">Enter the password the sender gave you.</p>
+          </div>
+          <SharePasswordForm token={token} />
+          <p className="border-t border-line px-8 py-4 text-center text-[11px] leading-relaxed text-ink-subtle">
+            {expiryLabel(meta.expiresAt)}. Wrong attempts are recorded and limited.
+          </p>
+        </div>
+      </Frame>
+    );
+  }
+
   const extension = (meta.filename.split('.').pop() ?? '?').slice(0, 4).toUpperCase();
 
   return (
@@ -126,7 +167,12 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
             Download
           </a>
 
-          <p className="mt-4 text-center text-xs text-ink-muted">{expiryLabel(meta.expiresAt)}</p>
+          <p className="mt-4 text-center text-xs text-ink-muted">
+            {expiryLabel(meta.expiresAt)}
+            {meta.downloadsRemaining !== null
+              ? ` · ${meta.downloadsRemaining === 1 ? 'Can be downloaded once more' : `${meta.downloadsRemaining} downloads left`}`
+              : ''}
+          </p>
 
           {/* The visitor is not our user and never agreed to be tracked, so we say plainly
               what is recorded. The feature is link hygiene, not surveillance. */}
