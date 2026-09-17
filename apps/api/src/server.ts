@@ -11,6 +11,7 @@ import { registerInvitationRoutes, registerWorkspaceRoutes } from './modules/wor
 import { registerDocumentRoutes } from './modules/documents/documents.routes';
 import { registerShareRoutes } from './modules/shares/shares.routes';
 import { registerAuditRoutes } from './modules/audit/audit.routes';
+import { createNotificationStreamHub } from './modules/notifications/notification-stream';
 import { registerNotificationRoutes } from './modules/notifications/notifications.routes';
 import { registerFolderRoutes } from './modules/folders/folders.routes';
 import { registerUploadRoutes } from './modules/uploads/uploads.routes';
@@ -129,7 +130,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   registerFolderRoutes(app, { folders, workspaces });
   registerUploadRoutes(app, { uploads: services.uploads, workspaces });
   registerAuditRoutes(app, { audit, workspaces });
-  registerNotificationRoutes(app, { notifications });
+  registerNotificationRoutes(app, {
+    config,
+    notifications,
+    auth,
+    hub: createNotificationStreamHub({ pool, logger }),
+  });
 
   return app;
 }

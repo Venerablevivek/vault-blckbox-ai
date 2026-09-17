@@ -43,30 +43,61 @@ export function NotificationBell() {
       setUnread(data.unread);
       setItems(data.notifications);
     } catch {
-      // A failed poll is not worth interrupting the user for; the next tick retries.
+      // A failed refresh is not worth interrupting the user for; the next event or poll retries.
     }
   }, []);
 
   useEffect(() => {
-    // Polling rather than websockets: two indexed queries every twenty seconds is far cheaper
-    // than the connection management a socket needs. Polling stops while the tab is hidden
-    // (nobody can see the badge) and catches up immediately when the tab comes back.
+    // Live updates over server-sent events: the API pushes a signal the moment a notification is
+    // created, and the bell fetches the inbox. If the stream can't be used (a proxy that blocks it,
+    // or too many tabs), it falls back to polling. Both stop while the tab is hidden, because
+    // nobody can see the badge, and catch up as soon as it is visible again.
+    let source: EventSource | null = null;
     let timer: ReturnType<typeof setInterval> | null = null;
-    const start = () => {
+    let failures = 0;
+
+    const startPolling = () => {
       if (timer) return;
       void load();
       timer = setInterval(() => void load(), POLL_MS);
     };
-    const stop = () => {
+    const stopPolling = () => {
       if (timer) clearInterval(timer);
       timer = null;
     };
-    const onVisibility = () => (document.visibilityState === 'visible' ? start() : stop());
+    const connect = () => {
+      if (source || timer || typeof EventSource === 'undefined') {
+        if (typeof EventSource === 'undefined') startPolling();
+        return;
+      }
+      source = new EventSource('/api/notifications/stream');
+      // Sent on every (re)connect, so anything missed while disconnected is picked up.
+      source.addEventListener('ready', () => {
+        failures = 0;
+        void load();
+      });
+      source.addEventListener('notification', () => void load());
+      source.addEventListener('error', () => {
+        failures += 1;
+        // CLOSED means the server refused the stream outright; repeated errors mean it keeps dropping.
+        if (source?.readyState === EventSource.CLOSED || failures >= 3) {
+          source?.close();
+          source = null;
+          startPolling();
+        }
+      });
+    };
+    const disconnect = () => {
+      source?.close();
+      source = null;
+      stopPolling();
+    };
+    const onVisibility = () => (document.visibilityState === 'visible' ? connect() : disconnect());
 
-    if (document.visibilityState === 'visible') start();
+    if (document.visibilityState === 'visible') connect();
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
-      stop();
+      disconnect();
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [load]);

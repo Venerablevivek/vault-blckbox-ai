@@ -107,6 +107,9 @@ const schema = z.object({
    */
   SHARE_EVENT_RETENTION_MONTHS: z.coerce.number().int().min(1).max(120).default(13),
 
+  /** Seconds between keep-alive comments on notification streams (below proxy idle timeouts). */
+  NOTIFICATION_STREAM_HEARTBEAT_SECONDS: z.coerce.number().int().min(1).max(120).default(15),
+
   /** How long a password reset link works. */
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(60),
 

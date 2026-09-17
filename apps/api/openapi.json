@@ -5699,6 +5699,52 @@
         }
       }
     },
+    "/api/notifications/stream": {
+      "get": {
+        "summary": "Live notification events (server-sent events)",
+        "description": "text/event-stream. Sends `event: ready` on connect and `event: notification` whenever your inbox changes; fetch GET /api/notifications on either. A keep-alive comment is sent periodically, and the stream ends when the session does. At most 5 streams per user.",
+        "tags": [
+          "Activity"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "An open stream of server-sent events.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited or locked out. See Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/notifications/read": {
       "post": {
         "summary": "Mark one or all notifications read",

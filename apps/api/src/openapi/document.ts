@@ -39,7 +39,7 @@ interface Operation {
   body?: ZodSchema;
   multipart?: boolean;
   /** Success status and body; null body means no content. */
-  success: [number, ZodSchema | null] | 'redirect';
+  success: [number, ZodSchema | null] | 'redirect' | 'stream';
   errors?: ErrorStatus[];
 }
 
@@ -604,6 +604,17 @@ export const operations: Operation[] = [
     success: [200, z.record(z.unknown())],
   },
   {
+    method: 'get',
+    path: '/api/notifications/stream',
+    tag: 'Activity',
+    summary: 'Live notification events (server-sent events)',
+    auth: S,
+    success: 'stream',
+    errors: [401, 429],
+    description:
+      'text/event-stream. Sends `event: ready` on connect and `event: notification` whenever your inbox changes; fetch GET /api/notifications on either. A keep-alive comment is sent periodically, and the stream ends when the session does. At most 5 streams per user.',
+  },
+  {
     method: 'post',
     path: '/api/notifications/read',
     tag: 'Activity',
@@ -649,7 +660,12 @@ export function buildOpenApiDocument() {
 
   for (const op of allOperations) {
     const responses: RouteConfig['responses'] = {};
-    if (op.success === 'redirect') {
+    if (op.success === 'stream') {
+      responses[200] = {
+        description: 'An open stream of server-sent events.',
+        content: { 'text/event-stream': { schema: { type: 'string' } } },
+      };
+    } else if (op.success === 'redirect') {
       responses[302] = {
         description: 'Redirect to a short-lived signed URL.',
         headers: { Location: { schema: { type: 'string', format: 'uri' } } },

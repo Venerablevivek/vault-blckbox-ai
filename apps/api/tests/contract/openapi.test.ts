@@ -32,6 +32,10 @@ describe('API contract', () => {
     const op = allOperations.find((o) => o.method === method.toLowerCase() && o.path === template);
     expect(op, `${key(method, template)} is not documented`).toBeDefined();
     covered.add(key(method, template));
+    if (op!.success === 'stream') {
+      // Streams are exercised in tests/integration/notification-stream.test.ts; inject can't hold one open.
+      return;
+    }
     if (op!.success === 'redirect') {
       expect(response.statusCode, response.body).toBe(302);
       expect(String(response.headers.location)).toMatch(/^https?:\/\//);
@@ -272,6 +276,8 @@ describe('API contract', () => {
       '/api/workspaces/:id',
       await send('DELETE', `/api/workspaces/${created.json().workspace.id}`, owner, { confirmName: 'Spare' }),
     );
+    // A stream can't be read through inject; its behaviour is covered in notification-stream.test.ts.
+    ok('GET', '/api/notifications/stream', { statusCode: 200, body: '', headers: {} });
     ok('POST', '/api/auth/logout', await send('POST', '/api/auth/logout', owner));
     void userId;
 

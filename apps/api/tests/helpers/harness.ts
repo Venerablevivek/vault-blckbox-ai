@@ -73,6 +73,11 @@ export interface Harness {
   pool: Pool;
   /** Runs every ready background job now (emails, notification fan-out, purges). */
   runJobs(): Promise<number>;
+  /**
+   * Runs ready jobs and waits until none are queued or running, including jobs the background
+   * worker has already claimed. Use before asserting on a job's side effects.
+   */
+  drainJobs(timeoutMs?: number): Promise<void>;
   truncate(): Promise<void>;
   close(): Promise<void>;
   /** Reads a raw value straight from the database, bypassing the API. */
@@ -136,6 +141,19 @@ export async function createHarness(options?: {
     mailer,
     pool,
     runJobs: () => app.services.jobs.runReady(app.jobHandlers, 1000),
+    async drainJobs(timeoutMs = 5000) {
+      const deadline = Date.now() + timeoutMs;
+      for (;;) {
+        await app.services.jobs.runReady(app.jobHandlers, 1000);
+        const { rows } = await pool.query<{ pending: string }>(
+          `SELECT COUNT(*) AS pending FROM jobs WHERE status = 'running' OR (status = 'queued' AND run_at <= $1)`,
+          [clock.now()],
+        );
+        if (Number(rows[0]!.pending) === 0) return;
+        if (Date.now() > deadline) throw new Error('background jobs did not finish');
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+    },
     async truncate() {
       // Audit, notification and share-access writes are fire-and-forget by design, so the
       // previous test's writes can still be landing when the next test truncates. TRUNCATE
