@@ -16,6 +16,10 @@ export class AppError extends Error {
   }
 }
 
+function formatMb(bytes: number): string {
+  return bytes >= 1024 ** 3 ? `${(bytes / 1024 ** 3).toFixed(1)} GB` : `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+}
+
 export const Errors = {
   unauthorized: () => new AppError(401, 'UNAUTHORIZED', 'Authentication required.'),
   invalidCredentials: () =>
@@ -45,6 +49,14 @@ export const Errors = {
 
   payloadTooLarge: (maxBytes: number) =>
     new AppError(413, 'FILE_TOO_LARGE', `File exceeds the maximum size of ${maxBytes} bytes.`),
+
+  /** The workspace has no room for the file. 413 like an oversize file: the upload is refused for its size. */
+  quotaExceeded: (usedBytes: number, quotaBytes: number) =>
+    new AppError(
+      413,
+      'QUOTA_EXCEEDED',
+      `This workspace has no room for that file (${formatMb(usedBytes)} of ${formatMb(quotaBytes)} used). Empty the trash or remove files first.`,
+    ),
 
   unsupportedMediaType: (message: string) =>
     new AppError(415, 'UNSUPPORTED_FILE_TYPE', message),

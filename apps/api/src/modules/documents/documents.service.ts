@@ -1,10 +1,11 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import type { Pool } from 'pg';
 import type { Logger } from 'pino';
 import { withTransaction } from '../../db/tx';
 import { Errors } from '../../lib/errors';
 import { assertAllowedType } from '../../lib/mime';
+import { stripControlCharacters } from '../../lib/text';
 import { Permissions, requireContributor } from '../../policy';
 import { documentObjectKey } from '../../storage/keys';
 import type { FileStorage } from '../../storage/file-storage';
@@ -61,7 +62,7 @@ export function decodeCursor(cursor: string): { value: string; id: string } {
 }
 
 function cleanFilename(name: string): string {
-  const clean = name.replace(/[\x00-\x1f\x7f]/g, '').trim();
+  const clean = stripControlCharacters(name).trim();
   if (!clean) throw Errors.badRequest('INVALID_NAME', 'A document needs a name.');
   return clean;
 }
@@ -89,6 +90,14 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
     const role = await workspacesRepo.findMembership(pool, document.workspace_id, userId);
     if (!role) throw Errors.notFound('Document');
     return { document, role };
+  }
+
+  /** Removes a trashed row and gives its bytes back to the workspace quota, atomically. */
+  async function deleteTrashedRow(documentId: string): Promise<void> {
+    await withTransaction(pool, async (tx) => {
+      const deleted = await documentsRepo.hardDelete(tx, documentId);
+      if (deleted) await workspacesRepo.releaseStorage(tx, deleted.workspace_id, Number(deleted.size));
+    });
   }
 
   /** A destination folder must exist in the document's own workspace. */
@@ -137,40 +146,63 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
       const mimeType = assertAllowedType(input.declaredMimeType, input.body.subarray(0, 4096));
       const filename = cleanFilename(input.filename);
 
+      const { workspaceId } = input.membership;
+      const size = input.body.length;
+
+      // Cheap early refusal, before any bytes are written. The authoritative check is the
+      // conditional reservation inside the transaction below.
+      const usage = await workspacesRepo.storageUsage(pool, workspaceId);
+      if (usage.usedBytes + size > usage.quotaBytes) throw Errors.quotaExceeded(usage.usedBytes, usage.quotaBytes);
+
+      const sha256 = createHash('sha256').update(input.body).digest();
       const documentId = randomUUID();
-      const storageKey = documentObjectKey(input.membership.workspaceId, documentId);
+      const storageKey = documentObjectKey(workspaceId, documentId);
 
       await storage.upload(storageKey, Readable.from(input.body), mimeType);
 
       try {
-        const document = await documentsRepo.insert(pool, {
-          id: documentId,
-          workspaceId: input.membership.workspaceId,
-          folderId: input.folderId,
-          uploadedBy: input.userId,
-          filename,
-          storageKey,
-          mimeType,
-          size: input.body.length,
+        // Quota, row and audit entry commit together: if any of them fails, none exist, and
+        // the catch below removes the object.
+        const document = await withTransaction(pool, async (tx) => {
+          if (!(await workspacesRepo.reserveStorage(tx, workspaceId, size))) {
+            const latest = await workspacesRepo.storageUsage(tx, workspaceId);
+            throw Errors.quotaExceeded(latest.usedBytes, latest.quotaBytes);
+          }
+          const row = await documentsRepo.insert(tx, {
+            id: documentId,
+            workspaceId,
+            folderId: input.folderId,
+            uploadedBy: input.userId,
+            filename,
+            storageKey,
+            mimeType,
+            size,
+            sha256,
+          });
+          await audit.record(
+            {
+              workspaceId,
+              actorUserId: input.userId,
+              action: 'document.uploaded',
+              resourceType: 'document',
+              resourceId: row.id,
+              metadata: { filename: row.filename, size },
+            },
+            tx,
+          );
+          return row;
         });
 
-        await audit.record({
-          workspaceId: input.membership.workspaceId,
-          actorUserId: input.userId,
-          action: 'document.uploaded',
-          resourceType: 'document',
-          resourceId: document.id,
-          metadata: { filename: document.filename, size: input.body.length },
-        });
-
-        notifications.notifyWorkspace(input.membership.workspaceId, input.userId, {
+        notifications.notifyWorkspace(workspaceId, input.userId, {
           type: 'document.uploaded',
           title: `${filename} was added`,
           body: `${input.userEmail} uploaded a new document to this workspace.`,
           resourceId: document.id,
         });
 
-        return document;
+        // Identical content is allowed (people keep copies on purpose), but worth pointing out.
+        const duplicateOf = await documentsRepo.findByChecksum(pool, workspaceId, sha256, document.id);
+        return { document, duplicateOf };
       } catch (error) {
         // Metadata failed: remove the object we just wrote so no orphan is left behind.
         await storage.delete(storageKey).catch((cleanupError: unknown) => {
@@ -380,7 +412,7 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
         throw Errors.forbidden('Only a workspace owner can permanently delete documents.');
       }
       await storage.delete(document.storage_key);
-      await documentsRepo.hardDelete(pool, documentId);
+      await deleteTrashedRow(document.id);
       await audit.record({
         workspaceId: document.workspace_id,
         actorUserId: userId,
@@ -389,6 +421,61 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
         resourceId: documentId,
         metadata: { filename: document.filename },
       });
+    },
+
+    /**
+     * Cleanup job: computes checksums for documents stored before checksums existed, a small
+     * batch per run, by reading the object back from storage.
+     */
+    async backfillChecksums(batchSize = 20): Promise<{ updated: number; failed: number }> {
+      const rows = await documentsRepo.missingChecksums(pool, batchSize);
+      let updated = 0;
+      let failed = 0;
+      for (const row of rows) {
+        try {
+          const hash = createHash('sha256');
+          for await (const chunk of await storage.download(row.storage_key)) hash.update(chunk as Buffer);
+          await documentsRepo.setChecksum(pool, row.id, hash.digest());
+          updated += 1;
+        } catch (error) {
+          failed += 1;
+          logger.error({ err: error, documentId: row.id }, 'failed to compute checksum; will retry next run');
+        }
+      }
+      return { updated, failed };
+    },
+
+    /**
+     * Cleanup job: finishes deleting workspaces. Objects first, then rows, a batch at a time;
+     * the workspace row goes last, cascading its folders, audit trail and notifications. If
+     * storage fails part-way, the remaining documents are still recorded and the next run
+     * continues where this one stopped.
+     */
+    async purgeDeletedWorkspaces(maxWorkspaces = 5, batchSize = 200): Promise<{ workspaces: number; objects: number }> {
+      let workspacesPurged = 0;
+      let objects = 0;
+      for (const { id } of await workspacesRepo.deletedWorkspaces(pool, maxWorkspaces)) {
+        try {
+          for (;;) {
+            const rows = await documentsRepo.anyInWorkspace(pool, id, batchSize);
+            if (rows.length === 0) break;
+            for (const row of rows) {
+              await storage.delete(row.storage_key);
+              await documentsRepo.deleteRow(pool, row.id);
+              objects += 1;
+            }
+          }
+          await workspacesRepo.deleteRow(pool, id);
+          workspacesPurged += 1;
+        } catch (error) {
+          logger.error({ err: error, workspaceId: id }, 'failed to purge deleted workspace; will retry next run');
+        }
+      }
+      return { workspaces: workspacesPurged, objects };
+    },
+
+    async storageUsage(workspaceId: string) {
+      return workspacesRepo.storageUsage(pool, workspaceId);
     },
 
     /** Cleanup job: purges trash past retention. One failure never stops the rest. */
@@ -400,7 +487,7 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
       for (const document of expired) {
         try {
           await storage.delete(document.storage_key);
-          await documentsRepo.hardDelete(pool, document.id);
+          await deleteTrashedRow(document.id);
           audit.recordAsync({
             workspaceId: document.workspace_id,
             actorUserId: null,

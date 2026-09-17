@@ -2,11 +2,11 @@
 
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, LogOut, Pencil, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, HardDrive, LogOut, Pencil, ShieldCheck, Trash2 } from 'lucide-react';
 import { api, ApiRequestError } from '@/lib/api';
 import { useDialogs } from '@/components/dialog';
 import { toast } from '@/components/toast';
-import { RoleBadge, Shell, useSession, WorkspaceAvatar } from '@/components/ui';
+import { RoleBadge, Shell, StorageMeter, useSession, WorkspaceAvatar } from '@/components/ui';
 
 export default function SettingsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: workspaceId } = use(params);
@@ -18,6 +18,14 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
 
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [storage, setStorage] = useState<{ usedBytes: number; quotaBytes: number } | null>(null);
+
+  useEffect(() => {
+    api
+      .get<{ storage: { usedBytes: number; quotaBytes: number } }>(`/api/workspaces/${workspaceId}/storage`)
+      .then((result) => setStorage(result.storage))
+      .catch(() => setStorage(null));
+  }, [workspaceId]);
 
   useEffect(() => {
     if (workspace) setName(workspace.name);
@@ -56,6 +64,34 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
     }
   }
 
+  async function deleteWorkspace() {
+    if (!workspace) return;
+    const typed = await dialogs.prompt({
+      title: `Delete “${workspace.name}”?`,
+      body: (
+        <>
+          Every document, folder, share link and invitation in this workspace is deleted, and everyone in it loses access
+          immediately. <strong>This cannot be undone.</strong>
+        </>
+      ),
+      label: `Type ${workspace.name} to confirm`,
+      placeholder: workspace.name,
+      confirmLabel: 'Delete workspace',
+      tone: 'danger',
+      maxLength: 200,
+      validate: (value) => (value === workspace.name ? null : 'The name doesn’t match.'),
+    });
+    if (typed === null) return;
+    try {
+      await api.del(`/api/workspaces/${workspaceId}`, { confirmName: typed });
+      toast(`Deleted “${workspace.name}”`, 'success');
+      const other = session.workspaces.find((w) => w.id !== workspaceId);
+      router.replace(other ? `/workspaces/${other.id}` : '/');
+    } catch (err) {
+      toast(err instanceof ApiRequestError ? err.message : 'Could not delete the workspace.', 'error');
+    }
+  }
+
   return (
     <Shell workspaces={session.workspaces} activeId={workspaceId} email={session.email} title="Settings" subtitle={workspace?.name}>
       <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6">
@@ -80,6 +116,19 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
           </form>
         </section>
 
+        <section className="card p-6" aria-labelledby="storage-heading">
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><HardDrive className="h-5 w-5" aria-hidden /></span>
+            <div className="min-w-0 flex-1">
+              <p id="storage-heading" className="text-sm font-semibold">Storage</p>
+              <p className="mt-0.5 text-xs text-ink-muted">Files in the trash still count until they&rsquo;re deleted forever or expire after 30 days.</p>
+              <div className="mt-4">
+                {storage ? <StorageMeter usedBytes={storage.usedBytes} quotaBytes={storage.quotaBytes} /> : <div className="h-8 animate-pulse rounded bg-slate-100" />}
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="card p-6">
           <div className="flex items-start gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-ok-soft text-ok"><ShieldCheck className="h-5 w-5" aria-hidden /></span>
@@ -90,6 +139,7 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
                 <li>Share links are 256-bit random tokens stored only as hashes — revocable at any time.</li>
                 <li>Removing someone ends their access on their very next request.</li>
                 <li>Uploads are checked against their real content, not the name or declared type.</li>
+                <li>Every file gets a SHA-256 checksum, so identical copies are spotted and integrity can be verified.</li>
               </ul>
             </div>
           </div>
@@ -109,6 +159,24 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
             </div>
           </div>
         </section>
+
+        {isOwner ? (
+          <section className="card border-danger/25 p-6">
+            <div className="flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-danger-soft text-danger"><Trash2 className="h-5 w-5" aria-hidden /></span>
+              <div className="flex-1">
+                <p className="text-sm font-semibold">Delete workspace</p>
+                <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+                  Permanently deletes every document, folder and share link here, and removes everyone&rsquo;s access. To hand the
+                  workspace over instead, make someone else an owner on the Members page, then leave.
+                </p>
+                <button className="btn-danger mt-4" onClick={() => void deleteWorkspace()}>
+                  <Trash2 className="h-4 w-4" aria-hidden /> Delete workspace
+                </button>
+              </div>
+            </div>
+          </section>
+        ) : null}
       </div>
     </Shell>
   );

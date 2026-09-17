@@ -33,6 +33,28 @@ export function registerWorkspaceRoutes(
     return { workspace: { id, name } };
   });
 
+  // Storage used (including the trash) and the workspace's quota.
+  app.get('/api/workspaces/:id/storage', { preHandler: requireSession }, async (request) => {
+    const { id } = workspaceParams.parse(request.params);
+    await workspaces.requireMember(id, currentUser(request).id);
+    return { storage: await workspaces.storageUsage(id) };
+  });
+
+  // Deletes the workspace. Body: { confirmName } — the workspace's exact current name.
+  app.delete('/api/workspaces/:id', { preHandler: requireSession }, async (request, reply) => {
+    const { id } = workspaceParams.parse(request.params);
+    const user = currentUser(request);
+    const membership = await workspaces.requireMember(id, user.id);
+    requireOwner(membership.role);
+    const { confirmName } = z.object({ confirmName: z.string().max(200) }).parse(request.body);
+    await workspaces.deleteWorkspace({
+      workspaceId: id,
+      actor: { id: user.id, role: membership.role, email: user.email },
+      confirmName,
+    });
+    return reply.status(204).send();
+  });
+
   app.patch('/api/workspaces/:id/members/:userId', { preHandler: requireSession }, async (request, reply) => {
     const { id, userId } = memberParams.parse(request.params);
     const user = currentUser(request);
@@ -144,12 +166,9 @@ export function registerWorkspaceRoutes(
         role: body.role,
       });
 
-      // No email provider is integrated (a deliberate scope decision), so in development
-      // the link is surfaced in the response and in the logs instead.
-      request.log.info(
-        { workspaceId: id, email: body.email, inviteUrl: result.alwaysUrl },
-        'invitation created (no mail provider configured)',
-      );
+      // The link carries a bearer token, so it is never logged. It is emailed, and returned
+      // here only when EXPOSE_INVITE_LINKS is on (development), so the owner can copy it.
+      request.log.info({ workspaceId: id, invitationId: result.invitation.id, emailSent: result.emailSent }, 'invitation created');
 
       return reply.status(201).send({
         invitation: {
@@ -159,6 +178,7 @@ export function registerWorkspaceRoutes(
           expiresAt: result.invitation.expires_at,
         },
         inviteUrl: result.url,
+        emailSent: result.emailSent,
       });
     },
   });

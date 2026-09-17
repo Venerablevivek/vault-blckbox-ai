@@ -71,6 +71,16 @@ const schema = z.object({
   /** How often the in-process cleanup job runs. 0 disables it (tests call it directly). */
   MAINTENANCE_INTERVAL_MINUTES: z.coerce.number().int().min(0).max(1440).default(60),
 
+  /**
+   * SMTP server for transactional email, e.g. smtp://mailpit:1025 in Compose. When unset,
+   * emails are not sent and the API logs the recipient and subject instead.
+   */
+  SMTP_URL: z.preprocess((v) => (v === '' ? undefined : v), z.string().url().optional()),
+  MAIL_FROM: z.string().min(3).default('Vault <no-reply@vault.local>'),
+
+  /** How long a password reset link works. */
+  PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(60),
+
   EXPOSE_INVITE_LINKS: booleanish.default(true),
   SEED_DEMO_DATA: booleanish.default(false),
 });

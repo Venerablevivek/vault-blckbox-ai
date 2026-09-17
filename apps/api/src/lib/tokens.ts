@@ -12,7 +12,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
  */
 const TOKEN_BYTES = 32;
 
-export type TokenPrefix = 'shr' | 'inv' | 'ses';
+export type TokenPrefix = 'shr' | 'inv' | 'ses' | 'pwr';
 
 export function generateToken(prefix: TokenPrefix): string {
   return `${prefix}_${randomBytes(TOKEN_BYTES).toString('base64url')}`;

@@ -33,7 +33,7 @@ describe('audit trail and notifications', () => {
       url: '/api/notifications',
       headers: { cookie },
     });
-    return response.json() as { unread: number; notifications: Array<Record<string, unknown>> };
+    return response.json();
   }
 
   // ---- audit ---------------------------------------------------------------

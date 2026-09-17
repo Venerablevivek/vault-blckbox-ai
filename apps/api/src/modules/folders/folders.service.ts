@@ -5,9 +5,10 @@ import { Permissions, requireContributor } from '../../policy';
 import type { Membership } from '../../types';
 import type { AuditService } from '../audit/audit.service';
 import { foldersRepo, MAX_FOLDER_DEPTH, type FolderRow } from './folders.repo';
+import { stripControlCharacters } from '../../lib/text';
 
 function cleanName(name: string): string {
-  const clean = name.replace(/[\x00-\x1f\x7f]/g, '').trim();
+  const clean = stripControlCharacters(name).trim();
   if (!clean) throw Errors.badRequest('INVALID_NAME', 'A folder needs a name.');
   if (/[\\/]/.test(clean)) throw Errors.badRequest('INVALID_NAME', 'Folder names cannot contain / or \\.');
   return clean;

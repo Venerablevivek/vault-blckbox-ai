@@ -24,6 +24,7 @@ import { createOverviewService } from './modules/overview/overview.service';
 import { createFoldersService } from './modules/folders/folders.service';
 import { registerFolderRoutes } from './modules/folders/folders.routes';
 import { createMaintenanceService } from './modules/maintenance/maintenance.service';
+import { LogMailer, SmtpMailer } from './mail/mailer';
 import { systemClock, type AppDeps } from './types';
 
 /**
@@ -36,6 +37,8 @@ import { systemClock, type AppDeps } from './types';
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const { config, pool, storage, logger } = deps;
   const clock = deps.clock ?? systemClock;
+  const mailer =
+    deps.mailer ?? (config.SMTP_URL ? new SmtpMailer(config.SMTP_URL, config.MAIL_FROM) : new LogMailer(logger));
 
   // Cast to FastifyBaseLogger so the instance keeps Fastify's default generic parameters.
   // Passing a concrete pino Logger would specialise FastifyInstance and make every
@@ -80,6 +83,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     audit,
     lockoutAttempts: config.LOGIN_LOCKOUT_ATTEMPTS,
     lockoutMinutes: config.LOGIN_LOCKOUT_MINUTES,
+    mailer,
+    logger,
+    webUrl: config.WEB_URL,
+    passwordResetTtlMinutes: config.PASSWORD_RESET_TTL_MINUTES,
   });
   const workspaces = createWorkspacesService({
     pool,
@@ -89,6 +96,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     exposeInviteLinks: config.EXPOSE_INVITE_LINKS,
     audit,
     notifications,
+    mailer,
+    logger,
   });
   const documents = createDocumentsService({
     pool,

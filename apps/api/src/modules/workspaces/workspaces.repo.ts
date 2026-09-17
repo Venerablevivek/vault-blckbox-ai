@@ -6,6 +6,10 @@ export interface WorkspaceRow {
   name: string;
   created_by: string;
   created_at: Date;
+  storage_quota_bytes: string;
+  storage_used_bytes: string;
+  deleted_at: Date | null;
+  deleted_by: string | null;
 }
 
 export interface MemberRow {
@@ -65,6 +69,75 @@ export const workspacesRepo = {
         WHERE m.user_id = $1
         ORDER BY w.created_at ASC`,
       [userId],
+    );
+    return rows;
+  },
+
+  /**
+   * Reserves quota for new bytes. One conditional UPDATE: it succeeds only if the bytes fit,
+   * so two uploads racing for the last few megabytes cannot both be accepted.
+   */
+  async reserveStorage(db: Db, workspaceId: string, bytes: number): Promise<boolean> {
+    const { rowCount } = await db.query(
+      `UPDATE workspaces SET storage_used_bytes = storage_used_bytes + $2
+        WHERE id = $1 AND storage_used_bytes + $2 <= storage_quota_bytes`,
+      [workspaceId, bytes],
+    );
+    return (rowCount ?? 0) > 0;
+  },
+
+  async releaseStorage(db: Db, workspaceId: string, bytes: number): Promise<void> {
+    await db.query(
+      'UPDATE workspaces SET storage_used_bytes = GREATEST(0, storage_used_bytes - $2) WHERE id = $1',
+      [workspaceId, bytes],
+    );
+  },
+
+  async storageUsage(db: Db, workspaceId: string): Promise<{ usedBytes: number; quotaBytes: number }> {
+    const { rows } = await db.query<{ storage_used_bytes: string; storage_quota_bytes: string }>(
+      'SELECT storage_used_bytes, storage_quota_bytes FROM workspaces WHERE id = $1',
+      [workspaceId],
+    );
+    return {
+      usedBytes: Number(rows[0]?.storage_used_bytes ?? 0),
+      quotaBytes: Number(rows[0]?.storage_quota_bytes ?? 0),
+    };
+  },
+
+  /**
+   * Deletes a workspace from the users' point of view, in the caller's transaction: every
+   * membership row goes (so every authorization check in the system now answers 404), every
+   * live share link is revoked and pending invitations are removed. Returns the former members.
+   * The rows and objects themselves are removed afterwards by the maintenance job.
+   */
+  async markDeleted(db: Db, workspaceId: string, actorId: string, now: Date): Promise<string[]> {
+    await db.query('UPDATE workspaces SET deleted_at = $2, deleted_by = $3 WHERE id = $1 AND deleted_at IS NULL', [
+      workspaceId,
+      now,
+      actorId,
+    ]);
+    await db.query(
+      `UPDATE shares s SET revoked_at = $2 FROM documents d
+        WHERE d.id = s.document_id AND d.workspace_id = $1 AND s.revoked_at IS NULL`,
+      [workspaceId, now],
+    );
+    await db.query('DELETE FROM invitations WHERE workspace_id = $1 AND accepted_at IS NULL', [workspaceId]);
+    const { rows } = await db.query<{ user_id: string }>(
+      'DELETE FROM workspace_members WHERE workspace_id = $1 RETURNING user_id',
+      [workspaceId],
+    );
+    return rows.map((r) => r.user_id);
+  },
+
+  /** Final removal of a deleted workspace; cascades folders, audit events and notifications. */
+  async deleteRow(db: Db, workspaceId: string): Promise<void> {
+    await db.query('DELETE FROM workspaces WHERE id = $1 AND deleted_at IS NOT NULL', [workspaceId]);
+  },
+
+  async deletedWorkspaces(db: Db, limit: number): Promise<Array<{ id: string }>> {
+    const { rows } = await db.query<{ id: string }>(
+      'SELECT id FROM workspaces WHERE deleted_at IS NOT NULL ORDER BY deleted_at LIMIT $1',
+      [limit],
     );
     return rows;
   },

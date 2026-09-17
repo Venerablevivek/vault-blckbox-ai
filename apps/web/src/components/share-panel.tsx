@@ -292,7 +292,7 @@ export function SharePanel({
           </form>
         ) : (
           <p className="rounded-lg border border-line bg-slate-50 px-3 py-2 text-xs text-ink-muted">
-            Viewers can't create share links. Ask a workspace owner for member access.
+            Viewers can&rsquo;t create share links. Ask a workspace owner for member access.
           </p>
         )}
       </div>

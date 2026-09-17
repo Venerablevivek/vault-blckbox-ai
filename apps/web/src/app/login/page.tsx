@@ -3,7 +3,7 @@
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { api, ApiRequestError } from '@/lib/api';
+import { api, ApiRequestError, safeNextPath } from '@/lib/api';
 import { PublicShell } from '@/components/site-chrome';
 import { ErrorNote } from '@/components/ui';
 
@@ -22,14 +22,14 @@ function LoginForm() {
     setError(null);
     try {
       await api.post('/api/auth/login', { email, password });
-      router.replace(next ?? '/');
+      router.replace(safeNextPath(next));
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : 'Something went wrong.');
       setBusy(false);
     }
   }
 
-  function useDemo(demoEmail: string) {
+  function fillDemo(demoEmail: string) {
     setEmail(demoEmail);
     setPassword('password123');
   }
@@ -54,7 +54,12 @@ function LoginForm() {
           />
         </div>
         <div>
-          <label className="label" htmlFor="password">Password</label>
+          <div className="flex items-baseline justify-between">
+            <label className="label" htmlFor="password">Password</label>
+            <Link href="/forgot-password" className="text-xs font-medium text-brand-600 hover:underline">
+              Forgot password?
+            </Link>
+          </div>
           <input
             id="password" type="password" required autoComplete="current-password" className="input"
             placeholder="••••••••"
@@ -84,7 +89,7 @@ function LoginForm() {
             <button
               key={account.email}
               type="button"
-              onClick={() => useDemo(account.email)}
+              onClick={() => fillDemo(account.email)}
               className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-slate-50"
             >
               <span className="font-mono text-xs">{account.email}</span>

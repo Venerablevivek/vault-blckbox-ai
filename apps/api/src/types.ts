@@ -1,6 +1,8 @@
 import type { Pool } from 'pg';
 import type { Logger } from 'pino';
 import type { Config } from './config';
+import type { Mailer } from './mail/mailer';
+import type { MaintenanceService } from './modules/maintenance/maintenance.service';
 import type { FileStorage } from './storage/file-storage';
 
 /** Injected so expiry logic can be tested by moving time rather than sleeping. */
@@ -15,6 +17,8 @@ export interface AppDeps {
   pool: Pool;
   storage: FileStorage;
   logger: Logger;
+  /** Defaults to SMTP when SMTP_URL is set, otherwise a logging fallback. */
+  mailer?: Mailer;
   clock?: Clock;
 }
 
@@ -33,11 +37,13 @@ export interface Membership {
 declare module 'fastify' {
   interface FastifyInstance {
     /** Housekeeping jobs. Scheduled by main.ts; tests call runOnce() directly. */
-    maintenance: import('./modules/maintenance/maintenance.service').MaintenanceService;
+    maintenance: MaintenanceService;
   }
   interface FastifyRequest {
     /** Set by the session plugin. Null when the request is unauthenticated. */
     user: SessionUser | null;
+    /** The id of the session row behind `user`, so "this device" can be told apart. */
+    sessionId: string | null;
     /** Set by requireMember() for routes scoped to a workspace. */
     membership: Membership | null;
   }

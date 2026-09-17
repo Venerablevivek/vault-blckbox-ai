@@ -49,7 +49,8 @@ export const api = {
     request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) }),
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
-  del: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
+  del: <T>(path: string, body?: unknown) =>
+    request<T>(path, { method: 'DELETE', body: body === undefined ? undefined : JSON.stringify(body) }),
   upload: <T>(path: string, file: File, onProgress?: (percent: number) => void) =>
     new Promise<T>((resolve, reject) => {
       // XMLHttpRequest rather than fetch: fetch still has no upload progress events, and
@@ -106,6 +107,7 @@ export interface DocumentListResponse {
   folders: FolderDto[];
   path: FolderDto[];
   counts: { all: number; shared: number; mine: number; trash: number };
+  storage: { usedBytes: number; quotaBytes: number };
 }
 
 /** Owners and members contribute; viewers only read. Mirrors the API's policy.ts. */
@@ -118,6 +120,8 @@ export interface DocumentDto {
   filename: string;
   mimeType: string;
   size: number;
+  /** Hex SHA-256 of the stored bytes; null only while an older file's checksum is backfilled. */
+  sha256: string | null;
   uploadedBy: string;
   uploadedByEmail?: string;
   createdAt: string;
@@ -156,6 +160,15 @@ export interface ShareEvent {
   userAgent: string | null;
   /** Opaque, stable marker for "the same viewer". Never an address. */
   viewer: string;
+}
+
+/**
+ * A post-sign-in destination is only followed if it is a path on this site. `//evil.com` and
+ * `https://evil.com` are URLs to other sites, and `/\evil.com` is treated as one by browsers.
+ */
+export function safeNextPath(next: string | null | undefined): string {
+  if (!next || !next.startsWith('/') || next.startsWith('//') || next.startsWith('/\\')) return '/';
+  return next;
 }
 
 export function formatBytes(bytes: number): string {

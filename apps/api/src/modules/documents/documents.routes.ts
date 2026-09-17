@@ -19,6 +19,7 @@ function toDocumentDto(row: DocumentRow & Partial<DocumentListRow>) {
     filename: row.filename,
     mimeType: row.mime_type,
     size: Number(row.size),
+    sha256: row.sha256 ? row.sha256.toString('hex') : null,
     folderId: row.folder_id,
     uploadedBy: row.uploaded_by,
     uploadedByEmail: row.uploaded_by_email,
@@ -88,7 +89,7 @@ export function registerDocumentRoutes(
         if (!part) throw Errors.badRequest('NO_FILE', 'Expected a multipart form field named "file".');
         const body = await part.toBuffer();
 
-        const document = await documents.upload({
+        const { document, duplicateOf } = await documents.upload({
           membership,
           userId: user.id,
           userEmail: user.email,
@@ -98,7 +99,7 @@ export function registerDocumentRoutes(
           body,
           truncated: part.file.truncated,
         });
-        return reply.status(201).send({ document: toDocumentDto(document) });
+        return reply.status(201).send({ document: toDocumentDto(document), duplicateOf });
       } finally {
         release();
       }
@@ -119,7 +120,7 @@ export function registerDocumentRoutes(
       const membership = await workspaces.requireMember(workspaceId, user.id);
       const query = listQuery.parse(request.query);
 
-      const result = await documents.list({
+      const [result, storage] = await Promise.all([documents.list({
         membership,
         userId: user.id,
         view: query.view,
@@ -130,7 +131,7 @@ export function registerDocumentRoutes(
         ascending: query.order ? query.order === 'asc' : query.sort === 'name',
         limit: query.limit,
         cursor: query.cursor ?? null,
-      });
+      }), documents.storageUsage(workspaceId)]);
 
       return {
         role: membership.role,
@@ -139,6 +140,7 @@ export function registerDocumentRoutes(
         folders: result.folders.map(toFolderDto),
         path: result.path.map(toFolderDto),
         counts: result.counts,
+        storage,
         // So the trash view can say when each document will be purged.
         trashRetentionDays: config.TRASH_RETENTION_DAYS,
       };

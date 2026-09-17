@@ -63,6 +63,8 @@ export function createOverviewService(deps: { pool: Pool; clock: Clock; audit: A
           live_links: string;
           opens: string;
           pending_invites: string;
+          storage_used: string;
+          storage_quota: string;
         }>(
           `SELECT
              (SELECT COUNT(*) FROM documents WHERE workspace_id = $1 AND deleted_at IS NULL) AS documents,
@@ -75,7 +77,9 @@ export function createOverviewService(deps: { pool: Pool; clock: Clock; audit: A
                 JOIN shares s ON s.id = e.share_id JOIN documents d ON d.id = s.document_id
                 WHERE d.workspace_id = $1 AND e.outcome = 'resolved') AS opens,
              (SELECT COUNT(*) FROM invitations
-                WHERE workspace_id = $1 AND accepted_at IS NULL AND expires_at > $2) AS pending_invites`,
+                WHERE workspace_id = $1 AND accepted_at IS NULL AND expires_at > $2) AS pending_invites,
+             (SELECT storage_used_bytes FROM workspaces WHERE id = $1) AS storage_used,
+             (SELECT storage_quota_bytes FROM workspaces WHERE id = $1) AS storage_quota`,
           [workspaceId, now],
         ),
         pool.query<{ category: string; count: string; bytes: string }>(
@@ -154,6 +158,8 @@ export function createOverviewService(deps: { pool: Pool; clock: Clock; audit: A
           opens: Number(t.opens),
           pendingInvites: Number(t.pending_invites),
         },
+        // Includes trashed files: their bytes are still stored until the trash is emptied.
+        storage: { usedBytes: Number(t.storage_used), quotaBytes: Number(t.storage_quota) },
         storageByType: byType.rows.map((r) => ({
           category: r.category,
           count: Number(r.count),

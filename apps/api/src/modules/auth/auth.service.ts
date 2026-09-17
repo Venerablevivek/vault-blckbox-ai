@@ -1,13 +1,17 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
+import type { Logger } from 'pino';
 import type { Db } from '../../db/pool';
 import { withTransaction } from '../../db/tx';
-import { Errors } from '../../lib/errors';
+import { AppError, Errors } from '../../lib/errors';
 import { generateToken, hashToken } from '../../lib/tokens';
+import { stripControlCharacters } from '../../lib/text';
 import type { Clock, SessionUser } from '../../types';
 import { workspacesRepo } from '../workspaces/workspaces.repo';
 import { invitationsRepo } from '../workspaces/invitations.repo';
 import type { AuditService } from '../audit/audit.service';
+import type { Mailer } from '../../mail/mailer';
+import { passwordChangedEmail, passwordResetEmail } from '../../mail/templates';
 import { authRepo } from './auth.repo';
 import { burnVerifyTime, hashPassword, verifyPassword } from './password';
 
@@ -18,6 +22,21 @@ export interface AuthServiceOptions {
   audit: AuditService;
   lockoutAttempts: number;
   lockoutMinutes: number;
+  mailer: Mailer;
+  logger: Logger;
+  webUrl: string;
+  passwordResetTtlMinutes: number;
+}
+
+/** A session's last_seen_at is refreshed at most this often, so reads don't each cost a write. */
+export const SESSION_TOUCH_INTERVAL_MS = 5 * 60_000;
+
+/** Reset emails per account per hour. Beyond this, requests succeed silently and send nothing. */
+export const PASSWORD_RESETS_PER_HOUR = 3;
+
+function cleanUserAgent(userAgent: string | undefined | null): string | null {
+  const value = (userAgent ? stripControlCharacters(userAgent) : undefined)?.trim();
+  return value ? value.slice(0, 300) : null;
 }
 
 /** Emails are lowercased at the boundary so `Foo@x.com` and `foo@x.com` are one account. */
@@ -41,17 +60,57 @@ export function createAuthService({
   audit,
   lockoutAttempts,
   lockoutMinutes,
+  mailer,
+  logger,
+  webUrl,
+  passwordResetTtlMinutes,
 }: AuthServiceOptions) {
-  async function issueSession(db: Db, userId: string): Promise<{ token: string; expiresAt: Date }> {
+  async function issueSession(
+    db: Db,
+    userId: string,
+    userAgent?: string | null,
+  ): Promise<{ id: string; token: string; expiresAt: Date }> {
+    const id = randomUUID();
     const token = generateToken('ses');
-    const expiresAt = new Date(clock.now().getTime() + sessionTtlDays * 86_400_000);
+    const now = clock.now();
+    const expiresAt = new Date(now.getTime() + sessionTtlDays * 86_400_000);
     await authRepo.insertSession(db, {
-      id: randomUUID(),
+      id,
       userId,
       tokenHash: hashToken(token),
       expiresAt,
+      userAgent: cleanUserAgent(userAgent),
+      now,
     });
-    return { token, expiresAt };
+    return { id, token, expiresAt };
+  }
+
+  /**
+   * Refuses the attempt while the address is locked. Shared by sign-in and password change,
+   * so a stolen session can't be used to guess the account's password either.
+   */
+  async function assertNotLocked(email: string): Promise<void> {
+    const windowMs = lockoutMinutes * 60_000;
+    const recent = await authRepo.recentLoginFailures(pool, loginKey(email), new Date(clock.now().getTime() - windowMs));
+    if (recent.count >= lockoutAttempts && recent.oldest) {
+      const unlockAt = recent.oldest.getTime() + windowMs;
+      throw Errors.tooManyRequests(
+        'ACCOUNT_LOCKED',
+        'Too many failed sign-in attempts for this account. Try again later.',
+        (unlockAt - clock.now().getTime()) / 1000,
+      );
+    }
+  }
+
+  /** Email is a notice, not part of the transaction: a mail outage must not undo a password change. */
+  async function sendSafely(message: Parameters<Mailer['send']>[0], context: string): Promise<boolean> {
+    try {
+      await mailer.send(message);
+      return true;
+    } catch (error) {
+      logger.error({ err: error, context }, 'failed to send email');
+      return false;
+    }
   }
 
   return {
@@ -65,7 +124,7 @@ export function createAuthService({
      * When an invite token is supplied, it is consumed in the same transaction — so a
      * user can never end up created but not joined.
      */
-    async register(input: { email: string; password: string; inviteToken?: string }) {
+    async register(input: { email: string; password: string; inviteToken?: string; userAgent?: string }) {
       const email = normalizeEmail(input.email);
 
       const existing = await authRepo.findUserByEmail(pool, email);
@@ -132,8 +191,8 @@ export function createAuthService({
           }
         }
 
-        const session = await issueSession(tx, user.id);
-        return { user: { id: user.id, email: user.email } as SessionUser, session };
+        const session = await issueSession(tx, user.id, input.userAgent);
+        return { user: { id: user.id, email: user.email }, session };
       });
     },
 
@@ -145,20 +204,10 @@ export function createAuthService({
      * that address is refused, even with the right password, until the window passes. A
      * successful login clears the count.
      */
-    async login(input: { email: string; password: string }) {
+    async login(input: { email: string; password: string; userAgent?: string }) {
       const email = normalizeEmail(input.email);
       const key = loginKey(email);
-      const windowMs = lockoutMinutes * 60_000;
-
-      const recent = await authRepo.recentLoginFailures(pool, key, new Date(clock.now().getTime() - windowMs));
-      if (recent.count >= lockoutAttempts && recent.oldest) {
-        const unlockAt = recent.oldest.getTime() + windowMs;
-        throw Errors.tooManyRequests(
-          'ACCOUNT_LOCKED',
-          'Too many failed sign-in attempts for this account. Try again later.',
-          (unlockAt - clock.now().getTime()) / 1000,
-        );
-      }
+      await assertNotLocked(email);
 
       const user = await authRepo.findUserByEmail(pool, email);
       if (!user) {
@@ -177,16 +226,149 @@ export function createAuthService({
       await authRepo.clearLoginFailures(pool, key);
 
       // A fresh session row on every login; no client-supplied identifier is ever honoured.
-      const session = await issueSession(pool, user.id);
-      return { user: { id: user.id, email: user.email } as SessionUser, session };
+      const session = await issueSession(pool, user.id, input.userAgent);
+      return { user: { id: user.id, email: user.email }, session };
     },
 
     async logout(token: string): Promise<void> {
       await authRepo.deleteSession(pool, hashToken(token));
     },
 
-    async resolveSession(token: string): Promise<SessionUser | null> {
-      return authRepo.findValidSession(pool, hashToken(token), clock.now());
+    async resolveSession(token: string): Promise<{ user: SessionUser; sessionId: string } | null> {
+      const now = clock.now();
+      const row = await authRepo.findValidSession(pool, hashToken(token), now);
+      if (!row) return null;
+      if (!row.last_seen_at || now.getTime() - row.last_seen_at.getTime() > SESSION_TOUCH_INTERVAL_MS) {
+        // Best effort: "last active" is a convenience, never a reason to fail a request.
+        authRepo.touchSession(pool, row.session_id, now).catch((error: unknown) => {
+          logger.warn({ err: error }, 'failed to update session last_seen_at');
+        });
+      }
+      return { user: { id: row.id, email: row.email }, sessionId: row.session_id };
+    },
+
+    /**
+     * Starts a password reset. The caller always gets the same answer whether or not the
+     * address has an account; the route does not wait for this to finish, so response time
+     * doesn't reveal it either.
+     */
+    async requestPasswordReset(rawEmail: string): Promise<void> {
+      const email = normalizeEmail(rawEmail);
+      const user = await authRepo.findUserByEmail(pool, email);
+      if (!user) return;
+
+      const now = clock.now();
+      const recent = await authRepo.countRecentPasswordResets(pool, user.id, new Date(now.getTime() - 3_600_000));
+      if (recent >= PASSWORD_RESETS_PER_HOUR) {
+        logger.warn({ userId: user.id }, 'password reset requested too often; no email sent');
+        return;
+      }
+
+      const token = generateToken('pwr');
+      await authRepo.insertPasswordReset(pool, {
+        id: randomUUID(),
+        userId: user.id,
+        tokenHash: hashToken(token),
+        expiresAt: new Date(now.getTime() + passwordResetTtlMinutes * 60_000),
+        now,
+      });
+
+      // The token travels in the URL fragment, which browsers never send to a server: it stays
+      // out of access logs, proxies and Referer headers.
+      await sendSafely(
+        passwordResetEmail({ to: user.email, url: `${webUrl}/reset-password#token=${token}`, ttlMinutes: passwordResetTtlMinutes }),
+        'password-reset',
+      );
+    },
+
+    /**
+     * Completes a reset: claims the single-use token, sets the password, invalidates every other
+     * reset link, ends every existing session and signs this browser in. All in one transaction.
+     */
+    async resetPassword(input: { token: string; password: string; userAgent?: string }) {
+      const passwordHash = await hashPassword(input.password);
+      const now = clock.now();
+
+      const result = await withTransaction(pool, async (tx) => {
+        const reset = await authRepo.claimPasswordReset(tx, hashToken(input.token), now);
+        if (!reset) {
+          throw new AppError(410, 'RESET_LINK_INVALID', 'This reset link is invalid, already used or expired. Request a new one.');
+        }
+        const user = await authRepo.findUserById(tx, reset.user_id);
+        if (!user) throw new AppError(410, 'RESET_LINK_INVALID', 'This reset link is invalid, already used or expired. Request a new one.');
+
+        await authRepo.updatePassword(tx, user.id, passwordHash, now);
+        await authRepo.invalidatePasswordResets(tx, user.id, now);
+        const signedOut = await authRepo.deleteOtherSessions(tx, user.id, null);
+        // Whoever was guessing this password no longer matters: it has changed.
+        await authRepo.clearLoginFailures(tx, loginKey(user.email));
+        const session = await issueSession(tx, user.id, input.userAgent);
+        return { user: { id: user.id, email: user.email }, session, signedOut };
+      });
+
+      await sendSafely(passwordChangedEmail({ to: result.user.email, webUrl, via: 'reset' }), 'password-changed');
+      return result;
+    },
+
+    /**
+     * Changes the password of a signed-in user. The current password is required, and wrong
+     * guesses count toward the same lockout as sign-in. Every other session is ended; this one
+     * stays signed in.
+     */
+    async changePassword(input: {
+      user: SessionUser;
+      sessionId: string;
+      currentPassword: string;
+      newPassword: string;
+    }): Promise<{ signedOutSessions: number }> {
+      const email = normalizeEmail(input.user.email);
+      await assertNotLocked(email);
+
+      const user = await authRepo.findUserById(pool, input.user.id);
+      if (!user) throw Errors.unauthorized();
+
+      if (!(await verifyPassword(user.password_hash, input.currentPassword))) {
+        await authRepo.recordLoginFailure(pool, loginKey(email), clock.now());
+        throw Errors.badRequest('INCORRECT_PASSWORD', 'Your current password is incorrect.');
+      }
+      if (input.currentPassword === input.newPassword) {
+        throw Errors.badRequest('PASSWORD_UNCHANGED', 'Choose a password different from your current one.');
+      }
+
+      const passwordHash = await hashPassword(input.newPassword);
+      const now = clock.now();
+      const signedOutSessions = await withTransaction(pool, async (tx) => {
+        await authRepo.updatePassword(tx, user.id, passwordHash, now);
+        await authRepo.invalidatePasswordResets(tx, user.id, now);
+        await authRepo.clearLoginFailures(tx, loginKey(email));
+        return authRepo.deleteOtherSessions(tx, user.id, input.sessionId);
+      });
+
+      await sendSafely(passwordChangedEmail({ to: user.email, webUrl, via: 'settings' }), 'password-changed');
+      return { signedOutSessions };
+    },
+
+    async listSessions(userId: string, currentSessionId: string) {
+      const rows = await authRepo.listSessions(pool, userId, clock.now());
+      return rows.map((row) => ({
+        id: row.id,
+        userAgent: row.user_agent,
+        createdAt: row.created_at,
+        lastSeenAt: row.last_seen_at ?? row.created_at,
+        expiresAt: row.expires_at,
+        current: row.id === currentSessionId,
+      }));
+    },
+
+    /** Signs out one of the caller's sessions. 404 for an id that isn't theirs. */
+    async revokeSession(userId: string, sessionId: string, currentSessionId: string): Promise<{ current: boolean }> {
+      const deleted = await authRepo.deleteSessionById(pool, userId, sessionId);
+      if (!deleted) throw Errors.notFound('Session');
+      return { current: sessionId === currentSessionId };
+    },
+
+    async revokeOtherSessions(userId: string, currentSessionId: string): Promise<number> {
+      return authRepo.deleteOtherSessions(pool, userId, currentSessionId);
     },
 
     async listWorkspaces(userId: string) {

@@ -193,6 +193,7 @@ interface PromptOptions {
   /** Return an error message to block submission, or null when the value is acceptable. */
   validate?: (value: string) => string | null;
   maxLength?: number;
+  tone?: 'default' | 'danger';
 }
 
 interface DialogApi {
@@ -312,7 +313,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
               <button type="button" className="btn-secondary" onClick={() => close(null)}>
                 Cancel
               </button>
-              <button type="submit" className="btn-primary">
+              <button type="submit" className={pending.options.tone === 'danger' ? 'btn-danger' : 'btn-primary'}>
                 {pending.options.confirmLabel ?? 'Save'}
               </button>
             </div>

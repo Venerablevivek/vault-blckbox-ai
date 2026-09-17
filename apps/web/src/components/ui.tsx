@@ -18,7 +18,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
-import { api, ApiRequestError, type Role, type Workspace } from '@/lib/api';
+import { api, ApiRequestError, formatBytes, type Role, type Workspace } from '@/lib/api';
 import { useDialogs } from './dialog';
 import { Brand } from './brand';
 import { NotificationBell } from './notification-bell';
@@ -118,6 +118,40 @@ export function Stat({ value, label }: { value: string | number; label: string }
     <div>
       <p className="text-lg font-semibold leading-none">{value}</p>
       <p className="mt-1 text-xs text-ink-muted">{label}</p>
+    </div>
+  );
+}
+
+/**
+ * How much of the workspace's storage is used. Turns amber past 80% and red past 95%, and says
+ * so in words too, so the state never depends on colour alone.
+ */
+export function StorageMeter({ usedBytes, quotaBytes, compact = false }: { usedBytes: number; quotaBytes: number; compact?: boolean }) {
+  const ratio = quotaBytes > 0 ? Math.min(1, usedBytes / quotaBytes) : 0;
+  const percent = Math.round(ratio * 100);
+  const state = ratio >= 0.95 ? 'full' : ratio >= 0.8 ? 'high' : 'ok';
+  const bar = state === 'full' ? 'bg-danger' : state === 'high' ? 'bg-warn' : 'bg-brand-600';
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-3 text-xs">
+        <span className="text-ink-muted">
+          <span className="font-medium text-ink">{formatBytes(usedBytes)}</span> of {formatBytes(quotaBytes)} used
+        </span>
+        <span className={state === 'ok' ? 'text-ink-subtle' : state === 'high' ? 'font-medium text-warn' : 'font-medium text-danger'}>
+          {state === 'full' ? 'Almost full' : state === 'high' ? 'Running low' : `${percent}%`}
+        </span>
+      </div>
+      <div
+        className={`mt-1.5 overflow-hidden rounded-full bg-slate-100 ${compact ? 'h-1.5' : 'h-2'}`}
+        role="meter"
+        aria-label="Storage used"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percent}
+        aria-valuetext={`${formatBytes(usedBytes)} of ${formatBytes(quotaBytes)} used`}
+      >
+        <div className={`h-full rounded-full ${bar}`} style={{ width: `${Math.max(ratio > 0 ? 1 : 0, percent)}%` }} />
+      </div>
     </div>
   );
 }
@@ -309,10 +343,20 @@ export function Shell({
       </div>
 
       <div className="flex items-center gap-2.5 border-t border-line px-4 py-3">
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
-          {email.slice(0, 2).toUpperCase()}
-        </span>
-        <span className="min-w-0 flex-1 truncate text-xs text-ink-muted" title={email}>{email}</span>
+        <Link
+          href={`/workspaces/${activeId}/account`}
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1 -m-1 hover:bg-slate-100"
+          aria-current={pathname.endsWith('/account') ? 'page' : undefined}
+          title="Account: password and sessions"
+        >
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
+            {email.slice(0, 2).toUpperCase()}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-xs text-ink" title={email}>{email}</span>
+            <span className="block text-[11px] text-ink-subtle">Account &amp; security</span>
+          </span>
+        </Link>
         <button className="btn-ghost h-8 px-2" onClick={() => void signOut()} aria-label="Sign out" title="Sign out">
           <LogOut className="h-4 w-4" />
         </button>

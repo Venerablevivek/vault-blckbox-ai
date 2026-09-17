@@ -10,6 +10,7 @@
     "test": "npm --prefix apps/api test",
     "test:unit": "npm --prefix apps/api run test:unit",
     "typecheck": "npm --prefix apps/api run typecheck && npm --prefix apps/web run typecheck",
-    "test:e2e": "npm --prefix e2e test"
+    "test:e2e": "npm --prefix e2e test",
+    "lint": "npm --prefix apps/api run lint && npm --prefix apps/web run lint"
   }
 }

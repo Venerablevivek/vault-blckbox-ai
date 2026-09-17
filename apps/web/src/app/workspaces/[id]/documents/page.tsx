@@ -13,6 +13,7 @@ import {
   FolderInput,
   FolderPlus,
   Home,
+  Info,
   LayoutGrid,
   List,
   Lock,
@@ -37,11 +38,12 @@ import {
   type Role,
 } from '@/lib/api';
 import { useDialogs } from '@/components/dialog';
+import { DocumentDetails } from '@/components/document-details';
 import { FolderPicker } from '@/components/folder-picker';
 import { PreviewModal, PREVIEWABLE } from '@/components/preview-modal';
 import { SharePanel } from '@/components/share-panel';
 import { toast } from '@/components/toast';
-import { EmptyState, ErrorNote, FileGlyph, Shell, Skeleton, useSession } from '@/components/ui';
+import { EmptyState, ErrorNote, FileGlyph, Shell, Skeleton, StorageMeter, useSession } from '@/components/ui';
 
 type Tab = 'all' | 'shared' | 'mine' | 'trash';
 type SortChoice = 'date-desc' | 'date-asc' | 'name-asc' | 'name-desc' | 'size-desc' | 'size-asc';
@@ -97,6 +99,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
 
   const [shareFor, setShareFor] = useState<DocumentDto | null>(null);
   const [previewFor, setPreviewFor] = useState<DocumentDto | null>(null);
+  const [detailsFor, setDetailsFor] = useState<DocumentDto | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [moving, setMoving] = useState<MoveTarget | null>(null);
 
@@ -227,14 +230,21 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
       setUploadPercent(0);
       const target = `/api/workspaces/${workspaceId}/documents${folderId && !trash ? `?folderId=${folderId}` : ''}`;
       try {
+        type UploadResult = { duplicateOf: { id: string; filename: string } | null };
+        let result: UploadResult;
         try {
-          await api.upload(target, file, setUploadPercent);
+          result = await api.upload<UploadResult>(target, file, setUploadPercent);
         } catch (err) {
           if (!(err instanceof ApiRequestError && err.status === 503)) throw err;
           await new Promise((resolve) => setTimeout(resolve, 5000));
-          await api.upload(target, file, setUploadPercent);
+          result = await api.upload<UploadResult>(target, file, setUploadPercent);
         }
-        toast(`${file.name} uploaded`, 'success');
+        toast(
+          result.duplicateOf
+            ? `${file.name} uploaded. It’s identical to “${result.duplicateOf.filename}”, already in this workspace.`
+            : `${file.name} uploaded`,
+          'success',
+        );
       } catch (err) {
         toast(`${file.name}: ${err instanceof ApiRequestError ? err.message : 'upload failed'}`, 'error');
       }
@@ -317,7 +327,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
           It can be restored for {data?.trashRetentionDays ?? 30} days.
           {shared ? (
             <strong className="mt-2 block font-medium">
-              Its {doc.links!.count} share link{doc.links!.count === 1 ? '' : 's'} will stop working and won't come back if you restore it.
+              Its {doc.links!.count} share link{doc.links!.count === 1 ? '' : 's'} will stop working and won&rsquo;t come back if you restore it.
             </strong>
           ) : null}
         </>
@@ -466,6 +476,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
         )}
         <Menu id={doc.id}>
           <MenuItem icon={Download} label="Download" href={`/api/documents/${doc.id}/download`} />
+          <MenuItem icon={Info} label="Details" onClick={() => { setMenuFor(null); setDetailsFor(doc); }} />
           {previewable ? <MenuItem icon={Eye} label="Preview" onClick={() => { setMenuFor(null); setPreviewFor(doc); }} /> : null}
           {contributor ? (
             <>
@@ -537,6 +548,15 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
           <div className="flex items-center gap-2 rounded-xl border border-warn/20 bg-warn-soft px-4 py-2.5 text-sm text-warn">
             <Lock className="h-4 w-4 shrink-0" aria-hidden />
             You have read-only access to this workspace: you can view and download documents, but not upload, share or change them.
+          </div>
+        ) : null}
+
+        {data?.storage && contributor && data.storage.usedBytes >= data.storage.quotaBytes * 0.8 ? (
+          <div className="card px-4 py-3">
+            <StorageMeter usedBytes={data.storage.usedBytes} quotaBytes={data.storage.quotaBytes} compact />
+            <p className="mt-1.5 text-xs text-ink-muted">
+              Uploads stop when storage is full. Deleting files forever from the trash frees space.
+            </p>
           </div>
         ) : null}
 
@@ -773,6 +793,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
         <SharePanel document={shareFor} role={role} userId={session.userId} onClose={() => setShareFor(null)} onChanged={() => void load()} />
       ) : null}
       {previewFor ? <PreviewModal document={previewFor} onClose={() => setPreviewFor(null)} /> : null}
+      <DocumentDetails document={detailsFor} onClose={() => setDetailsFor(null)} />
       {moving ? (
         <FolderPicker
           workspaceId={workspaceId}

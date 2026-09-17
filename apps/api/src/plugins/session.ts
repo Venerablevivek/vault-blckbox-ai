@@ -13,12 +13,16 @@ import type { SessionUser } from '../types';
  */
 export function registerSession(app: FastifyInstance, config: Config, auth: AuthService): void {
   app.decorateRequest('user', null);
+  app.decorateRequest('sessionId', null);
   app.decorateRequest('membership', null);
 
   app.addHook('onRequest', async (request) => {
     const token = request.cookies[config.SESSION_COOKIE_NAME];
     if (!token) return;
-    request.user = await auth.resolveSession(token);
+    const resolved = await auth.resolveSession(token);
+    if (!resolved) return;
+    request.user = resolved.user;
+    request.sessionId = resolved.sessionId;
   });
 }
 
@@ -30,6 +34,11 @@ export async function requireSession(request: FastifyRequest): Promise<void> {
 export function currentUser(request: FastifyRequest): SessionUser {
   if (!request.user) throw Errors.unauthorized();
   return request.user;
+}
+
+export function currentSessionId(request: FastifyRequest): string {
+  if (!request.sessionId) throw Errors.unauthorized();
+  return request.sessionId;
 }
 
 export function setSessionCookie(

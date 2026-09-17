@@ -9,6 +9,7 @@ import { S3Storage } from '../../src/storage/s3-storage';
 import type { FileStorage } from '../../src/storage/file-storage';
 import type { Clock } from '../../src/types';
 import { loadConfig, type Config } from '../../src/config';
+import { MemoryMailer } from '../../src/mail/mailer';
 
 /**
  * Integration tests run against a REAL PostgreSQL and a REAL MinIO.
@@ -66,6 +67,8 @@ export interface Harness {
   storage: FileStorage;
   clock: TestClock;
   config: Config;
+  /** Every email the app sent during the current test. */
+  mailer: MemoryMailer;
   truncate(): Promise<void>;
   close(): Promise<void>;
   /** Reads a raw value straight from the database, bypassing the API. */
@@ -93,7 +96,7 @@ export async function createHarness(options?: {
     S3_SECRET_KEY: 'minioadmin',
     SEED_DEMO_DATA: 'false',
     ...options?.env,
-  } as NodeJS.ProcessEnv);
+  });
 
   const pool = createPool(databaseUrl);
   const logger = pino({ level: 'silent' });
@@ -111,7 +114,8 @@ export async function createHarness(options?: {
 
   const storage = options?.storage ?? realStorage;
   const clock = new TestClock();
-  const app = await buildApp({ config, pool, storage, logger, clock });
+  const mailer = new MemoryMailer();
+  const app = await buildApp({ config, pool, storage, logger, clock, mailer });
   await app.ready();
 
   return {
@@ -119,6 +123,7 @@ export async function createHarness(options?: {
     storage,
     clock,
     config,
+    mailer,
     async truncate() {
       // Audit, notification and share-access writes are fire-and-forget by design, so the
       // previous test's writes can still be landing when the next test truncates. TRUNCATE
@@ -128,11 +133,12 @@ export async function createHarness(options?: {
         try {
           await pool.query(
             `TRUNCATE notifications, audit_events, share_access_events, invitations, shares,
-                      documents, folders, login_failures, workspace_members, workspaces,
-                      sessions, users CASCADE`,
+                      documents, folders, login_failures, password_resets, workspace_members,
+                      workspaces, sessions, users CASCADE`,
           );
           // Each test starts at the same moment, so a test that moved time cannot leak it.
           clock.reset();
+          mailer.clear();
           return;
         } catch (error) {
           if ((error as { code?: string }).code !== '40P01' || attempt >= 5) throw error;

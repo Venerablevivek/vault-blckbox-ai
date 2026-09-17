@@ -50,6 +50,8 @@ export function createMaintenanceService(deps: {
           expiredInvitations: 0,
           trashPurged: 0,
           trashFailed: 0,
+          checksumsBackfilled: 0,
+          workspacesPurged: 0,
         };
 
         const step = async (name: string, fn: () => Promise<void>) => {
@@ -87,6 +89,15 @@ export function createMaintenanceService(deps: {
           const r = await documents.purgeExpiredTrash();
           result.trashPurged = r.purged;
           result.trashFailed = r.failed;
+        });
+
+        await step('deleted_workspaces', async () => {
+          const r = await documents.purgeDeletedWorkspaces();
+          result.workspacesPurged = r.workspaces;
+        });
+        await step('checksums', async () => {
+          const r = await documents.backfillChecksums();
+          result.checksumsBackfilled = r.updated;
         });
 
         logger.info(result, 'maintenance pass complete');

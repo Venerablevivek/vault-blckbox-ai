@@ -24,6 +24,7 @@ interface Overview {
   role: 'OWNER' | 'MEMBER' | 'VIEWER';
   totals: { documents: number; bytes: number; members: number; liveLinks: number; opens: number; pendingInvites: number };
   storageByType: Array<{ category: string; count: number; bytes: number }>;
+  storage: { usedBytes: number; quotaBytes: number };
   series: Array<{ day: string; uploads: number; opens: number }>;
   topShared: Array<{ id: string; filename: string; mimeType: string; opens: number; viewers: number; lastAccessedAt: string | null }>;
   recentDocuments: Array<{ id: string; filename: string; mimeType: string; size: number; createdAt: string; uploadedByEmail: string }>;
@@ -147,7 +148,13 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
         {/* Stat tiles */}
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6" aria-label="Workspace totals">
           <Tile icon={FileText} label="Documents" value={data?.totals.documents ?? '—'} tone="bg-brand-50 text-brand-600" />
-          <Tile icon={HardDrive} label="Storage used" value={data ? formatBytes(data.totals.bytes) : '—'} tone="bg-sky-50 text-sky-600" />
+          <Tile
+            icon={HardDrive}
+            label="Storage used"
+            value={data ? formatBytes(data.storage.usedBytes) : '—'}
+            hint={data ? `of ${formatBytes(data.storage.quotaBytes)} (${Math.round((data.storage.usedBytes / data.storage.quotaBytes) * 100)}%)` : undefined}
+            tone="bg-sky-50 text-sky-600"
+          />
           <Tile icon={Users} label="Members" value={data?.totals.members ?? '—'} tone="bg-violet-50 text-violet-600" />
           <Tile icon={Link2} label="Live share links" value={data?.totals.liveLinks ?? '—'} tone="bg-emerald-50 text-emerald-600" />
           <Tile icon={Eye} label="Link opens" value={data?.totals.opens ?? '—'} hint="all time" tone="bg-amber-50 text-amber-600" />

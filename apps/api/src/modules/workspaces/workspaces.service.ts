@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
+import type { Logger } from 'pino';
 import { withTransaction } from '../../db/tx';
 import { Errors } from '../../lib/errors';
 import { generateToken, hashToken } from '../../lib/tokens';
@@ -9,6 +10,8 @@ import { normalizeEmail } from '../auth/auth.service';
 import { authRepo } from '../auth/auth.repo';
 import type { AuditService } from '../audit/audit.service';
 import type { NotificationsService } from '../notifications/notifications.service';
+import type { Mailer } from '../../mail/mailer';
+import { invitationEmail } from '../../mail/templates';
 import { sharesRepo } from '../shares/shares.repo';
 import { invitationsRepo } from './invitations.repo';
 import { workspacesRepo } from './workspaces.repo';
@@ -21,10 +24,12 @@ export interface WorkspacesServiceOptions {
   exposeInviteLinks: boolean;
   audit: AuditService;
   notifications: NotificationsService;
+  mailer: Mailer;
+  logger: Logger;
 }
 
 export function createWorkspacesService(opts: WorkspacesServiceOptions) {
-  const { pool, clock, audit, notifications } = opts;
+  const { pool, clock, audit, notifications, mailer, logger } = opts;
 
   return {
     /**
@@ -67,6 +72,10 @@ export function createWorkspacesService(opts: WorkspacesServiceOptions) {
         );
         return { ...workspace, role: 'OWNER' as Role };
       });
+    },
+
+    async storageUsage(workspaceId: string) {
+      return workspacesRepo.storageUsage(pool, workspaceId);
     },
 
     async listForUser(userId: string) {
@@ -134,11 +143,35 @@ export function createWorkspacesService(opts: WorkspacesServiceOptions) {
       });
 
       const url = `${opts.webUrl}/invite/${token}`;
+
+      // The invitation exists whether or not the email goes out; the owner can still copy the
+      // link (when EXPOSE_INVITE_LINKS is on) or re-invite, so a mail failure is reported, not thrown.
+      let emailSent = false;
+      try {
+        const [workspace, inviterEmail] = await Promise.all([
+          workspacesRepo.findById(pool, input.workspaceId),
+          workspacesRepo.findUserEmail(pool, input.actor.id),
+        ]);
+        await mailer.send(
+          invitationEmail({
+            to: email,
+            workspaceName: workspace?.name ?? 'a workspace',
+            inviterEmail: inviterEmail ?? 'A Vault user',
+            role: input.role,
+            url,
+            expiresAt,
+          }),
+        );
+        emailSent = true;
+      } catch (error) {
+        logger.error({ err: error, invitationId: invitation.id }, 'failed to send invitation email');
+      }
+
       return {
         invitation,
-        // The plaintext token exists only here; the database holds a hash of it.
+        // The plaintext token exists only here and in the email; the database holds a hash of it.
         url: opts.exposeInviteLinks ? url : undefined,
-        alwaysUrl: url,
+        emailSent,
       };
     },
 
@@ -303,6 +336,39 @@ export function createWorkspacesService(opts: WorkspacesServiceOptions) {
         resourceId: input.workspaceId,
         metadata: { from: before?.name, to: input.name },
       });
+    },
+
+    /**
+     * Deletes a workspace. Owner only, and the caller must repeat the workspace's exact name,
+     * so a stray request can't do it. Access ends immediately for everyone; the files are
+     * removed from storage by the next maintenance pass. This cannot be undone.
+     */
+    async deleteWorkspace(input: { workspaceId: string; actor: { id: string; role: Role; email: string }; confirmName: string }) {
+      requireOwner(input.actor.role);
+      const workspace = await workspacesRepo.findById(pool, input.workspaceId);
+      if (!workspace || workspace.deleted_at) throw Errors.notFound('Workspace');
+      if (input.confirmName !== workspace.name) {
+        throw Errors.badRequest('CONFIRMATION_MISMATCH', 'Type the workspace name exactly to confirm deletion.');
+      }
+
+      const formerMembers = await withTransaction(pool, async (tx) => {
+        await workspacesRepo.lockForUpdate(tx, input.workspaceId);
+        return workspacesRepo.markDeleted(tx, input.workspaceId, input.actor.id, clock.now());
+      });
+
+      // Not tied to the workspace (workspace_id null), because the workspace is about to disappear.
+      for (const userId of formerMembers) {
+        if (userId === input.actor.id) continue;
+        notifications.notify({
+          userId,
+          workspaceId: null,
+          type: 'workspace.deleted',
+          title: `${workspace.name} was deleted`,
+          body: `${input.actor.email} deleted this workspace and all of its documents.`,
+          resourceId: null,
+        });
+      }
+      logger.info({ workspaceId: input.workspaceId, members: formerMembers.length }, 'workspace deleted');
     },
 
     /** Public preview shown before sign-in. Returns only what the landing page needs. */

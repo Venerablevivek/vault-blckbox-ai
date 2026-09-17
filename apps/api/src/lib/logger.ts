@@ -5,7 +5,7 @@ import pino, { type LoggerOptions } from 'pino';
  * stripped both by key (cookie, authorization, password) and by pattern, because a
  * share token also appears inside URLs (`/api/shares/shr_...`).
  */
-const TOKEN_PATTERN = /\b(shr|inv|ses)_[A-Za-z0-9_-]{16,}/g;
+const TOKEN_PATTERN = /\b(shr|inv|ses|pwr)_[A-Za-z0-9_-]{16,}/g;
 
 function redactTokens(value: string): string {
   return value.replace(TOKEN_PATTERN, '$1_[REDACTED]');
@@ -22,6 +22,8 @@ export function buildLoggerOptions(env: string): LoggerOptions {
         'body.password',
         '*.password',
         '*.token',
+        '*.currentPassword',
+        '*.newPassword',
       ],
       censor: '[REDACTED]',
     },

@@ -56,7 +56,7 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  // eslint-disable-next-line no-console
+   
   console.error('Fatal startup error:', error);
   process.exit(1);
 });

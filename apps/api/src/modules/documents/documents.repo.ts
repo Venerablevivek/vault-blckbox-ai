@@ -12,6 +12,8 @@ export interface DocumentRow {
   created_at: Date;
   deleted_at: Date | null;
   deleted_by: string | null;
+  /** SHA-256 of the stored bytes. Null only for rows created before checksums existed. */
+  sha256: Buffer | null;
 }
 
 export interface DocumentListRow extends DocumentRow {
@@ -75,15 +77,57 @@ export const documentsRepo = {
       storageKey: string;
       mimeType: string;
       size: number;
+      sha256: Buffer;
     },
   ): Promise<DocumentRow> {
     const { rows } = await db.query<DocumentRow>(
-      `INSERT INTO documents (id, workspace_id, folder_id, uploaded_by, filename, storage_key, mime_type, size)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO documents (id, workspace_id, folder_id, uploaded_by, filename, storage_key, mime_type, size, sha256)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [doc.id, doc.workspaceId, doc.folderId, doc.uploadedBy, doc.filename, doc.storageKey, doc.mimeType, doc.size],
+      [doc.id, doc.workspaceId, doc.folderId, doc.uploadedBy, doc.filename, doc.storageKey, doc.mimeType, doc.size, doc.sha256],
     );
     return rows[0]!;
+  },
+
+  /** A live document in the workspace with identical content, other than `excludeId`. */
+  async findByChecksum(
+    db: Db,
+    workspaceId: string,
+    sha256: Buffer,
+    excludeId: string,
+  ): Promise<{ id: string; filename: string } | null> {
+    const { rows } = await db.query<{ id: string; filename: string }>(
+      `SELECT id, filename FROM documents
+        WHERE workspace_id = $1 AND sha256 = $2 AND id <> $3 AND deleted_at IS NULL
+        ORDER BY created_at ASC LIMIT 1`,
+      [workspaceId, sha256, excludeId],
+    );
+    return rows[0] ?? null;
+  },
+
+  /** Any documents of a workspace, live or trashed, for purging a deleted workspace. */
+  async anyInWorkspace(db: Db, workspaceId: string, limit: number): Promise<Array<{ id: string; storage_key: string }>> {
+    const { rows } = await db.query<{ id: string; storage_key: string }>(
+      'SELECT id, storage_key FROM documents WHERE workspace_id = $1 LIMIT $2',
+      [workspaceId, limit],
+    );
+    return rows;
+  },
+
+  async deleteRow(db: Db, id: string): Promise<void> {
+    await db.query('DELETE FROM documents WHERE id = $1', [id]);
+  },
+
+  async missingChecksums(db: Db, limit: number): Promise<Array<{ id: string; storage_key: string }>> {
+    const { rows } = await db.query<{ id: string; storage_key: string }>(
+      'SELECT id, storage_key FROM documents WHERE sha256 IS NULL ORDER BY created_at LIMIT $1',
+      [limit],
+    );
+    return rows;
+  },
+
+  async setChecksum(db: Db, id: string, sha256: Buffer): Promise<void> {
+    await db.query('UPDATE documents SET sha256 = $2 WHERE id = $1 AND sha256 IS NULL', [id, sha256]);
   },
 
   /**
@@ -222,8 +266,13 @@ export const documentsRepo = {
     return rows[0] ?? null;
   },
 
-  async hardDelete(db: Db, id: string): Promise<void> {
-    await db.query('DELETE FROM documents WHERE id = $1 AND deleted_at IS NOT NULL', [id]);
+  /** Deletes a trashed row. Returns its size so the caller can release the quota, or null if already gone. */
+  async hardDelete(db: Db, id: string): Promise<{ workspace_id: string; size: string } | null> {
+    const { rows } = await db.query<{ workspace_id: string; size: string }>(
+      'DELETE FROM documents WHERE id = $1 AND deleted_at IS NOT NULL RETURNING workspace_id, size',
+      [id],
+    );
+    return rows[0] ?? null;
   },
 
   /** Trashed documents past retention, oldest first, for the cleanup job. */

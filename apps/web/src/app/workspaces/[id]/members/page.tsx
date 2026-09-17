@@ -25,6 +25,7 @@ export default function MembersPage({ params }: { params: Promise<{ id: string }
   const [inviteRole, setInviteRole] = useState<Role>('MEMBER');
   const [inviteBusy, setInviteBusy] = useState(false);
   const [lastInviteUrl, setLastInviteUrl] = useState<string | null>(null);
+  const [lastInviteEmailed, setLastInviteEmailed] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -55,13 +56,19 @@ export default function MembersPage({ params }: { params: Promise<{ id: string }
     setInviteBusy(true);
     setLastInviteUrl(null);
     try {
-      const result = await api.post<{ inviteUrl?: string }>(`/api/workspaces/${workspaceId}/invitations`, {
+      const result = await api.post<{ inviteUrl?: string; emailSent: boolean }>(`/api/workspaces/${workspaceId}/invitations`, {
         email: inviteEmail,
         role: inviteRole,
       });
-      toast(`Invitation created for ${inviteEmail}`, 'success');
+      toast(
+        result.emailSent
+          ? `Invitation emailed to ${inviteEmail}`
+          : `Invitation created, but the email to ${inviteEmail} could not be sent. Copy the link below instead.`,
+        result.emailSent ? 'success' : 'error',
+      );
       setInviteEmail('');
-      // No email provider is wired up, so the link is surfaced here instead.
+      setLastInviteEmailed(result.emailSent);
+      // Returned only when the server exposes invite links (development), so it can be copied.
       if (result.inviteUrl) setLastInviteUrl(result.inviteUrl);
       await load();
     } catch (err) {
@@ -252,7 +259,9 @@ export default function MembersPage({ params }: { params: Promise<{ id: string }
 
               {lastInviteUrl ? (
                 <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50/60 p-3">
-                  <p className="text-xs font-medium text-brand-900">No email provider is configured — share this link:</p>
+                  <p className="text-xs font-medium text-brand-900">
+                    {lastInviteEmailed ? 'Emailed. You can also share the link directly:' : 'The email wasn’t sent. Share this link instead:'}
+                  </p>
                   <p className="mt-2 break-all rounded-lg border border-brand-200 bg-white px-2.5 py-2 font-mono text-[11px]">{lastInviteUrl}</p>
                   <button className="btn-primary btn-sm mt-2 w-full" onClick={() => { void navigator.clipboard.writeText(lastInviteUrl); toast('Invitation link copied'); }}>
                     <Copy className="h-3.5 w-3.5" aria-hidden /> Copy link
@@ -275,7 +284,7 @@ export default function MembersPage({ params }: { params: Promise<{ id: string }
               </li>
               <li className="flex gap-2.5">
                 <Eye className="mt-0.5 h-4 w-4 shrink-0 text-warn" aria-hidden />
-                <span><span className="font-medium text-ink">Viewer</span> — view and download only. Can't upload, share or change anything, so documents can't leave the workspace through them.</span>
+                <span><span className="font-medium text-ink">Viewer</span> — view and download only. Can&rsquo;t upload, share or change anything, so documents can&rsquo;t leave the workspace through them.</span>
               </li>
             </ul>
           </div>
