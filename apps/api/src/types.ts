@@ -6,6 +6,7 @@ import type { Mailer } from './mail/mailer';
 import type { MaintenanceService } from './modules/maintenance/maintenance.service';
 import type { Services } from './services';
 import type { FileStorage } from './storage/file-storage';
+import type { MultipartStorage } from './storage/multipart-storage';
 
 /** Injected so expiry logic can be tested by moving time rather than sleeping. */
 export interface Clock {
@@ -18,6 +19,8 @@ export interface AppDeps {
   config: Config;
   pool: Pool;
   storage: FileStorage;
+  /** Enables direct uploads. main.ts passes the S3 store; tests can swap `storage` independently. */
+  multipartStorage?: FileStorage & MultipartStorage;
   logger: Logger;
   /** Defaults to SMTP when SMTP_URL is set, otherwise a logging fallback. */
   mailer?: Mailer;

@@ -190,6 +190,26 @@ describe('API contract', () => {
       await send('PATCH', `/api/workspaces/${workspaceId}/folders/${folderId}`, owner, { name: 'Signed contracts' }),
     );
 
+    // Direct upload: start, sign, PUT to storage, check status, complete; and a cancelled one.
+    const direct = await send('POST', `/api/workspaces/${workspaceId}/uploads`, owner, {
+      filename: 'direct.pdf',
+      size: SAMPLE_PDF.length,
+      mimeType: 'application/pdf',
+    });
+    ok('POST', '/api/workspaces/:workspaceId/uploads', direct);
+    const uploadId = direct.json().upload.id;
+    const signed = await send('POST', `/api/uploads/${uploadId}/parts`, owner, { partNumbers: [1] });
+    ok('POST', '/api/uploads/:id/parts', signed);
+    await fetch(signed.json().parts[0].url, { method: 'PUT', body: SAMPLE_PDF });
+    ok('GET', '/api/uploads/:id', await send('GET', `/api/uploads/${uploadId}`, owner));
+    ok('POST', '/api/uploads/:id/complete', await send('POST', `/api/uploads/${uploadId}/complete`, owner));
+    const cancelled = await send('POST', `/api/workspaces/${workspaceId}/uploads`, owner, {
+      filename: 'cancel.pdf',
+      size: 10,
+      mimeType: 'application/pdf',
+    });
+    ok('DELETE', '/api/uploads/:id', await send('DELETE', `/api/uploads/${cancelled.json().upload.id}`, owner));
+
     const upload = await uploadDocument(h.app, owner, workspaceId, 'msa.pdf', SAMPLE_PDF);
     ok('POST', '/api/workspaces/:workspaceId/documents', upload);
     const documentId = upload.json().document.id;

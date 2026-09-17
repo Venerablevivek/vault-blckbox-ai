@@ -6,11 +6,12 @@ import { defineConfig, devices } from '@playwright/test';
  * is where the header-spoofing and view-counting defects lived, and unit tests that call
  * the API directly could not see them.
  *
- * Run against a freshly started stack: the API's rate-limit counters live in memory, and
- * the abuse tests (99-*) deliberately use them up.
+ * Rate-limit counters are shared in PostgreSQL and survive restarts; global-setup.ts clears them
+ * before a run, because the abuse tests (99-*) deliberately use them up.
  */
 export default defineConfig({
   testDir: './tests',
+  globalSetup: './global-setup.ts',
   // One worker, files in name order: the abuse-limit tests run last because they exhaust
   // the login rate limit for this client address.
   workers: 1,

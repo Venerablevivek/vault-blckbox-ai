@@ -4,6 +4,7 @@ import { sharesRepo } from '../shares/shares.repo';
 import type { Logger } from 'pino';
 import type { Clock } from '../../types';
 import type { DocumentsService } from '../documents/documents.service';
+import type { UploadsService } from '../uploads/uploads.service';
 
 /** Retention for housekeeping data. Deliberately conservative: nothing a user relies on. */
 export const RETENTION = {
@@ -32,9 +33,10 @@ export function createMaintenanceService(deps: {
   clock: Clock;
   logger: Logger;
   documents: DocumentsService;
+  uploads: UploadsService | null;
   shareEventRetentionMonths: number;
 }) {
-  const { pool, clock, logger, documents, shareEventRetentionMonths } = deps;
+  const { pool, clock, logger, documents, uploads, shareEventRetentionMonths } = deps;
   const daysAgo = (days: number) => new Date(clock.now().getTime() - days * 86_400_000);
 
   return {
@@ -63,6 +65,8 @@ export function createMaintenanceService(deps: {
           workspacesPurged: 0,
           finishedJobs: 0,
           droppedEventPartitions: [] as string[],
+          expiredUploads: 0,
+          rateLimitRows: 0,
         };
 
         const step = async (name: string, fn: () => Promise<void>) => {
@@ -108,6 +112,14 @@ export function createMaintenanceService(deps: {
         await step('deleted_workspaces', async () => {
           const r = await documents.purgeDeletedWorkspaces();
           result.workspacesPurged = r.workspaces;
+        });
+        await step('rate_limits', async () => {
+          // Windows that ended are dead weight; the next request starts a new one either way.
+          const r = await client.query('DELETE FROM rate_limits WHERE window_ends_at < now()');
+          result.rateLimitRows = r.rowCount ?? 0;
+        });
+        await step('uploads', async () => {
+          if (uploads) result.expiredUploads = (await uploads.expireStale()).expired;
         });
         await step('share_event_partitions', async () => {
           result.droppedEventPartitions = await sharesRepo.maintainEventPartitions(

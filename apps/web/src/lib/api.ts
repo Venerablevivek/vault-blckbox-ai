@@ -50,33 +50,6 @@ export const api = {
   patch: <T>(path: string, body: unknown) => request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
   del: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'DELETE', body: body === undefined ? undefined : JSON.stringify(body) }),
-  upload: <T>(path: string, file: File, onProgress?: (percent: number) => void) =>
-    new Promise<T>((resolve, reject) => {
-      // XMLHttpRequest rather than fetch: fetch still has no upload progress events, and
-      // a 25 MB file on a slow connection needs a progress bar rather than a frozen button.
-      const form = new FormData();
-      form.append('file', file);
-
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', path);
-      xhr.withCredentials = true;
-
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable && onProgress) {
-          onProgress(Math.round((event.loaded / event.total) * 100));
-        }
-      });
-
-      xhr.addEventListener('load', () => {
-        const payload = xhr.responseText ? JSON.parse(xhr.responseText) : {};
-        if (xhr.status >= 200 && xhr.status < 300) return resolve(payload as T);
-        const error: ApiError = payload.error ?? { code: 'UNKNOWN', message: 'Upload failed.' };
-        reject(new ApiRequestError(xhr.status, error.code, error.message));
-      });
-      xhr.addEventListener('error', () => reject(new ApiRequestError(0, 'NETWORK', 'Network error during upload.')));
-
-      xhr.send(form);
-    }),
 };
 
 /**

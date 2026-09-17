@@ -23,7 +23,7 @@ async function main(): Promise<void> {
 
   const storage = S3Storage.fromConfig(config);
   const mailer = config.SMTP_URL ? new SmtpMailer(config.SMTP_URL, config.MAIL_FROM) : new LogMailer(logger);
-  const services = createServices({ config, pool, storage, logger, clock: systemClock });
+  const services = createServices({ config, pool, storage, multipartStorage: storage, logger, clock: systemClock });
   const stopJobs = services.jobs.start(createJobHandlers(services, mailer));
 
   // Maintenance runs once per interval across all workers: the dedupe key is the interval

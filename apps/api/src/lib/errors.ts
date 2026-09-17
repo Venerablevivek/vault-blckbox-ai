@@ -67,6 +67,8 @@ export const Errors = {
   tooManyRequests: (code: string, message: string, retryAfterSeconds: number) =>
     new AppError(429, code, message, { 'Retry-After': String(Math.max(1, Math.ceil(retryAfterSeconds))) }),
 
+  notImplemented: (message: string) => new AppError(501, 'NOT_IMPLEMENTED', message),
+
   /** The request is fine but the server is at capacity; the client should retry shortly. */
   busy: (code: string, message: string, retryAfterSeconds: number) =>
     new AppError(503, code, message, { 'Retry-After': String(retryAfterSeconds) }),

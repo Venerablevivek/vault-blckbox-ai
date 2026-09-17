@@ -33,6 +33,14 @@ const schema = z.object({
         .filter(Boolean),
     ),
   API_PORT: z.coerce.number().int().positive().default(4000),
+
+  /**
+   * Per-client rate limits. Off by default only under NODE_ENV=test, where every request comes from
+   * one address; tests of the limiter turn it on explicitly.
+   */
+  RATE_LIMIT_ENABLED: booleanish.optional(),
+  /** postgres: counters shared by every API instance. memory: per process, for a single instance. */
+  RATE_LIMIT_STORE: z.enum(['postgres', 'memory']).default('postgres'),
   WEB_URL: z.string().url().default('http://localhost:3000'),
 
   DATABASE_URL: z.string().min(1),
@@ -65,6 +73,16 @@ const schema = z.object({
 
   /** Uploads buffered in memory at once; worst-case memory is this x MAX_UPLOAD_BYTES. */
   MAX_CONCURRENT_UPLOADS: z.coerce.number().int().min(1).max(64).default(4),
+
+  /**
+   * Largest file accepted through direct (browser-to-storage) uploads. Bytes never pass through
+   * the API, so this is bounded by storage and quota, not API memory. 5 GB by default.
+   */
+  MAX_DIRECT_UPLOAD_BYTES: z.coerce.number().int().positive().default(5_368_709_120),
+  /** How long an upload session may stay open before it is aborted and its quota released. */
+  UPLOAD_SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(24),
+  /** Lifetime of each signed part-upload URL. */
+  UPLOAD_PART_URL_TTL_SECONDS: z.coerce.number().int().min(60).max(86_400).default(3600),
 
   /** Days a deleted document stays restorable before it is purged. */
   TRASH_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(30),

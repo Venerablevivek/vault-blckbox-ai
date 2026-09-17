@@ -65,7 +65,7 @@ export const UploadResponse = obj({
   duplicateOf: obj({ id: uuid, filename: z.string() })
     .nullable()
     .openapi({ description: 'A live document in the workspace with identical content.' }),
-});
+}).openapi('UploadResult');
 export const DocumentListResponse = obj({
   role: Role,
   documents: z.array(Document),

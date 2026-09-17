@@ -52,6 +52,8 @@ services:
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+      # Browsers PUT upload parts straight to storage; only the web app's origin may do so.
+      MINIO_API_CORS_ALLOW_ORIGIN: ${WEB_URL:-http://localhost:3000}
     ports:
       - '9000:9000' # S3 API (browsers fetch presigned download URLs from here)
       - '9001:9001' # web console

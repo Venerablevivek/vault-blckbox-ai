@@ -121,7 +121,7 @@ export async function createHarness(options?: {
   const storage = options?.storage ?? realStorage;
   const clock = new TestClock();
   const mailer = new MemoryMailer();
-  const app = await buildApp({ config, pool, storage, logger, clock, mailer });
+  const app = await buildApp({ config, pool, storage, multipartStorage: realStorage, logger, clock, mailer });
   await app.ready();
   // A real worker runs alongside the tests, exactly as in production. Tests that need a job's
   // effect at a precise moment call runJobs() instead of waiting for it.
@@ -146,7 +146,7 @@ export async function createHarness(options?: {
           await pool.query(
             `TRUNCATE notifications, audit_events, share_access_events, invitations, shares,
                       documents, folders, login_failures, password_resets, workspace_members,
-                      workspaces, sessions, users, jobs CASCADE`,
+                      workspaces, sessions, users, jobs, rate_limits CASCADE`,
           );
           // Each test starts at the same moment, so a test that moved time cannot leak it.
           clock.reset();

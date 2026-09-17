@@ -18,7 +18,7 @@ async function main(): Promise<void> {
   await runMigrations(pool, path.resolve(__dirname, '../migrations'), logger);
 
   const storage = S3Storage.fromConfig(config);
-  const services = createServices({ config, pool, storage, logger, clock: systemClock });
+  const services = createServices({ config, pool, storage, multipartStorage: storage, logger, clock: systemClock });
   const result = await services.maintenance.runOnce();
   console.log(JSON.stringify(result ?? { skipped: 'another instance is running maintenance' }));
   await pool.end();

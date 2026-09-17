@@ -1,15 +1,23 @@
 import {
+  AbortMultipartUploadCommand,
+  CompleteMultipartUploadCommand,
+  CreateBucketCommand,
+  CreateMultipartUploadCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   HeadBucketCommand,
-  CreateBucketCommand,
+  HeadObjectCommand,
+  ListPartsCommand,
   PutObjectCommand,
   S3Client,
+  UploadPartCommand,
+  type Part,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl as presign } from '@aws-sdk/s3-request-presigner';
 import type { Readable } from 'node:stream';
 import type { Config } from '../config';
 import type { FileStorage, SignedUrlOptions } from './file-storage';
+import type { MultipartStorage, UploadedPart } from './multipart-storage';
 
 export interface S3StorageOptions {
   endpoint: string; // internal: how the API reaches MinIO (e.g. http://minio:9000)
@@ -29,7 +37,7 @@ export interface S3StorageOptions {
  * breaks the signature too. The fix is to sign against the public endpoint from the
  * start, while server-side operations keep using the internal one.
  */
-export class S3Storage implements FileStorage {
+export class S3Storage implements FileStorage, MultipartStorage {
   static fromConfig(config: Config): S3Storage {
     return new S3Storage({
       endpoint: config.S3_ENDPOINT,
@@ -118,5 +126,88 @@ export class S3Storage implements FileStorage {
     });
 
     return presign(this.signer, command, { expiresIn });
+  }
+
+  async createMultipartUpload(key: string, contentType: string): Promise<string> {
+    const result = await this.internal.send(
+      new CreateMultipartUploadCommand({ Bucket: this.bucket, Key: key, ContentType: contentType }),
+    );
+    if (!result.UploadId) throw new Error('storage did not return an upload id');
+    return result.UploadId;
+  }
+
+  async signUploadPart(key: string, uploadId: string, partNumber: number, expiresInSeconds: number): Promise<string> {
+    // Signed against the public endpoint, like download URLs: the browser sends the PUT.
+    const command = new UploadPartCommand({
+      Bucket: this.bucket,
+      Key: key,
+      UploadId: uploadId,
+      PartNumber: partNumber,
+    });
+    return presign(this.signer, command, { expiresIn: expiresInSeconds });
+  }
+
+  async listParts(key: string, uploadId: string): Promise<UploadedPart[]> {
+    const parts: UploadedPart[] = [];
+    let marker: string | undefined;
+    // ListParts returns at most 1,000 parts per call; an upload can have 10,000.
+    for (;;) {
+      const page = await this.internal.send(
+        new ListPartsCommand({ Bucket: this.bucket, Key: key, UploadId: uploadId, PartNumberMarker: marker }),
+      );
+      for (const part of page.Parts ?? []) {
+        if (part.PartNumber && part.ETag)
+          parts.push({ partNumber: part.PartNumber, etag: part.ETag, size: part.Size ?? 0 });
+      }
+      if (!page.IsTruncated || !page.NextPartNumberMarker) break;
+      marker = page.NextPartNumberMarker;
+    }
+    return parts.sort((a, b) => a.partNumber - b.partNumber);
+  }
+
+  async completeMultipartUpload(
+    key: string,
+    uploadId: string,
+    parts: Array<{ partNumber: number; etag: string }>,
+  ): Promise<void> {
+    const sorted: Part[] = [...parts]
+      .sort((a, b) => a.partNumber - b.partNumber)
+      .map((p) => ({ PartNumber: p.partNumber, ETag: p.etag }));
+    await this.internal.send(
+      new CompleteMultipartUploadCommand({
+        Bucket: this.bucket,
+        Key: key,
+        UploadId: uploadId,
+        MultipartUpload: { Parts: sorted },
+      }),
+    );
+  }
+
+  async abortMultipartUpload(key: string, uploadId: string): Promise<void> {
+    try {
+      await this.internal.send(new AbortMultipartUploadCommand({ Bucket: this.bucket, Key: key, UploadId: uploadId }));
+    } catch (error) {
+      if ((error as { name?: string }).name !== 'NoSuchUpload') throw error;
+    }
+  }
+
+  async headObject(key: string): Promise<{ size: number } | null> {
+    try {
+      const result = await this.internal.send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }));
+      return { size: result.ContentLength ?? 0 };
+    } catch (error) {
+      const e = error as { name?: string; $metadata?: { httpStatusCode?: number } };
+      if (e.name === 'NotFound' || e.$metadata?.httpStatusCode === 404) return null;
+      throw error;
+    }
+  }
+
+  async readRange(key: string, start: number, end: number): Promise<Buffer> {
+    const result = await this.internal.send(
+      new GetObjectCommand({ Bucket: this.bucket, Key: key, Range: `bytes=${start}-${end}` }),
+    );
+    const chunks: Buffer[] = [];
+    for await (const chunk of result.Body as AsyncIterable<Buffer>) chunks.push(chunk);
+    return Buffer.concat(chunks);
   }
 }

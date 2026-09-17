@@ -43,6 +43,7 @@ import { FolderPicker } from '@/components/folder-picker';
 import { PreviewModal, PREVIEWABLE } from '@/components/preview-modal';
 import { SharePanel } from '@/components/share-panel';
 import { toast } from '@/components/toast';
+import { cancelDirectUpload, directUpload, UploadCancelled } from '@/lib/direct-upload';
 import { EmptyState, ErrorNote, FileGlyph, Shell, Skeleton, StorageMeter, useSession } from '@/components/ui';
 
 type Tab = 'all' | 'shared' | 'mine' | 'trash';
@@ -94,6 +95,14 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
   const [uploadingName, setUploadingName] = useState('');
   const [dragging, setDragging] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const uploadControl = useRef<{ controller: AbortController; file: File; folderId: string | null } | null>(null);
+  /** An upload that stopped. Shown inline, because the person has to decide what to do with it. */
+  const [uploadIssue, setUploadIssue] = useState<{
+    file: File;
+    folderId: string | null;
+    message: string;
+    resumable: boolean;
+  } | null>(null);
   const searchInput = useRef<HTMLInputElement>(null);
   const loadMoreSentinel = useRef<HTMLDivElement>(null);
 
@@ -228,35 +237,53 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
 
   async function uploadFiles(files: FileList | File[]) {
     if (!contributor) return;
-    // Sequential on purpose: one clear progress bar and one clear error per file. A 503 means
-    // the server is at its concurrent-upload limit, so wait as told and retry once.
+    const destination = folderId && !trash ? folderId : null;
+    setUploadIssue(null);
+    // One file at a time, so there is one clear progress bar and one clear error per file. Each
+    // file itself uploads in parallel parts straight to storage, and resumes if interrupted.
     for (const file of Array.from(files)) {
+      const controller = new AbortController();
+      uploadControl.current = { controller, file, folderId: destination };
       setUploadingName(file.name);
       setUploadPercent(0);
-      const target = `/api/workspaces/${workspaceId}/documents${folderId && !trash ? `?folderId=${folderId}` : ''}`;
       try {
-        type UploadResult = { duplicateOf: { id: string; filename: string } | null };
-        let result: UploadResult;
-        try {
-          result = await api.upload<UploadResult>(target, file, setUploadPercent);
-        } catch (err) {
-          if (!(err instanceof ApiRequestError && err.status === 503)) throw err;
-          await new Promise((resolve) => setTimeout(resolve, 5000));
-          result = await api.upload<UploadResult>(target, file, setUploadPercent);
-        }
-        toast(
-          result.duplicateOf
-            ? `${file.name} uploaded. It’s identical to “${result.duplicateOf.filename}”, already in this workspace.`
-            : `${file.name} uploaded`,
-          'success',
-        );
+        await directUpload({
+          workspaceId,
+          folderId: destination,
+          file,
+          onProgress: setUploadPercent,
+          signal: controller.signal,
+        });
+        toast(`${file.name} uploaded`, 'success');
       } catch (err) {
-        toast(`${file.name}: ${err instanceof ApiRequestError ? err.message : 'upload failed'}`, 'error');
+        if (err instanceof UploadCancelled) {
+          toast(`${file.name}: upload cancelled`);
+          break;
+        }
+        // The API refused the file (type, size, quota): starting again won't help. Anything else
+        // (network, storage) left the parts already sent in place, so the upload can resume.
+        const refused = err instanceof ApiRequestError && err.status >= 400 && err.status < 500 && err.status !== 409;
+        setUploadIssue({
+          file,
+          folderId: destination,
+          message: refused ? (err as ApiRequestError).message : 'The connection was interrupted.',
+          resumable: !refused,
+        });
+        break;
       }
     }
+    uploadControl.current = null;
     setUploadPercent(null);
     if (fileInput.current) fileInput.current.value = '';
     await load();
+  }
+
+  async function cancelUpload() {
+    const current = uploadControl.current;
+    if (!current) return;
+    current.controller.abort();
+    // Releases the storage reserved for the file; without this the upload stays resumable.
+    await cancelDirectUpload(workspaceId, current.folderId, current.file);
   }
 
   async function createFolder() {
@@ -803,6 +830,42 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
               </div>
             </div>
             <span className="text-xs font-medium tabular-nums text-ink-muted">{uploadPercent}%</span>
+            <button className="btn-ghost btn-sm" onClick={() => void cancelUpload()}>
+              Cancel
+            </button>
+          </div>
+        ) : null}
+
+        {uploadIssue ? (
+          <div className="card flex flex-wrap items-center gap-3 border-danger/25 p-3" role="alert">
+            <UploadCloud className="h-5 w-5 shrink-0 text-danger" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{uploadIssue.file.name} didn&rsquo;t upload</p>
+              <p className="text-xs text-ink-muted">
+                {uploadIssue.message}
+                {uploadIssue.resumable ? ' Parts already sent are kept, so resuming continues where it stopped.' : ''}
+              </p>
+            </div>
+            {uploadIssue.resumable ? (
+              <>
+                <button className="btn-primary btn-sm" onClick={() => void uploadFiles([uploadIssue.file])}>
+                  Resume upload
+                </button>
+                <button
+                  className="btn-ghost btn-sm"
+                  onClick={() => {
+                    void cancelDirectUpload(workspaceId, uploadIssue.folderId, uploadIssue.file);
+                    setUploadIssue(null);
+                  }}
+                >
+                  Discard
+                </button>
+              </>
+            ) : (
+              <button className="btn-ghost btn-sm" onClick={() => setUploadIssue(null)}>
+                Dismiss
+              </button>
+            )}
           </div>
         ) : null}
 

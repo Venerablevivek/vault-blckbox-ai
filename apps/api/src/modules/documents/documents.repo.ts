@@ -77,7 +77,8 @@ export const documentsRepo = {
       storageKey: string;
       mimeType: string;
       size: number;
-      sha256: Buffer;
+      /** Null for direct uploads: computed afterwards by a job, from the stored object. */
+      sha256: Buffer | null;
     },
   ): Promise<DocumentRow> {
     const { rows } = await db.query<DocumentRow>(

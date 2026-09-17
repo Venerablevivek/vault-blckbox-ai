@@ -16,7 +16,7 @@ import type { SharesService } from '../shares/shares.service';
 import type { DocumentsService } from './documents.service';
 import type { DocumentListRow, DocumentRow } from './documents.repo';
 
-function toDocumentDto(row: DocumentRow & Partial<DocumentListRow>) {
+export function toDocumentDto(row: DocumentRow & Partial<DocumentListRow>) {
   return {
     id: row.id,
     filename: row.filename,

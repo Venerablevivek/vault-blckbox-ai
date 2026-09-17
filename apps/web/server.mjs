@@ -34,7 +34,8 @@ const SECURITY_HEADERS = {
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: ${storageOrigin}`,
     `frame-src ${storageOrigin}`,
-    "connect-src 'self'",
+    // Direct uploads PUT file parts straight to object storage.
+    `connect-src 'self' ${storageOrigin}`,
     "font-src 'self' data:",
     "object-src 'none'",
     "base-uri 'self'",

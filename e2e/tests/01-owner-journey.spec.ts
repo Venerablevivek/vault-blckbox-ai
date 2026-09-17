@@ -21,6 +21,7 @@ test('owner uploads, shares, tracks, revokes, trashes and restores a document', 
 
   await test.step('upload a file from the documents page', async () => {
     await page.goto(`${workspaceUrl}/documents`);
+    await expect(page.getByText('No documents yet')).toBeVisible();
     await page.locator('input[type="file"]').setInputFiles({
       name: 'quarterly-report.txt',
       mimeType: 'text/plain',

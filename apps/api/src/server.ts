@@ -4,6 +4,7 @@ import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 import { registerErrorHandler } from './plugins/errors';
+import { createPgRateLimitStore } from './plugins/rate-limit-store';
 import { registerSession } from './plugins/session';
 import { registerAuthRoutes } from './modules/auth/auth.routes';
 import { registerInvitationRoutes, registerWorkspaceRoutes } from './modules/workspaces/workspaces.routes';
@@ -12,6 +13,7 @@ import { registerShareRoutes } from './modules/shares/shares.routes';
 import { registerAuditRoutes } from './modules/audit/audit.routes';
 import { registerNotificationRoutes } from './modules/notifications/notifications.routes';
 import { registerFolderRoutes } from './modules/folders/folders.routes';
+import { registerUploadRoutes } from './modules/uploads/uploads.routes';
 import { LogMailer, SmtpMailer } from './mail/mailer';
 import { buildOpenApiDocument } from './openapi/document';
 import { createJobHandlers } from './jobs/handlers';
@@ -63,14 +65,20 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   });
   await app.register(cookie);
   // Rate limiting is per-route (`config.rateLimit`), so a document listing is not
-  // throttled like a login attempt.
+  // throttled like a login attempt. Counters are kept in PostgreSQL, shared by every API
+  // instance and kept across restarts.
   //
-  // It is not registered under NODE_ENV=test: every request in the suite comes from the
-  // same address, so the limiter would throttle the tests rather than the attack it is
-  // there to stop. Route-level `config.rateLimit` is simply ignored when the plugin is
-  // absent. The trade-off is that the limits themselves are not covered by tests.
-  if (config.NODE_ENV !== 'test') {
-    await app.register(rateLimit, { global: false, max: 100, timeWindow: '1 minute' });
+  // It is off by default under NODE_ENV=test: every request in the suite comes from the same
+  // address, so the limiter would throttle the tests rather than the attack it is there to stop.
+  // The limiter's own tests turn it on (RATE_LIMIT_ENABLED=true). Route-level `config.rateLimit`
+  // is ignored when the plugin is absent.
+  if (config.RATE_LIMIT_ENABLED ?? config.NODE_ENV !== 'test') {
+    await app.register(rateLimit, {
+      global: false,
+      max: 100,
+      timeWindow: '1 minute',
+      ...(config.RATE_LIMIT_STORE === 'postgres' ? { store: createPgRateLimitStore(pool, config.IP_HASH_PEPPER) } : {}),
+    });
   }
   await app.register(multipart, {
     limits: { fileSize: config.MAX_UPLOAD_BYTES, files: 1 },
@@ -78,7 +86,14 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
   registerErrorHandler(app);
 
-  const services = createServices({ config, pool, storage, logger, clock });
+  const services = createServices({
+    config,
+    pool,
+    storage,
+    multipartStorage: deps.multipartStorage ?? null,
+    logger,
+    clock,
+  });
   const { auth, workspaces, documents, shares, overview, folders, maintenance, audit, notifications, jobs } = services;
   // Exposed for tests: running a maintenance pass and background jobs on demand.
   app.decorate('maintenance', maintenance);
@@ -112,6 +127,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   registerDocumentRoutes(app, { config, documents, workspaces, shares });
   registerShareRoutes(app, { config, shares });
   registerFolderRoutes(app, { folders, workspaces });
+  registerUploadRoutes(app, { uploads: services.uploads, workspaces });
   registerAuditRoutes(app, { audit, workspaces });
   registerNotificationRoutes(app, { notifications });
 

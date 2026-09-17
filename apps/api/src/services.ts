@@ -11,7 +11,9 @@ import { createNotificationsService } from './modules/notifications/notification
 import { createOverviewService } from './modules/overview/overview.service';
 import { createSharesService } from './modules/shares/shares.service';
 import { createWorkspacesService } from './modules/workspaces/workspaces.service';
+import { createUploadsService } from './modules/uploads/uploads.service';
 import type { FileStorage } from './storage/file-storage';
+import type { MultipartStorage } from './storage/multipart-storage';
 import type { Clock } from './types';
 
 /**
@@ -22,10 +24,11 @@ export function createServices(deps: {
   config: Config;
   pool: Pool;
   storage: FileStorage;
+  multipartStorage: (FileStorage & MultipartStorage) | null;
   logger: Logger;
   clock: Clock;
 }) {
-  const { config, pool, storage, logger, clock } = deps;
+  const { config, pool, storage, multipartStorage, logger, clock } = deps;
 
   // Cross-cutting services first: the feature modules depend on them.
   const jobs = createJobQueue({ pool, clock, logger });
@@ -81,15 +84,30 @@ export function createServices(deps: {
   });
   const overview = createOverviewService({ pool, clock, audit });
   const folders = createFoldersService({ pool, audit });
+  const uploads = multipartStorage
+    ? createUploadsService({
+        pool,
+        storage: multipartStorage,
+        clock,
+        logger,
+        audit,
+        notifications,
+        jobs,
+        maxDirectUploadBytes: config.MAX_DIRECT_UPLOAD_BYTES,
+        sessionTtlHours: config.UPLOAD_SESSION_TTL_HOURS,
+        partUrlTtlSeconds: config.UPLOAD_PART_URL_TTL_SECONDS,
+      })
+    : null;
   const maintenance = createMaintenanceService({
     pool,
     clock,
     logger,
     documents,
+    uploads,
     shareEventRetentionMonths: config.SHARE_EVENT_RETENTION_MONTHS,
   });
 
-  return { jobs, audit, notifications, auth, workspaces, documents, shares, overview, folders, maintenance };
+  return { jobs, audit, notifications, auth, workspaces, documents, shares, overview, folders, uploads, maintenance };
 }
 
 export type Services = ReturnType<typeof createServices>;

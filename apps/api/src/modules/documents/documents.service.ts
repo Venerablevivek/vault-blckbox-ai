@@ -55,7 +55,7 @@ export function decodeCursor(cursor: string): { value: string; id: string } {
   }
 }
 
-function cleanFilename(name: string): string {
+export function cleanFilename(name: string): string {
   const clean = stripControlCharacters(name).trim();
   if (!clean) throw Errors.badRequest('INVALID_NAME', 'A document needs a name.');
   return clean;

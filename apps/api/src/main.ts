@@ -29,7 +29,7 @@ async function main(): Promise<void> {
     await seedDemoData(pool, storage, logger, config.WEB_URL);
   }
 
-  const app = await buildApp({ config, pool, storage, logger });
+  const app = await buildApp({ config, pool, storage, multipartStorage: storage, logger });
   await app.listen({ port: config.API_PORT, host: '0.0.0.0' });
 
   // Background work (email, notifications, purges, scheduled maintenance) runs in the worker

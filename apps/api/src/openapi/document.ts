@@ -4,6 +4,7 @@ import * as activity from '../contracts/activity';
 import { ErrorBody, z } from '../contracts/common';
 import * as documents from '../contracts/documents';
 import * as shares from '../contracts/shares';
+import * as uploads from '../contracts/uploads';
 import * as workspaces from '../contracts/workspaces';
 
 type Method = RouteConfig['method'];
@@ -382,6 +383,64 @@ export const operations: Operation[] = [
     params: documents.DocumentParams,
     success: [200, shares.SharesResponse],
     errors: [401, 404],
+  },
+
+  // ---- Direct uploads ---------------------------------------------------------------------
+  {
+    method: 'post',
+    path: '/api/workspaces/:workspaceId/uploads',
+    tag: 'Uploads',
+    summary: 'Start a direct upload',
+    auth: S,
+    params: documents.WorkspaceDocumentsParams,
+    body: uploads.CreateUploadBody,
+    success: [201, uploads.UploadCreatedResponse],
+    errors: [400, 401, 403, 404, 413, 415, 429],
+    description:
+      'Reserves quota for the whole file and opens a multipart upload in storage. The browser then PUTs each part to a signed URL; file bytes never pass through the API. Up to MAX_DIRECT_UPLOAD_BYTES (5 GB).',
+  },
+  {
+    method: 'post',
+    path: '/api/uploads/:id/parts',
+    tag: 'Uploads',
+    summary: 'Get signed URLs for parts',
+    auth: S,
+    params: uploads.UploadParams,
+    body: uploads.SignPartsBody,
+    success: [200, uploads.SignedPartsResponse],
+    errors: [400, 401, 403, 404, 409, 429],
+  },
+  {
+    method: 'get',
+    path: '/api/uploads/:id',
+    tag: 'Uploads',
+    summary: 'Upload status and parts received (for resuming)',
+    auth: S,
+    params: uploads.UploadParams,
+    success: [200, uploads.UploadStatusResponse],
+    errors: [401, 403, 404],
+  },
+  {
+    method: 'post',
+    path: '/api/uploads/:id/complete',
+    tag: 'Uploads',
+    summary: 'Finish an upload and create the document',
+    auth: S,
+    params: uploads.UploadParams,
+    success: [201, documents.UploadResponse],
+    errors: [400, 401, 403, 404, 409, 415],
+    description:
+      "Verifies every part against storage's record, the assembled size, and the file type from its first bytes. A file that fails is deleted and its quota released; missing parts leave the upload open (409 UPLOAD_INCOMPLETE).",
+  },
+  {
+    method: 'delete',
+    path: '/api/uploads/:id',
+    tag: 'Uploads',
+    summary: 'Cancel an upload',
+    auth: S,
+    params: uploads.UploadParams,
+    success: [204, null],
+    errors: [401, 403, 404, 409],
   },
 
   // ---- Folders ----------------------------------------------------------------------------
