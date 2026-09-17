@@ -1,39 +1,58 @@
 import { describe, expect, it } from 'vitest';
-import { Permissions, requireOwner } from '../../src/policy';
+import { Permissions, requireContributor, requireOwner } from '../../src/policy';
 import { AppError } from '../../src/lib/errors';
+import type { Role } from '../../src/types';
 
-const OWNER_ID = 'owner-user';
-const MEMBER_ID = 'member-user';
+const ME = 'me';
+const SOMEONE_ELSE = 'someone-else';
+const ROLES: Role[] = ['OWNER', 'MEMBER', 'VIEWER'];
 
 /**
- * The whole permission model, asserted cell by cell. Two roles keeps this table small
- * enough to be exhaustive rather than representative.
+ * The whole permission model, asserted cell by cell for all three roles. Small enough to be
+ * exhaustive rather than representative.
  */
 describe('permission matrix', () => {
-  it('lets only an OWNER invite', () => {
-    expect(Permissions.canInvite('OWNER')).toBe(true);
-    expect(Permissions.canInvite('MEMBER')).toBe(false);
+  it('reserves people management, audit and permanent delete for owners', () => {
+    for (const role of ROLES) {
+      const owner = role === 'OWNER';
+      expect(Permissions.canInvite(role)).toBe(owner);
+      expect(Permissions.canManageMembers(role)).toBe(owner);
+      expect(Permissions.canViewAudit(role)).toBe(owner);
+      expect(Permissions.canPurgeDocument(role)).toBe(owner);
+    }
     expect(() => requireOwner('MEMBER')).toThrow(AppError);
+    expect(() => requireOwner('VIEWER')).toThrow(AppError);
     expect(() => requireOwner('OWNER')).not.toThrow();
   });
 
-  it('lets both roles upload', () => {
-    expect(Permissions.canUpload('OWNER')).toBe(true);
-    expect(Permissions.canUpload('MEMBER')).toBe(true);
+  it('lets owners and members contribute, and viewers only read', () => {
+    for (const role of ROLES) {
+      const contributor = role !== 'VIEWER';
+      expect(Permissions.canUpload(role)).toBe(contributor);
+      expect(Permissions.canShare(role)).toBe(contributor);
+      expect(Permissions.canCreateFolder(role)).toBe(contributor);
+    }
+    expect(() => requireContributor('VIEWER', 'upload')).toThrow(/Viewers can't upload/);
+    expect(() => requireContributor('MEMBER', 'upload')).not.toThrow();
   });
 
-  it('lets a MEMBER delete only their own documents', () => {
-    expect(Permissions.canDeleteDocument('MEMBER', MEMBER_ID, MEMBER_ID)).toBe(true);
-    expect(Permissions.canDeleteDocument('MEMBER', OWNER_ID, MEMBER_ID)).toBe(false);
+  it('lets a member change only what they created', () => {
+    for (const check of [Permissions.canModifyDocument, Permissions.canModifyFolder, Permissions.canManageShare]) {
+      expect(check('MEMBER', ME, ME)).toBe(true);
+      expect(check('MEMBER', SOMEONE_ELSE, ME)).toBe(false);
+    }
   });
 
-  it('lets an OWNER delete anything in the workspace', () => {
-    expect(Permissions.canDeleteDocument('OWNER', MEMBER_ID, OWNER_ID)).toBe(true);
+  it('lets an owner change anything', () => {
+    for (const check of [Permissions.canModifyDocument, Permissions.canModifyFolder, Permissions.canManageShare]) {
+      expect(check('OWNER', SOMEONE_ELSE, ME)).toBe(true);
+      expect(check('OWNER', null, ME)).toBe(true);
+    }
   });
 
-  it('applies the same ownership rule to share revocation', () => {
-    expect(Permissions.canRevokeShare('MEMBER', MEMBER_ID, MEMBER_ID)).toBe(true);
-    expect(Permissions.canRevokeShare('MEMBER', OWNER_ID, MEMBER_ID)).toBe(false);
-    expect(Permissions.canRevokeShare('OWNER', MEMBER_ID, OWNER_ID)).toBe(true);
+  it('gives a viewer no rights over what they created before being downgraded', () => {
+    for (const check of [Permissions.canModifyDocument, Permissions.canModifyFolder, Permissions.canManageShare]) {
+      expect(check('VIEWER', ME, ME)).toBe(false);
+    }
   });
 });

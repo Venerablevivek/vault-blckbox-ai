@@ -78,7 +78,7 @@ describe('storage failure handling', () => {
     await h.query('ALTER TABLE documents DROP CONSTRAINT never_insert');
   });
 
-  it('removes the object from the bucket when a document is deleted', async () => {
+  it('keeps the object while a document is in the trash, and removes it on permanent delete', async () => {
     h = await createHarness();
     await h.truncate();
     const alice = await registerUser(h.app, 'alice@example.com');
@@ -93,15 +93,25 @@ describe('storage failure handling', () => {
       url: `/api/documents/${documentId}`,
       headers: { cookie: alice.cookie },
     });
-    expect(remove.statusCode).toBe(204);
+    expect(remove.statusCode).toBe(200);
 
-    // Soft delete first, then the bytes.
+    // In the trash: the row is soft-deleted but the bytes stay, so the delete can be undone.
     const [deleted] = await h.query<{ deleted_at: Date | null }>(
       'SELECT deleted_at FROM documents WHERE id = $1',
       [documentId],
     );
     expect(deleted!.deleted_at).not.toBeNull();
+    expect(await h.objectExists(row!.storage_key)).toBe(true);
+
+    // Permanent delete removes the object, then the row.
+    const purge = await h.app.inject({
+      method: 'DELETE',
+      url: `/api/documents/${documentId}/permanent`,
+      headers: { cookie: alice.cookie },
+    });
+    expect(purge.statusCode).toBe(204);
     expect(await h.objectExists(row!.storage_key)).toBe(false);
+    expect(await h.query('SELECT 1 FROM documents WHERE id = $1', [documentId])).toHaveLength(0);
   });
 
   it('makes a soft-deleted document vanish from listing, download AND share resolution', async () => {

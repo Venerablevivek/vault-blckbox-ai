@@ -38,10 +38,15 @@ async function main(): Promise<void> {
 
   const app = await buildApp({ config, pool, storage, logger });
   await app.listen({ port: config.API_PORT, host: '0.0.0.0' });
+
+  // Housekeeping: expired sessions and invitations, old notifications, and trash past its
+  // retention. Guarded by an advisory lock, so several API instances never run it together.
+  const stopMaintenance = app.maintenance.schedule(config.MAINTENANCE_INTERVAL_MINUTES);
   logger.info({ port: config.API_PORT }, 'api listening');
 
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'shutting down');
+    stopMaintenance();
     await app.close();
     await pool.end();
     process.exit(0);

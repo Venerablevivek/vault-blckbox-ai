@@ -18,9 +18,18 @@ export type AuditAction =
   | 'invitation.revoked'
   | 'document.renamed'
   | 'document.previewed'
+  | 'document.moved'
+  | 'document.trashed'
+  | 'document.restored'
+  | 'document.purged'
+  | 'folder.created'
+  | 'folder.renamed'
+  | 'folder.moved'
+  | 'folder.deleted'
+  | 'share.updated'
   | 'workspace.renamed';
 
-export type AuditResource = 'workspace' | 'document' | 'share' | 'member' | 'invitation';
+export type AuditResource = 'workspace' | 'document' | 'folder' | 'share' | 'member' | 'invitation';
 
 export interface AuditRow {
   id: string;

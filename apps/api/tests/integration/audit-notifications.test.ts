@@ -60,7 +60,7 @@ describe('audit trail and notifications', () => {
     expect(actions).toContain('workspace.created');
     expect(actions).toContain('document.uploaded');
     expect(actions).toContain('document.downloaded');
-    expect(actions).toContain('document.deleted');
+    expect(actions).toContain('document.trashed');
   });
 
   it('keeps the trail after the document it describes is gone', async () => {

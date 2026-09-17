@@ -20,6 +20,7 @@ export function registerErrorHandler(app: FastifyInstance): void {
     if (error instanceof AppError) {
       return reply
         .status(error.statusCode)
+        .headers(error.headers)
         .send({ error: { code: error.code, message: error.message } });
     }
 

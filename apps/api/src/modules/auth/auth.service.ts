@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
 import type { Db } from '../../db/pool';
 import { withTransaction } from '../../db/tx';
@@ -16,6 +16,8 @@ export interface AuthServiceOptions {
   clock: Clock;
   sessionTtlDays: number;
   audit: AuditService;
+  lockoutAttempts: number;
+  lockoutMinutes: number;
 }
 
 /** Emails are lowercased at the boundary so `Foo@x.com` and `foo@x.com` are one account. */
@@ -23,7 +25,23 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-export function createAuthService({ pool, clock, sessionTtlDays, audit }: AuthServiceOptions) {
+/**
+ * Failed logins are keyed by a hash of the submitted address, not a user id, so the same
+ * lockout applies whether or not an account exists. A locked response therefore cannot be
+ * used to discover which addresses are registered.
+ */
+function loginKey(email: string): Buffer {
+  return createHash('sha256').update(`login:${email}`, 'utf8').digest();
+}
+
+export function createAuthService({
+  pool,
+  clock,
+  sessionTtlDays,
+  audit,
+  lockoutAttempts,
+  lockoutMinutes,
+}: AuthServiceOptions) {
   async function issueSession(db: Db, userId: string): Promise<{ token: string; expiresAt: Date }> {
     const token = generateToken('ses');
     const expiresAt = new Date(clock.now().getTime() + sessionTtlDays * 86_400_000);
@@ -119,19 +137,44 @@ export function createAuthService({ pool, clock, sessionTtlDays, audit }: AuthSe
       });
     },
 
+    /**
+     * Logs in, with per-account throttling on top of the per-IP rate limit.
+     *
+     * Per-IP limits don't slow down guessing one account's password from many addresses.
+     * After LOGIN_LOCKOUT_ATTEMPTS failures for an address inside the window, every attempt for
+     * that address is refused, even with the right password, until the window passes. A
+     * successful login clears the count.
+     */
     async login(input: { email: string; password: string }) {
       const email = normalizeEmail(input.email);
-      const user = await authRepo.findUserByEmail(pool, email);
+      const key = loginKey(email);
+      const windowMs = lockoutMinutes * 60_000;
 
+      const recent = await authRepo.recentLoginFailures(pool, key, new Date(clock.now().getTime() - windowMs));
+      if (recent.count >= lockoutAttempts && recent.oldest) {
+        const unlockAt = recent.oldest.getTime() + windowMs;
+        throw Errors.tooManyRequests(
+          'ACCOUNT_LOCKED',
+          'Too many failed sign-in attempts for this account. Try again later.',
+          (unlockAt - clock.now().getTime()) / 1000,
+        );
+      }
+
+      const user = await authRepo.findUserByEmail(pool, email);
       if (!user) {
-        // Burn comparable CPU time so response latency does not reveal which addresses
-        // have accounts.
+        // Burn comparable CPU time so response latency does not reveal which addresses exist.
         await burnVerifyTime(input.password);
+        await authRepo.recordLoginFailure(pool, key, clock.now());
         throw Errors.invalidCredentials();
       }
 
       const ok = await verifyPassword(user.password_hash, input.password);
-      if (!ok) throw Errors.invalidCredentials();
+      if (!ok) {
+        await authRepo.recordLoginFailure(pool, key, clock.now());
+        throw Errors.invalidCredentials();
+      }
+
+      await authRepo.clearLoginFailures(pool, key);
 
       // A fresh session row on every login; no client-supplied identifier is ever honoured.
       const session = await issueSession(pool, user.id);

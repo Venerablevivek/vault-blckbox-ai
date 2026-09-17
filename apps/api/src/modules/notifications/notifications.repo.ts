@@ -20,6 +20,14 @@ export interface NotificationRow {
   created_at: Date;
 }
 
+/**
+ * A notification about a workspace is only shown while the user is still a member of it.
+ * Someone who has been removed stops seeing earlier notifications that name its documents.
+ * Notifications with no workspace (such as "you were removed") are always shown.
+ */
+const VISIBLE = `(n.workspace_id IS NULL OR EXISTS (
+  SELECT 1 FROM workspace_members m WHERE m.workspace_id = n.workspace_id AND m.user_id = n.user_id))`;
+
 export const notificationsRepo = {
   async insert(
     db: Db,
@@ -53,10 +61,11 @@ export const notificationsRepo = {
 
   async listForUser(db: Db, userId: string, limit: number): Promise<NotificationRow[]> {
     const { rows } = await db.query<NotificationRow>(
-      `SELECT id, workspace_id, type, title, body, resource_id, read_at, created_at
-         FROM notifications
-        WHERE user_id = $1
-        ORDER BY created_at DESC
+      `SELECT n.id, n.workspace_id, n.type, n.title, n.body, n.resource_id, n.read_at, n.created_at
+         FROM notifications n
+        WHERE n.user_id = $1
+          AND ${VISIBLE}
+        ORDER BY n.created_at DESC
         LIMIT $2`,
       [userId, limit],
     );
@@ -66,7 +75,8 @@ export const notificationsRepo = {
   /** Backs the unread badge. Hits the partial index, so it stays cheap under polling. */
   async unreadCount(db: Db, userId: string): Promise<number> {
     const { rows } = await db.query<{ count: string }>(
-      `SELECT COUNT(*) AS count FROM notifications WHERE user_id = $1 AND read_at IS NULL`,
+      `SELECT COUNT(*) AS count FROM notifications n
+        WHERE n.user_id = $1 AND n.read_at IS NULL AND ${VISIBLE}`,
       [userId],
     );
     return Number(rows[0]?.count ?? 0);

@@ -19,7 +19,8 @@ export function registerWorkspaceRoutes(
     const { id } = workspaceParams.parse(request.params);
     const user = currentUser(request);
     const membership = await workspaces.requireMember(id, user.id);
-    return { role: membership.role, ...(await overview.forWorkspace(id, membership.role)) };
+    const { tz } = z.object({ tz: z.string().max(64).optional() }).parse(request.query);
+    return { role: membership.role, ...(await overview.forWorkspace(id, membership.role, tz)) };
   });
 
   app.patch('/api/workspaces/:id', { preHandler: requireSession }, async (request) => {
@@ -38,7 +39,7 @@ export function registerWorkspaceRoutes(
     // Authorize before reading the body, so a non-member always sees the same 404.
     const membership = await workspaces.requireMember(id, user.id);
     requireOwner(membership.role);
-    const { role } = z.object({ role: z.enum(['OWNER', 'MEMBER']) }).parse(request.body);
+    const { role } = z.object({ role: z.enum(['OWNER', 'MEMBER', 'VIEWER']) }).parse(request.body);
     await workspaces.changeRole({
       workspaceId: id,
       actor: { id: user.id, role: membership.role },
@@ -133,7 +134,7 @@ export function registerWorkspaceRoutes(
       requireOwner(membership.role);
 
       const body = z
-        .object({ email: z.string().email().max(255), role: z.enum(['OWNER', 'MEMBER']).default('MEMBER') })
+        .object({ email: z.string().email().max(255), role: z.enum(['OWNER', 'MEMBER', 'VIEWER']).default('MEMBER') })
         .parse(request.body);
 
       const result = await workspaces.invite({

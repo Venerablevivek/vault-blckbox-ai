@@ -4,54 +4,57 @@ import type { Role } from './types';
 /**
  * The entire authorization model, in one file.
  *
- * Two roles only (the blueprint's decision) keeps this small enough to read in one
- * screen — which is what makes it genuinely reviewable rather than nominally documented.
- *
- *  Action                      OWNER   MEMBER
- *  list documents / members      x        x
- *  upload / download             x        x
- *  create share link             x        x
- *  delete document               x      own only
- *  revoke share link             x      own only
- *  rename document               x      own only
- *  invite / revoke invitation    x        -
- *  change roles, remove members  x        -
- *  rename workspace              x        -
- *  leave workspace               x*       x
+ *  Action                                   OWNER   MEMBER     VIEWER
+ *  list, preview, download documents          x        x          x
+ *  list members, browse folders               x        x          x
+ *  upload, create folders                     x        x          -
+ *  create share links                         x        x          -
+ *  rename / move / trash / restore document   x     own only      -
+ *  rename / move / delete folder              x     own only      -
+ *  edit / revoke share link                   x     own only      -
+ *  permanently delete from trash              x        -          -
+ *  invite, change roles, remove members       x        -          -
+ *  view audit trail, rename workspace         x        -          -
+ *  leave workspace                            x*       x          x
  *
  * * an OWNER may leave only while another OWNER remains.
  *
- * "own" means the caller created the row (documents.uploaded_by / shares.created_by).
+ * "own" means the caller created the row (documents.uploaded_by, folders.created_by,
+ * shares.created_by). Ownership only grants rights while the caller is still a MEMBER:
+ * someone downgraded to VIEWER cannot keep editing what they created.
+ *
+ * VIEWER cannot create share links on purpose — a read-only collaborator should not be able
+ * to move a document outside the workspace.
  */
+const contributor = (role: Role): boolean => role === 'OWNER' || role === 'MEMBER';
+const ownsOrAdministers = (role: Role, createdBy: string | null, actorId: string): boolean =>
+  role === 'OWNER' || (role === 'MEMBER' && createdBy === actorId);
+
 export const Permissions = {
-  /** Only an OWNER may invite people into a workspace. */
-  canInvite(role: Role): boolean {
-    return role === 'OWNER';
-  },
+  canInvite: (role: Role): boolean => role === 'OWNER',
+  canManageMembers: (role: Role): boolean => role === 'OWNER',
+  canViewAudit: (role: Role): boolean => role === 'OWNER',
+  canPurgeDocument: (role: Role): boolean => role === 'OWNER',
 
-  /** Any member may upload, list and download. */
-  canUpload(role: Role): boolean {
-    return role === 'OWNER' || role === 'MEMBER';
-  },
+  canUpload: contributor,
+  canShare: contributor,
+  canCreateFolder: contributor,
 
-  /** A MEMBER may delete only what they uploaded; an OWNER may delete anything. */
-  canDeleteDocument(role: Role, uploadedBy: string, actorId: string): boolean {
-    return role === 'OWNER' || uploadedBy === actorId;
-  },
-
-  /** Same ownership rule as deletion: your own documents, or any if you own the workspace. */
-  canRenameDocument(role: Role, uploadedBy: string, actorId: string): boolean {
-    return role === 'OWNER' || uploadedBy === actorId;
-  },
-
-  /** A MEMBER may revoke only links they created; an OWNER may revoke any link. */
-  canRevokeShare(role: Role, createdBy: string, actorId: string): boolean {
-    return role === 'OWNER' || createdBy === actorId;
-  },
+  /** Rename, move, move to trash and restore all follow the same ownership rule. */
+  canModifyDocument: ownsOrAdministers,
+  canModifyFolder: ownsOrAdministers,
+  /** Editing a link (expiry, password, download limit) follows the same rule as revoking it. */
+  canManageShare: ownsOrAdministers,
 };
 
 export function requireOwner(role: Role): void {
-  if (!Permissions.canInvite(role)) {
+  if (role !== 'OWNER') {
     throw Errors.forbidden('Only the workspace owner can do that.');
+  }
+}
+
+export function requireContributor(role: Role, action: string): void {
+  if (!contributor(role)) {
+    throw Errors.forbidden(`Viewers can't ${action}. Ask a workspace owner for member access.`);
   }
 }

@@ -9,6 +9,7 @@ import { normalizeEmail } from '../auth/auth.service';
 import { authRepo } from '../auth/auth.repo';
 import type { AuditService } from '../audit/audit.service';
 import type { NotificationsService } from '../notifications/notifications.service';
+import { sharesRepo } from '../shares/shares.repo';
 import { invitationsRepo } from './invitations.repo';
 import { workspacesRepo } from './workspaces.repo';
 
@@ -95,8 +96,8 @@ export function createWorkspacesService(opts: WorkspacesServiceOptions) {
       requireOwner(input.actor.role);
 
       const email = normalizeEmail(input.email);
-      if (input.role !== 'MEMBER' && input.role !== 'OWNER') {
-        throw Errors.badRequest('INVALID_ROLE', 'Role must be OWNER or MEMBER.');
+      if (!['OWNER', 'MEMBER', 'VIEWER'].includes(input.role)) {
+        throw Errors.badRequest('INVALID_ROLE', 'Role must be OWNER, MEMBER or VIEWER.');
       }
 
       // If the address already belongs to a member, say so plainly rather than creating a
@@ -170,6 +171,14 @@ export function createWorkspacesService(opts: WorkspacesServiceOptions) {
         }
 
         await workspacesRepo.updateRole(tx, input.workspaceId, input.targetUserId, input.role);
+
+        // A VIEWER cannot share, so links they created while they could stop working now —
+        // in the same transaction, so there is no window where the role is gone but the links live.
+        const revokedLinks =
+          input.role === 'VIEWER'
+            ? await sharesRepo.revokeCreatedByInWorkspace(tx, input.workspaceId, input.targetUserId, clock.now())
+            : 0;
+
         const email = await workspacesRepo.findUserEmail(tx, input.targetUserId);
         await audit.record(
           {
@@ -178,7 +187,7 @@ export function createWorkspacesService(opts: WorkspacesServiceOptions) {
             action: 'member.role_changed',
             resourceType: 'member',
             resourceId: input.targetUserId,
-            metadata: { email, from: current, to: input.role },
+            metadata: { email, from: current, to: input.role, revokedLinks },
           },
           tx,
         );
@@ -190,11 +199,13 @@ export function createWorkspacesService(opts: WorkspacesServiceOptions) {
           userId: input.targetUserId,
           workspaceId: input.workspaceId,
           type: 'member.role_changed',
-          title: `You are now ${input.role === 'OWNER' ? 'an owner' : 'a member'} of ${workspace?.name ?? 'a workspace'}`,
+          title: `You are now ${input.role === 'OWNER' ? 'an owner' : input.role === 'MEMBER' ? 'a member' : 'a viewer'} of ${workspace?.name ?? 'a workspace'}`,
           body:
             input.role === 'OWNER'
               ? 'You can now invite people, manage members and view activity.'
-              : 'You can still upload, download and share documents here.',
+              : input.role === 'MEMBER'
+                ? 'You can upload, download and share documents here.'
+                : 'You can view and download documents. Share links you created have been revoked.',
           resourceId: input.workspaceId,
         });
       }
@@ -203,9 +214,10 @@ export function createWorkspacesService(opts: WorkspacesServiceOptions) {
     /**
      * Removes a member, or lets a member leave.
      *
-     * Their documents and share links stay: documents belong to the workspace, not to the
-     * person who uploaded them, which is the whole point of a shared workspace. Access
-     * ends on their very next request because membership is read per request.
+     * Their documents stay: documents belong to the workspace, not to the person who uploaded
+     * them. The share links they created are revoked in the same transaction, so someone who
+     * leaves cannot keep distributing workspace documents through links they handed out.
+     * Access ends on their very next request because membership is read per request.
      */
     async removeMember(input: {
       workspaceId: string;
@@ -232,6 +244,12 @@ export function createWorkspacesService(opts: WorkspacesServiceOptions) {
 
         const email = await workspacesRepo.findUserEmail(tx, input.targetUserId);
         await workspacesRepo.deleteMember(tx, input.workspaceId, input.targetUserId);
+        const revokedLinks = await sharesRepo.revokeCreatedByInWorkspace(
+          tx,
+          input.workspaceId,
+          input.targetUserId,
+          clock.now(),
+        );
         await audit.record(
           {
             workspaceId: input.workspaceId,
@@ -239,7 +257,7 @@ export function createWorkspacesService(opts: WorkspacesServiceOptions) {
             action: leaving ? 'member.left' : 'member.removed',
             resourceType: 'member',
             resourceId: input.targetUserId,
-            metadata: { email },
+            metadata: { email, revokedLinks },
           },
           tx,
         );

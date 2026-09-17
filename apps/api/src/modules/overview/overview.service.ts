@@ -23,8 +23,25 @@ const CATEGORY_SQL = `
     ELSE 'Text & other'
   END`;
 
+/**
+ * Accepts an IANA time zone only if PostgreSQL knows it, otherwise falls back to UTC.
+ * The list is loaded once; the zone is always passed as a bound parameter, never spliced in.
+ */
+let knownZones: Promise<Set<string>> | null = null;
+
 export function createOverviewService(deps: { pool: Pool; clock: Clock; audit: AuditService }) {
   const { pool, clock, audit } = deps;
+
+  async function resolveTimeZone(requested: string): Promise<string> {
+    knownZones ??= pool
+      .query<{ name: string }>('SELECT name FROM pg_timezone_names')
+      .then((r) => new Set(r.rows.map((row) => row.name)))
+      .catch((error: unknown) => {
+        knownZones = null;
+        throw error;
+      });
+    return (await knownZones).has(requested) ? requested : 'UTC';
+  }
 
   return {
     /**
@@ -34,10 +51,9 @@ export function createOverviewService(deps: { pool: Pool; clock: Clock; audit: A
      * activity feed is included only for owners — the same rule as the full audit trail,
      * because it carries the same information.
      */
-    async forWorkspace(workspaceId: string, role: Role) {
+    async forWorkspace(workspaceId: string, role: Role, timeZone = 'UTC') {
       const now = clock.now();
-      const since = new Date(now.getTime() - (SERIES_DAYS - 1) * 86_400_000);
-      since.setUTCHours(0, 0, 0, 0);
+      const tz = await resolveTimeZone(timeZone);
 
       const [totals, byType, uploads, opens, topShared, recent, activity] = await Promise.all([
         pool.query<{
@@ -70,26 +86,38 @@ export function createOverviewService(deps: { pool: Pool; clock: Clock; audit: A
             ORDER BY SUM(size) DESC`,
           [workspaceId],
         ),
-        // generate_series fills empty days with zero, so the chart never skips a day.
+        // Days are calendar days in the viewer's time zone, not UTC: an upload at 11pm in
+        // New York belongs to that evening, not to "tomorrow". generate_series fills empty
+        // days with zero, so the chart never skips a day.
         pool.query<{ day: string; count: string }>(
-          `SELECT to_char(d.day, 'YYYY-MM-DD') AS day, COUNT(doc.id) AS count
-             FROM generate_series($2::date, $3::date, interval '1 day') AS d(day)
+          `WITH days AS (
+             SELECT generate_series(($2::timestamptz AT TIME ZONE $3)::date - ${SERIES_DAYS - 1},
+                                    ($2::timestamptz AT TIME ZONE $3)::date,
+                                    interval '1 day')::date AS day
+           )
+           SELECT to_char(days.day, 'YYYY-MM-DD') AS day, COUNT(doc.id) AS count
+             FROM days
              LEFT JOIN documents doc
-               ON doc.workspace_id = $1 AND doc.created_at::date = d.day::date
-            GROUP BY d.day ORDER BY d.day`,
-          [workspaceId, since, now],
+               ON doc.workspace_id = $1 AND (doc.created_at AT TIME ZONE $3)::date = days.day
+            GROUP BY days.day ORDER BY days.day`,
+          [workspaceId, now, tz],
         ),
         pool.query<{ day: string; count: string }>(
-          `SELECT to_char(d.day, 'YYYY-MM-DD') AS day, COUNT(e.id) AS count
-             FROM generate_series($2::date, $3::date, interval '1 day') AS d(day)
+          `WITH days AS (
+             SELECT generate_series(($2::timestamptz AT TIME ZONE $3)::date - ${SERIES_DAYS - 1},
+                                    ($2::timestamptz AT TIME ZONE $3)::date,
+                                    interval '1 day')::date AS day
+           )
+           SELECT to_char(days.day, 'YYYY-MM-DD') AS day, COUNT(e.id) AS count
+             FROM days
              LEFT JOIN (
                SELECT e.id, e.accessed_at FROM share_access_events e
                  JOIN shares s ON s.id = e.share_id
                  JOIN documents doc ON doc.id = s.document_id
                 WHERE doc.workspace_id = $1 AND e.outcome = 'resolved'
-             ) e ON e.accessed_at::date = d.day::date
-            GROUP BY d.day ORDER BY d.day`,
-          [workspaceId, since, now],
+             ) e ON (e.accessed_at AT TIME ZONE $3)::date = days.day
+            GROUP BY days.day ORDER BY days.day`,
+          [workspaceId, now, tz],
         ),
         pool.query<{ id: string; filename: string; mime_type: string; opens: string; viewers: string; last_at: Date | null }>(
           `SELECT d.id, d.filename, d.mime_type,

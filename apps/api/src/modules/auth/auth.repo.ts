@@ -64,6 +64,27 @@ export const authRepo = {
     return rows[0] ?? null;
   },
 
+  /**
+   * Failures inside the window: how many, and when the oldest happened. The lockout lifts
+   * when that oldest failure falls out of the window.
+   */
+  async recentLoginFailures(db: Db, key: Buffer, since: Date): Promise<{ count: number; oldest: Date | null }> {
+    const { rows } = await db.query<{ count: string; oldest: Date | null }>(
+      `SELECT COUNT(*) AS count, MIN(failed_at) AS oldest
+         FROM login_failures WHERE email_hash = $1 AND failed_at > $2`,
+      [key, since],
+    );
+    return { count: Number(rows[0]?.count ?? 0), oldest: rows[0]?.oldest ?? null };
+  },
+
+  async recordLoginFailure(db: Db, key: Buffer, at: Date): Promise<void> {
+    await db.query('INSERT INTO login_failures (email_hash, failed_at) VALUES ($1, $2)', [key, at]);
+  },
+
+  async clearLoginFailures(db: Db, key: Buffer): Promise<void> {
+    await db.query('DELETE FROM login_failures WHERE email_hash = $1', [key]);
+  },
+
   async deleteSession(db: Db, tokenHash: Buffer): Promise<void> {
     await db.query('DELETE FROM sessions WHERE token_hash = $1', [tokenHash]);
   },

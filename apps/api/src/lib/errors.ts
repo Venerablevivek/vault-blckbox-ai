@@ -8,6 +8,8 @@ export class AppError extends Error {
     readonly statusCode: number,
     readonly code: string,
     message: string,
+    /** Extra response headers, e.g. Retry-After on a 429 or 503. */
+    readonly headers: Record<string, string> = {},
   ) {
     super(message);
     this.name = 'AppError';
@@ -48,4 +50,16 @@ export const Errors = {
     new AppError(415, 'UNSUPPORTED_FILE_TYPE', message),
 
   badRequest: (code: string, message: string) => new AppError(400, code, message),
+
+  /** 401 with a specific code, for public routes that need a credential other than a session. */
+  credentialRequired: (code: string, message: string) => new AppError(401, code, message),
+
+  unprocessable: (code: string, message: string) => new AppError(422, code, message),
+
+  tooManyRequests: (code: string, message: string, retryAfterSeconds: number) =>
+    new AppError(429, code, message, { 'Retry-After': String(Math.max(1, Math.ceil(retryAfterSeconds))) }),
+
+  /** The request is fine but the server is at capacity; the client should retry shortly. */
+  busy: (code: string, message: string, retryAfterSeconds: number) =>
+    new AppError(503, code, message, { 'Retry-After': String(retryAfterSeconds) }),
 };

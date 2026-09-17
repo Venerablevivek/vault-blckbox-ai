@@ -52,6 +52,25 @@ const schema = z.object({
   // counts, which is the correct behaviour: the old hashes become meaningless.
   IP_HASH_PEPPER: z.string().min(8).default('dev-only-pepper-change-me'),
 
+  /**
+   * Signs the short-lived cookie that unlocks a password-protected share link in one browser.
+   * Changing it invalidates every outstanding unlock. Use a long random value in production.
+   */
+  SHARE_GRANT_SECRET: z.string().min(16).default('dev-only-share-grant-secret-change-me'),
+
+  /** Uploads buffered in memory at once; worst-case memory is this x MAX_UPLOAD_BYTES. */
+  MAX_CONCURRENT_UPLOADS: z.coerce.number().int().min(1).max(64).default(4),
+
+  /** Days a deleted document stays restorable before it is purged. */
+  TRASH_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+
+  /** Failed logins for one email address, inside the window, before the address is locked. */
+  LOGIN_LOCKOUT_ATTEMPTS: z.coerce.number().int().min(3).max(100).default(5),
+  LOGIN_LOCKOUT_MINUTES: z.coerce.number().int().min(1).max(1440).default(15),
+
+  /** How often the in-process cleanup job runs. 0 disables it (tests call it directly). */
+  MAINTENANCE_INTERVAL_MINUTES: z.coerce.number().int().min(0).max(1440).default(60),
+
   EXPOSE_INVITE_LINKS: booleanish.default(true),
   SEED_DEMO_DATA: booleanish.default(false),
 });

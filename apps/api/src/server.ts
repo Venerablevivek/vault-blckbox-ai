@@ -21,6 +21,9 @@ import { registerAuditRoutes } from './modules/audit/audit.routes';
 import { createNotificationsService } from './modules/notifications/notifications.service';
 import { registerNotificationRoutes } from './modules/notifications/notifications.routes';
 import { createOverviewService } from './modules/overview/overview.service';
+import { createFoldersService } from './modules/folders/folders.service';
+import { registerFolderRoutes } from './modules/folders/folders.routes';
+import { createMaintenanceService } from './modules/maintenance/maintenance.service';
 import { systemClock, type AppDeps } from './types';
 
 /**
@@ -75,6 +78,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     clock,
     sessionTtlDays: config.SESSION_TTL_DAYS,
     audit,
+    lockoutAttempts: config.LOGIN_LOCKOUT_ATTEMPTS,
+    lockoutMinutes: config.LOGIN_LOCKOUT_MINUTES,
   });
   const workspaces = createWorkspacesService({
     pool,
@@ -92,6 +97,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     logger,
     maxUploadBytes: config.MAX_UPLOAD_BYTES,
     signedUrlTtlSeconds: config.SIGNED_URL_TTL_SECONDS,
+    trashRetentionDays: config.TRASH_RETENTION_DAYS,
     audit,
     notifications,
   });
@@ -101,6 +107,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     clock,
     logger,
     ipHashPepper: config.IP_HASH_PEPPER,
+    grantSecret: config.SHARE_GRANT_SECRET,
     webUrl: config.WEB_URL,
     defaultTtlHours: config.SHARE_DEFAULT_TTL_HOURS,
     signedUrlTtlSeconds: config.SIGNED_URL_TTL_SECONDS,
@@ -109,6 +116,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   });
 
   const overview = createOverviewService({ pool, clock, audit });
+  const folders = createFoldersService({ pool, audit });
+  const maintenance = createMaintenanceService({ pool, clock, logger, documents });
+  // Exposed for main.ts (scheduling) and tests (running a pass on demand).
+  app.decorate('maintenance', maintenance);
 
   registerSession(app, config, auth);
 
@@ -130,7 +141,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   registerWorkspaceRoutes(app, { workspaces, overview });
   registerInvitationRoutes(app, { workspaces });
   registerDocumentRoutes(app, { config, documents, workspaces, shares });
-  registerShareRoutes(app, { shares });
+  registerShareRoutes(app, { config, shares });
+  registerFolderRoutes(app, { folders, workspaces });
   registerAuditRoutes(app, { audit, workspaces });
   registerNotificationRoutes(app, { notifications });
 

@@ -182,7 +182,9 @@ describe('share access visibility', () => {
       url: `/api/shares/${id}/events`,
       headers: { cookie: alice.cookie },
     });
-    expect(response.json().events[0].outcome).toBe('document_deleted');
+    // Trashing a document revokes its links in the same transaction, so the attempt is
+    // recorded against a revoked link.
+    expect(response.json().events[0].outcome).toBe('revoked');
   });
 
   it('never stores a raw IP address', async () => {

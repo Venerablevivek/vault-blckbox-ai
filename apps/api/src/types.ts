@@ -18,7 +18,7 @@ export interface AppDeps {
   clock?: Clock;
 }
 
-export type Role = 'OWNER' | 'MEMBER';
+export type Role = 'OWNER' | 'MEMBER' | 'VIEWER';
 
 export interface SessionUser {
   id: string;
@@ -31,6 +31,10 @@ export interface Membership {
 }
 
 declare module 'fastify' {
+  interface FastifyInstance {
+    /** Housekeeping jobs. Scheduled by main.ts; tests call runOnce() directly. */
+    maintenance: import('./modules/maintenance/maintenance.service').MaintenanceService;
+  }
   interface FastifyRequest {
     /** Set by the session plugin. Null when the request is unauthenticated. */
     user: SessionUser | null;

@@ -31,8 +31,13 @@ const S3_ENDPOINT = process.env.TEST_S3_ENDPOINT ?? 'http://localhost:9000';
 export const TEST_PASSWORD = 'password123';
 
 /** A clock the tests can move forward, so expiry is tested without sleeping. */
+export const TEST_EPOCH = new Date('2026-01-01T12:00:00Z');
+
 export class TestClock implements Clock {
-  constructor(private current = new Date('2026-01-01T12:00:00Z')) {}
+  constructor(private current = new Date(TEST_EPOCH)) {}
+  reset(): void {
+    this.current = new Date(TEST_EPOCH);
+  }
   now(): Date {
     return new Date(this.current);
   }
@@ -123,8 +128,11 @@ export async function createHarness(options?: {
         try {
           await pool.query(
             `TRUNCATE notifications, audit_events, share_access_events, invitations, shares,
-                      documents, workspace_members, workspaces, sessions, users CASCADE`,
+                      documents, folders, login_failures, workspace_members, workspaces,
+                      sessions, users CASCADE`,
           );
+          // Each test starts at the same moment, so a test that moved time cannot leak it.
+          clock.reset();
           return;
         } catch (error) {
           if ((error as { code?: string }).code !== '40P01' || attempt >= 5) throw error;
