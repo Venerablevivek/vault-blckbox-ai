@@ -40,23 +40,12 @@ export const invitationsRepo = {
                      created_by = EXCLUDED.created_by,
                      created_at = now()
        RETURNING id, workspace_id, email, role, expires_at, accepted_at, created_by, created_at`,
-      [
-        invite.id,
-        invite.workspaceId,
-        invite.email,
-        invite.tokenHash,
-        invite.role,
-        invite.expiresAt,
-        invite.createdBy,
-      ],
+      [invite.id, invite.workspaceId, invite.email, invite.tokenHash, invite.role, invite.expiresAt, invite.createdBy],
     );
     return rows[0]!;
   },
 
-  async findByTokenHash(
-    db: Db,
-    tokenHash: Buffer,
-  ): Promise<(InvitationRow & { workspace_name: string }) | null> {
+  async findByTokenHash(db: Db, tokenHash: Buffer): Promise<(InvitationRow & { workspace_name: string }) | null> {
     const { rows } = await db.query<InvitationRow & { workspace_name: string }>(
       `SELECT i.*, w.name AS workspace_name
          FROM invitations i
@@ -71,11 +60,7 @@ export const invitationsRepo = {
    * Revokes a pending invitation by deleting it. Scoped by workspace, so an invitation id
    * from another workspace matches nothing. Accepted invitations are history and stay.
    */
-  async deletePending(
-    db: Db,
-    workspaceId: string,
-    id: string,
-  ): Promise<{ email: string } | null> {
+  async deletePending(db: Db, workspaceId: string, id: string): Promise<{ email: string } | null> {
     const { rows } = await db.query<{ email: string }>(
       `DELETE FROM invitations
         WHERE id = $1 AND workspace_id = $2 AND accepted_at IS NULL

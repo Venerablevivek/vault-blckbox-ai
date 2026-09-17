@@ -20,10 +20,7 @@ export interface MemberRow {
 }
 
 export const workspacesRepo = {
-  async insertWorkspace(
-    db: Db,
-    workspace: { id: string; name: string; createdBy: string },
-  ): Promise<WorkspaceRow> {
+  async insertWorkspace(db: Db, workspace: { id: string; name: string; createdBy: string }): Promise<WorkspaceRow> {
     const { rows } = await db.query<WorkspaceRow>(
       `INSERT INTO workspaces (id, name, created_by) VALUES ($1, $2, $3) RETURNING *`,
       [workspace.id, workspace.name, workspace.createdBy],
@@ -36,10 +33,7 @@ export const workspacesRepo = {
    * key on (workspace_id, user_id) is what actually prevents duplicates; this just means
    * a repeated insert is a no-op instead of an error.
    */
-  async insertMember(
-    db: Db,
-    member: { workspaceId: string; userId: string; role: Role },
-  ): Promise<boolean> {
+  async insertMember(db: Db, member: { workspaceId: string; userId: string; role: Role }): Promise<boolean> {
     const { rowCount } = await db.query(
       `INSERT INTO workspace_members (workspace_id, user_id, role)
        VALUES ($1, $2, $3)
@@ -87,10 +81,10 @@ export const workspacesRepo = {
   },
 
   async releaseStorage(db: Db, workspaceId: string, bytes: number): Promise<void> {
-    await db.query(
-      'UPDATE workspaces SET storage_used_bytes = GREATEST(0, storage_used_bytes - $2) WHERE id = $1',
-      [workspaceId, bytes],
-    );
+    await db.query('UPDATE workspaces SET storage_used_bytes = GREATEST(0, storage_used_bytes - $2) WHERE id = $1', [
+      workspaceId,
+      bytes,
+    ]);
   },
 
   async storageUsage(db: Db, workspaceId: string): Promise<{ usedBytes: number; quotaBytes: number }> {
@@ -175,10 +169,10 @@ export const workspacesRepo = {
   },
 
   async deleteMember(db: Db, workspaceId: string, userId: string): Promise<boolean> {
-    const { rowCount } = await db.query(
-      `DELETE FROM workspace_members WHERE workspace_id = $1 AND user_id = $2`,
-      [workspaceId, userId],
-    );
+    const { rowCount } = await db.query(`DELETE FROM workspace_members WHERE workspace_id = $1 AND user_id = $2`, [
+      workspaceId,
+      userId,
+    ]);
     return (rowCount ?? 0) > 0;
   },
 

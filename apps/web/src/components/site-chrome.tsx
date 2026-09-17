@@ -22,8 +22,7 @@ export function SiteFooter() {
     <footer className="border-t border-line/80 bg-white/60">
       <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-6 text-xs text-ink-muted sm:flex-row sm:items-center sm:justify-between">
         <p>
-          <span className="font-medium text-ink">Vault</span> — documents, workspaces and
-          revocable share links.
+          <span className="font-medium text-ink">Vault</span> — documents, workspaces and revocable share links.
         </p>
         <nav className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <a className="hover:text-ink" href="http://localhost:4000/health" target="_blank" rel="noreferrer">

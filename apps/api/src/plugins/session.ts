@@ -41,15 +41,10 @@ export function currentSessionId(request: FastifyRequest): string {
   return request.sessionId;
 }
 
-export function setSessionCookie(
-  reply: FastifyReply,
-  config: Config,
-  token: string,
-  expiresAt: Date,
-): void {
+export function setSessionCookie(reply: FastifyReply, config: Config, token: string, expiresAt: Date): void {
   reply.setCookie(config.SESSION_COOKIE_NAME, token, {
-    httpOnly: true,      // not readable by JavaScript, so XSS cannot exfiltrate it
-    sameSite: 'lax',     // blocks cross-site form-post CSRF
+    httpOnly: true, // not readable by JavaScript, so XSS cannot exfiltrate it
+    sameSite: 'lax', // blocks cross-site form-post CSRF
     secure: config.SESSION_COOKIE_SECURE,
     path: '/',
     expires: expiresAt,

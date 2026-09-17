@@ -34,7 +34,9 @@ test('a password-protected, download-limited link', async ({ page, browser }) =>
   });
 
   await test.step('the single download is used, then the link is used up', async () => {
-    const download = await visitor.request.get(`/api/shares/${sharePath.split('/').pop()}/download`, { maxRedirects: 0 });
+    const download = await visitor.request.get(`/api/shares/${sharePath.split('/').pop()}/download`, {
+      maxRedirects: 0,
+    });
     expect(download.status()).toBe(302);
     const again = await visitor.request.get(`/api/shares/${sharePath.split('/').pop()}/download`, { maxRedirects: 0 });
     expect(again.status()).toBe(410);

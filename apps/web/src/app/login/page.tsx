@@ -38,32 +38,44 @@ function LoginForm() {
     <div className="w-full max-w-sm">
       <div className="text-center">
         <h1 className="text-[26px] font-semibold tracking-tight">Welcome back</h1>
-        <p className="mt-1.5 text-sm text-ink-muted">
-          Store, organise and share your documents.
-        </p>
+        <p className="mt-1.5 text-sm text-ink-muted">Store, organise and share your documents.</p>
       </div>
 
       <form onSubmit={onSubmit} className="card mt-7 space-y-4 p-6">
         {error ? <ErrorNote message={error} /> : null}
         <div>
-          <label className="label" htmlFor="email">Email</label>
+          <label className="label" htmlFor="email">
+            Email
+          </label>
           <input
-            id="email" type="email" required autoComplete="email" className="input"
+            id="email"
+            type="email"
+            required
+            autoComplete="email"
+            className="input"
             placeholder="you@company.com"
-            value={email} onChange={(e) => setEmail(e.target.value)}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
         </div>
         <div>
           <div className="flex items-baseline justify-between">
-            <label className="label" htmlFor="password">Password</label>
+            <label className="label" htmlFor="password">
+              Password
+            </label>
             <Link href="/forgot-password" className="text-xs font-medium text-brand-600 hover:underline">
               Forgot password?
             </Link>
           </div>
           <input
-            id="password" type="password" required autoComplete="current-password" className="input"
+            id="password"
+            type="password"
+            required
+            autoComplete="current-password"
+            className="input"
             placeholder="••••••••"
-            value={password} onChange={(e) => setPassword(e.target.value)}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
         </div>
         <button type="submit" className="btn-primary h-10 w-full" disabled={busy}>
@@ -72,15 +84,16 @@ function LoginForm() {
       </form>
 
       <p className="mt-5 text-center text-sm text-ink-muted">
-        No account? <Link href="/register" className="font-medium text-brand-600 hover:underline">Create one</Link>
+        No account?{' '}
+        <Link href="/register" className="font-medium text-brand-600 hover:underline">
+          Create one
+        </Link>
       </p>
 
       {/* Seeded by the API on first boot — see the README. One click fills the form so a
           reviewer never has to retype credentials. */}
       <div className="card mt-6 p-4">
-        <p className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">
-          Demo accounts
-        </p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">Demo accounts</p>
         <div className="mt-2.5 space-y-1.5">
           {[
             { email: 'alice@example.com', note: 'owns two workspaces' },

@@ -126,7 +126,15 @@ export function Stat({ value, label }: { value: string | number; label: string }
  * How much of the workspace's storage is used. Turns amber past 80% and red past 95%, and says
  * so in words too, so the state never depends on colour alone.
  */
-export function StorageMeter({ usedBytes, quotaBytes, compact = false }: { usedBytes: number; quotaBytes: number; compact?: boolean }) {
+export function StorageMeter({
+  usedBytes,
+  quotaBytes,
+  compact = false,
+}: {
+  usedBytes: number;
+  quotaBytes: number;
+  compact?: boolean;
+}) {
   const ratio = quotaBytes > 0 ? Math.min(1, usedBytes / quotaBytes) : 0;
   const percent = Math.round(ratio * 100);
   const state = ratio >= 0.95 ? 'full' : ratio >= 0.8 ? 'high' : 'ok';
@@ -137,7 +145,11 @@ export function StorageMeter({ usedBytes, quotaBytes, compact = false }: { usedB
         <span className="text-ink-muted">
           <span className="font-medium text-ink">{formatBytes(usedBytes)}</span> of {formatBytes(quotaBytes)} used
         </span>
-        <span className={state === 'ok' ? 'text-ink-subtle' : state === 'high' ? 'font-medium text-warn' : 'font-medium text-danger'}>
+        <span
+          className={
+            state === 'ok' ? 'text-ink-subtle' : state === 'high' ? 'font-medium text-warn' : 'font-medium text-danger'
+          }
+        >
           {state === 'full' ? 'Almost full' : state === 'high' ? 'Running low' : `${percent}%`}
         </span>
       </div>
@@ -273,16 +285,25 @@ export function Shell({
           {active ? <WorkspaceAvatar id={active.id} name={active.name} /> : null}
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-semibold">{active?.name ?? 'Workspace'}</span>
-            <span className="block text-[11px] text-ink-muted">{active?.role === 'OWNER' ? 'Owner' : active?.role === 'VIEWER' ? 'Viewer · read only' : 'Member'}</span>
+            <span className="block text-[11px] text-ink-muted">
+              {active?.role === 'OWNER' ? 'Owner' : active?.role === 'VIEWER' ? 'Viewer · read only' : 'Member'}
+            </span>
           </span>
           <ChevronsUpDown className="h-4 w-4 text-ink-subtle" aria-hidden />
         </button>
 
         {switcherOpen ? (
           <>
-            <button className="fixed inset-0 z-10 cursor-default" aria-hidden tabIndex={-1} onClick={() => setSwitcherOpen(false)} />
+            <button
+              className="fixed inset-0 z-10 cursor-default"
+              aria-hidden
+              tabIndex={-1}
+              onClick={() => setSwitcherOpen(false)}
+            />
             <div className="panel absolute left-3 right-3 z-20 mt-2 animate-rise p-1.5" role="listbox">
-              <p className="px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">Workspaces</p>
+              <p className="px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
+                Workspaces
+              </p>
               {workspaces.map((w) => (
                 <Link
                   key={w.id}
@@ -325,10 +346,15 @@ export function Shell({
                 href={item.href}
                 aria-current={selected ? 'page' : undefined}
                 className={`group flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm transition-colors ${
-                  selected ? 'bg-brand-600 font-medium text-white shadow-sm' : 'text-ink-muted hover:bg-slate-100 hover:text-ink'
+                  selected
+                    ? 'bg-brand-600 font-medium text-white shadow-sm'
+                    : 'text-ink-muted hover:bg-slate-100 hover:text-ink'
                 }`}
               >
-                <Icon className={`h-[18px] w-[18px] ${selected ? 'text-white' : 'text-ink-subtle group-hover:text-ink'}`} aria-hidden />
+                <Icon
+                  className={`h-[18px] w-[18px] ${selected ? 'text-white' : 'text-ink-subtle group-hover:text-ink'}`}
+                  aria-hidden
+                />
                 {item.label}
               </Link>
             );
@@ -353,7 +379,9 @@ export function Shell({
             {email.slice(0, 2).toUpperCase()}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-xs text-ink" title={email}>{email}</span>
+            <span className="block truncate text-xs text-ink" title={email}>
+              {email}
+            </span>
             <span className="block text-[11px] text-ink-subtle">Account &amp; security</span>
           </span>
         </Link>
@@ -400,10 +428,17 @@ export function Shell({
 
         <footer className="border-t border-line/80 px-6 py-4 text-xs text-ink-subtle">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span><span className="font-medium text-ink-muted">Vault</span> · documents, workspaces and revocable share links</span>
+            <span>
+              <span className="font-medium text-ink-muted">Vault</span> · documents, workspaces and revocable share
+              links
+            </span>
             <span className="flex gap-4">
-              <a className="hover:text-ink" href="http://localhost:4000/health" target="_blank" rel="noreferrer">API status</a>
-              <a className="hover:text-ink" href="http://localhost:9001" target="_blank" rel="noreferrer">Object storage</a>
+              <a className="hover:text-ink" href="http://localhost:4000/health" target="_blank" rel="noreferrer">
+                API status
+              </a>
+              <a className="hover:text-ink" href="http://localhost:9001" target="_blank" rel="noreferrer">
+                Object storage
+              </a>
             </span>
           </div>
         </footer>

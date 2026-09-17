@@ -96,12 +96,7 @@ export function createWorkspacesService(opts: WorkspacesServiceOptions) {
      * There is no email provider in this project: per the blueprint, the generated link is
      * returned in the response (and logged) in development instead.
      */
-    async invite(input: {
-      workspaceId: string;
-      actor: { id: string; role: Role };
-      email: string;
-      role: Role;
-    }) {
+    async invite(input: { workspaceId: string; actor: { id: string; role: Role }; email: string; role: Role }) {
       requireOwner(input.actor.role);
 
       const email = normalizeEmail(input.email);
@@ -197,10 +192,7 @@ export function createWorkspacesService(opts: WorkspacesServiceOptions) {
         if (current === input.role) return;
 
         if (current === 'OWNER' && (await workspacesRepo.countOwners(tx, input.workspaceId)) <= 1) {
-          throw Errors.conflict(
-            'LAST_OWNER',
-            'A workspace needs at least one owner. Promote someone else first.',
-          );
+          throw Errors.conflict('LAST_OWNER', 'A workspace needs at least one owner. Promote someone else first.');
         }
 
         await workspacesRepo.updateRole(tx, input.workspaceId, input.targetUserId, input.role);
@@ -252,11 +244,7 @@ export function createWorkspacesService(opts: WorkspacesServiceOptions) {
      * leaves cannot keep distributing workspace documents through links they handed out.
      * Access ends on their very next request because membership is read per request.
      */
-    async removeMember(input: {
-      workspaceId: string;
-      actor: { id: string; role: Role };
-      targetUserId: string;
-    }) {
+    async removeMember(input: { workspaceId: string; actor: { id: string; role: Role }; targetUserId: string }) {
       const leaving = input.targetUserId === input.actor.id;
       if (!leaving) requireOwner(input.actor.role);
 
@@ -343,7 +331,11 @@ export function createWorkspacesService(opts: WorkspacesServiceOptions) {
      * so a stray request can't do it. Access ends immediately for everyone; the files are
      * removed from storage by the next maintenance pass. This cannot be undone.
      */
-    async deleteWorkspace(input: { workspaceId: string; actor: { id: string; role: Role; email: string }; confirmName: string }) {
+    async deleteWorkspace(input: {
+      workspaceId: string;
+      actor: { id: string; role: Role; email: string };
+      confirmName: string;
+    }) {
       requireOwner(input.actor.role);
       const workspace = await workspacesRepo.findById(pool, input.workspaceId);
       if (!workspace || workspace.deleted_at) throw Errors.notFound('Workspace');

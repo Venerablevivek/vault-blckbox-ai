@@ -8,10 +8,7 @@ import { registerSession } from './plugins/session';
 import { createAuthService } from './modules/auth/auth.service';
 import { registerAuthRoutes } from './modules/auth/auth.routes';
 import { createWorkspacesService } from './modules/workspaces/workspaces.service';
-import {
-  registerInvitationRoutes,
-  registerWorkspaceRoutes,
-} from './modules/workspaces/workspaces.routes';
+import { registerInvitationRoutes, registerWorkspaceRoutes } from './modules/workspaces/workspaces.routes';
 import { createDocumentsService } from './modules/documents/documents.service';
 import { registerDocumentRoutes } from './modules/documents/documents.routes';
 import { createSharesService } from './modules/shares/shares.service';

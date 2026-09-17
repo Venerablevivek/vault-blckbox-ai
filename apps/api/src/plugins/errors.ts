@@ -38,9 +38,7 @@ export function registerErrorHandler(app: FastifyInstance): void {
     const fastifyError = error as { statusCode?: number; message?: string };
     const statusCode = fastifyError.statusCode;
     if (statusCode === 413) {
-      return reply
-        .status(413)
-        .send({ error: { code: 'FILE_TOO_LARGE', message: 'File exceeds the maximum size.' } });
+      return reply.status(413).send({ error: { code: 'FILE_TOO_LARGE', message: 'File exceeds the maximum size.' } });
     }
     if (statusCode === 429) {
       return reply.status(429).send({
@@ -54,8 +52,6 @@ export function registerErrorHandler(app: FastifyInstance): void {
     }
 
     request.log.error({ err: error }, 'unhandled error');
-    return reply
-      .status(500)
-      .send({ error: { code: 'INTERNAL_ERROR', message: 'Something went wrong.' } });
+    return reply.status(500).send({ error: { code: 'INTERNAL_ERROR', message: 'Something went wrong.' } });
   });
 }

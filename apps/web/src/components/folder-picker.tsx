@@ -36,21 +36,24 @@ export function FolderPicker({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (id: string | null) => {
-    setLoading(true);
-    try {
-      const data = await api.get<{ folders: FolderDto[]; path: FolderDto[] }>(
-        `/api/workspaces/${workspaceId}/folders${id ? `?parentId=${id}` : ''}`,
-      );
-      setFolders(data.folders.filter((f) => f.id !== excludeId));
-      setPath(data.path);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : 'Could not load folders.');
-    } finally {
-      setLoading(false);
-    }
-  }, [workspaceId, excludeId]);
+  const load = useCallback(
+    async (id: string | null) => {
+      setLoading(true);
+      try {
+        const data = await api.get<{ folders: FolderDto[]; path: FolderDto[] }>(
+          `/api/workspaces/${workspaceId}/folders${id ? `?parentId=${id}` : ''}`,
+        );
+        setFolders(data.folders.filter((f) => f.id !== excludeId));
+        setPath(data.path);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof ApiRequestError ? err.message : 'Could not load folders.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [workspaceId, excludeId],
+  );
 
   useEffect(() => {
     void load(parentId);
@@ -63,13 +66,19 @@ export function FolderPicker({
       {error ? <ErrorNote message={error} /> : null}
 
       <nav aria-label="Folder path" className="flex flex-wrap items-center gap-1 text-sm">
-        <button className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-ink-muted hover:bg-slate-100 hover:text-ink" onClick={() => setParentId(null)}>
+        <button
+          className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-ink-muted hover:bg-slate-100 hover:text-ink"
+          onClick={() => setParentId(null)}
+        >
           <Home className="h-3.5 w-3.5" aria-hidden /> Workspace
         </button>
         {path.map((f) => (
           <span key={f.id} className="inline-flex items-center gap-1">
             <ChevronRight className="h-3.5 w-3.5 text-ink-subtle" aria-hidden />
-            <button className="rounded px-1.5 py-1 text-ink-muted hover:bg-slate-100 hover:text-ink" onClick={() => setParentId(f.id)}>
+            <button
+              className="rounded px-1.5 py-1 text-ink-muted hover:bg-slate-100 hover:text-ink"
+              onClick={() => setParentId(f.id)}
+            >
               {f.name}
             </button>
           </span>
@@ -99,11 +108,19 @@ export function FolderPicker({
 
       <div className="mt-5 flex items-center justify-between gap-3">
         <p className="truncate text-xs text-ink-muted">
-          Destination: <span className="font-medium text-ink">{path.length ? path[path.length - 1]!.name : 'Workspace root'}</span>
+          Destination:{' '}
+          <span className="font-medium text-ink">{path.length ? path[path.length - 1]!.name : 'Workspace root'}</span>
         </p>
         <div className="flex gap-2">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn-primary" onClick={() => onPick(parentId)} disabled={here} title={here ? 'Already here' : undefined}>
+          <button className="btn-secondary" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            className="btn-primary"
+            onClick={() => onPick(parentId)}
+            disabled={here}
+            title={here ? 'Already here' : undefined}
+          >
             {confirmLabel}
           </button>
         </div>

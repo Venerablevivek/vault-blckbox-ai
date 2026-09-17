@@ -39,7 +39,11 @@ function niceMax(value: number): number {
 }
 
 function dayLabel(day: string): string {
-  return new Date(`${day}T00:00:00Z`).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  return new Date(`${day}T00:00:00Z`).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
 }
 
 export function DailyBars({
@@ -78,7 +82,11 @@ export function DailyBars({
             <span className="text-base font-semibold text-ink">{total}</span> {unit} in the last {data.length} days
           </p>
         </div>
-        <button className="text-xs text-ink-muted hover:text-ink" onClick={() => setAsTable((v) => !v)} aria-controls={tableId}>
+        <button
+          className="text-xs text-ink-muted hover:text-ink"
+          onClick={() => setAsTable((v) => !v)}
+          aria-controls={tableId}
+        >
           {asTable ? 'View chart' : 'View table'}
         </button>
       </div>
@@ -86,23 +94,45 @@ export function DailyBars({
       {asTable ? (
         <div id={tableId} className="mt-3 max-h-48 overflow-auto">
           <table className="w-full text-xs">
-            <thead><tr className="text-left text-ink-muted"><th className="py-1 font-medium">Day</th><th className="py-1 text-right font-medium">{unit}</th></tr></thead>
+            <thead>
+              <tr className="text-left text-ink-muted">
+                <th className="py-1 font-medium">Day</th>
+                <th className="py-1 text-right font-medium">{unit}</th>
+              </tr>
+            </thead>
             <tbody className="tabular-nums">
               {data.map((d) => (
-                <tr key={d.day} className="border-t border-line"><td className="py-1">{dayLabel(d.day)}</td><td className="py-1 text-right">{d.value}</td></tr>
+                <tr key={d.day} className="border-t border-line">
+                  <td className="py-1">{dayLabel(d.day)}</td>
+                  <td className="py-1 text-right">{d.value}</td>
+                </tr>
               ))}
             </tbody>
           </table>
         </div>
       ) : (
         <div className="relative mt-3">
-          <svg viewBox={`0 0 ${width} ${height}`} className="h-auto w-full" role="img" aria-label={`${title}: ${total} ${unit} over ${data.length} days`}>
+          <svg
+            viewBox={`0 0 ${width} ${height}`}
+            className="h-auto w-full"
+            role="img"
+            aria-label={`${title}: ${total} ${unit} over ${data.length} days`}
+          >
             {[0, 0.5, 1].map((f) => {
               const y = base - plotH * f;
               return (
                 <g key={f}>
-                  <line x1={pad.left} x2={width - pad.right} y1={y} y2={y} stroke={f === 0 ? '#d3d8e3' : '#eef0f5'} strokeWidth={1} />
-                  <text x={pad.left - 6} y={y + 3} textAnchor="end" className="fill-slate-400 text-[10px] tabular-nums">{Math.round(max * f)}</text>
+                  <line
+                    x1={pad.left}
+                    x2={width - pad.right}
+                    y1={y}
+                    y2={y}
+                    stroke={f === 0 ? '#d3d8e3' : '#eef0f5'}
+                    strokeWidth={1}
+                  />
+                  <text x={pad.left - 6} y={y + 3} textAnchor="end" className="fill-slate-400 text-[10px] tabular-nums">
+                    {Math.round(max * f)}
+                  </text>
                 </g>
               );
             })}
@@ -111,19 +141,39 @@ export function DailyBars({
               const h = (d.value / max) * plotH;
               return (
                 <g key={d.day}>
-                  {hover === i ? <rect x={pad.left + slot * i + 1} y={pad.top} width={slot - 2} height={plotH} rx={6} fill="#f1f3f9" /> : null}
+                  {hover === i ? (
+                    <rect
+                      x={pad.left + slot * i + 1}
+                      y={pad.top}
+                      width={slot - 2}
+                      height={plotH}
+                      rx={6}
+                      fill="#f1f3f9"
+                    />
+                  ) : null}
                   <path d={barPath(x, base, barW, h)} fill={color} opacity={hover === null || hover === i ? 1 : 0.45} />
                   {/* Hit target: the whole column, far wider than the bar. */}
                   <rect
-                    x={pad.left + slot * i} y={pad.top} width={slot} height={plotH} fill="transparent"
-                    onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}
+                    x={pad.left + slot * i}
+                    y={pad.top}
+                    width={slot}
+                    height={plotH}
+                    fill="transparent"
+                    onMouseEnter={() => setHover(i)}
+                    onMouseLeave={() => setHover(null)}
                   />
                 </g>
               );
             })}
             {[0, Math.floor((data.length - 1) / 2), data.length - 1].map((i) =>
               data[i] ? (
-                <text key={i} x={pad.left + slot * i + slot / 2} y={height - 6} textAnchor="middle" className="fill-slate-400 text-[10px]">
+                <text
+                  key={i}
+                  x={pad.left + slot * i + slot / 2}
+                  y={height - 6}
+                  textAnchor="middle"
+                  className="fill-slate-400 text-[10px]"
+                >
                   {dayLabel(data[i]!.day)}
                 </text>
               ) : null,
@@ -144,11 +194,7 @@ export function DailyBars({
   );
 }
 
-export function StorageBreakdown({
-  items,
-}: {
-  items: Array<{ category: string; count: number; bytes: number }>;
-}) {
+export function StorageBreakdown({ items }: { items: Array<{ category: string; count: number; bytes: number }> }) {
   const [hover, setHover] = useState<string | null>(null);
   const total = items.reduce((sum, i) => sum + i.bytes, 0);
   const ordered = CATEGORY_ORDER.map((c) => items.find((i) => i.category === c)).filter(
@@ -159,15 +205,22 @@ export function StorageBreakdown({
     <div className="card p-5">
       <p className="text-sm font-semibold">Storage by type</p>
       <p className="mt-0.5 text-xs text-ink-muted">
-        <span className="text-base font-semibold text-ink">{formatBytes(total)}</span> across {items.reduce((s, i) => s + i.count, 0)} files
+        <span className="text-base font-semibold text-ink">{formatBytes(total)}</span> across{' '}
+        {items.reduce((s, i) => s + i.count, 0)} files
       </p>
 
       {total === 0 ? (
-        <p className="mt-6 rounded-xl border border-dashed border-line-strong py-8 text-center text-sm text-ink-muted">Nothing stored yet</p>
+        <p className="mt-6 rounded-xl border border-dashed border-line-strong py-8 text-center text-sm text-ink-muted">
+          Nothing stored yet
+        </p>
       ) : (
         <>
           {/* Segments in fixed category order with a 2px surface gap between them. */}
-          <div className="mt-4 flex h-3 w-full gap-[2px] overflow-hidden rounded-full" role="img" aria-label="Storage by file type">
+          <div
+            className="mt-4 flex h-3 w-full gap-[2px] overflow-hidden rounded-full"
+            role="img"
+            aria-label="Storage by file type"
+          >
             {ordered.map((item) => (
               <div
                 key={item.category}
@@ -194,11 +247,19 @@ export function StorageBreakdown({
                 onMouseEnter={() => setHover(item.category)}
                 onMouseLeave={() => setHover(null)}
               >
-                <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: CATEGORY_COLORS[item.category] }} aria-hidden />
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-sm"
+                  style={{ background: CATEGORY_COLORS[item.category] }}
+                  aria-hidden
+                />
                 <span className="flex-1">{item.category}</span>
-                <span className="text-xs text-ink-muted tabular-nums">{item.count} file{item.count === 1 ? '' : 's'}</span>
+                <span className="text-xs text-ink-muted tabular-nums">
+                  {item.count} file{item.count === 1 ? '' : 's'}
+                </span>
                 <span className="w-16 text-right text-xs font-medium tabular-nums">{formatBytes(item.bytes)}</span>
-                <span className="w-10 text-right text-xs text-ink-muted tabular-nums">{Math.round((item.bytes / total) * 100)}%</span>
+                <span className="w-10 text-right text-xs text-ink-muted tabular-nums">
+                  {Math.round((item.bytes / total) * 100)}%
+                </span>
               </li>
             ))}
           </ul>

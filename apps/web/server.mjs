@@ -91,7 +91,8 @@ createServer(async (req, res) => {
 
   for (const [name, value] of Object.entries(SECURITY_HEADERS)) res.setHeader(name, value);
 
-  const share = (req.method === 'GET' || req.method === 'HEAD') && req.url ? SHARE_PAGE.exec(req.url.split('?')[0]) : null;
+  const share =
+    (req.method === 'GET' || req.method === 'HEAD') && req.url ? SHARE_PAGE.exec(req.url.split('?')[0]) : null;
   if (share) {
     res.setHeader('Cache-Control', 'no-store');
     const status = await shareStatus(share[1], req);

@@ -56,11 +56,7 @@ const CONTAINER_FAMILIES: Record<string, string[]> = {
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   ],
-  'application/x-ole-storage': [
-    'application/msword',
-    'application/vnd.ms-excel',
-    'application/vnd.ms-powerpoint',
-  ],
+  'application/x-ole-storage': ['application/msword', 'application/vnd.ms-excel', 'application/vnd.ms-powerpoint'],
 };
 
 /** Text formats have no magic bytes; they are validated as "no binary control characters". */
@@ -112,9 +108,7 @@ export function assertAllowedType(declared: string, head: Buffer): string {
   const family = CONTAINER_FAMILIES[detected];
   const matches = family ? family.includes(mime) : detected === mime;
   if (!matches) {
-    throw Errors.unsupportedMediaType(
-      `File content does not match the declared type "${mime}".`,
-    );
+    throw Errors.unsupportedMediaType(`File content does not match the declared type "${mime}".`);
   }
 
   return mime;

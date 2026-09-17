@@ -63,11 +63,15 @@ export function createMaintenanceService(deps: {
         };
 
         await step('sessions', async () => {
-          const r = await client.query('DELETE FROM sessions WHERE expires_at < $1', [daysAgo(RETENTION.expiredSessionsDays)]);
+          const r = await client.query('DELETE FROM sessions WHERE expires_at < $1', [
+            daysAgo(RETENTION.expiredSessionsDays),
+          ]);
           result.expiredSessions = r.rowCount ?? 0;
         });
         await step('login_failures', async () => {
-          const r = await client.query('DELETE FROM login_failures WHERE failed_at < $1', [daysAgo(RETENTION.loginFailuresDays)]);
+          const r = await client.query('DELETE FROM login_failures WHERE failed_at < $1', [
+            daysAgo(RETENTION.loginFailuresDays),
+          ]);
           result.loginFailures = r.rowCount ?? 0;
         });
         await step('notifications', async () => {
@@ -79,10 +83,9 @@ export function createMaintenanceService(deps: {
           result.notifications = r.rowCount ?? 0;
         });
         await step('invitations', async () => {
-          const r = await client.query(
-            'DELETE FROM invitations WHERE accepted_at IS NULL AND expires_at < $1',
-            [daysAgo(RETENTION.expiredInvitationsDays)],
-          );
+          const r = await client.query('DELETE FROM invitations WHERE accepted_at IS NULL AND expires_at < $1', [
+            daysAgo(RETENTION.expiredInvitationsDays),
+          ]);
           result.expiredInvitations = r.rowCount ?? 0;
         });
         await step('trash', async () => {
@@ -111,7 +114,8 @@ export function createMaintenanceService(deps: {
     /** Runs a pass every `minutes`, starting shortly after boot. Returns a stop function. */
     schedule(minutes: number): () => void {
       if (minutes <= 0) return () => undefined;
-      const run = () => void this.runOnce().catch((error: unknown) => logger.error({ err: error }, 'maintenance pass failed'));
+      const run = () =>
+        void this.runOnce().catch((error: unknown) => logger.error({ err: error }, 'maintenance pass failed'));
       const first = setTimeout(run, 30_000);
       const timer = setInterval(run, minutes * 60_000);
       first.unref();

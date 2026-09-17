@@ -24,13 +24,7 @@ import {
 } from './documents.repo';
 
 /** Types safe to render inline: none of them can carry executable script. */
-export const PREVIEWABLE = new Set([
-  'application/pdf',
-  'image/png',
-  'image/jpeg',
-  'image/gif',
-  'image/webp',
-]);
+export const PREVIEWABLE = new Set(['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp']);
 
 export interface DocumentsServiceOptions {
   pool: Pool;
@@ -229,9 +223,7 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
       const searching = Boolean(input.search);
 
       const path =
-        input.folderId && input.view === 'active'
-          ? await foldersRepo.pathTo(pool, workspaceId, input.folderId)
-          : [];
+        input.folderId && input.view === 'active' ? await foldersRepo.pathTo(pool, workspaceId, input.folderId) : [];
       if (input.folderId && input.view === 'active' && path.length === 0) {
         throw Errors.notFound('Folder');
       }

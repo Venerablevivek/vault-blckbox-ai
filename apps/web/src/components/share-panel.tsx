@@ -169,7 +169,13 @@ export function SharePanel({
   }
 
   return (
-    <Modal open onClose={onClose} title={`Share “${doc.filename}”`} description="Read-only links. No account needed to open them." size="lg">
+    <Modal
+      open
+      onClose={onClose}
+      title={`Share “${doc.filename}”`}
+      description="Read-only links. No account needed to open them."
+      size="lg"
+    >
       <div className="space-y-5">
         {error ? <ErrorNote message={error} /> : null}
 
@@ -178,7 +184,9 @@ export function SharePanel({
             <p className="flex items-center gap-2 text-sm font-medium text-brand-900">
               <Check className="h-4 w-4" aria-hidden /> Your link is ready
             </p>
-            <p className="mt-2 break-all rounded-lg border border-brand-200 bg-white px-3 py-2 font-mono text-xs">{created.url}</p>
+            <p className="mt-2 break-all rounded-lg border border-brand-200 bg-white px-3 py-2 font-mono text-xs">
+              {created.url}
+            </p>
             <div className="mt-3 flex gap-2">
               <button
                 className="btn-primary btn-sm flex-1"
@@ -239,7 +247,9 @@ export function SharePanel({
             <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-subtle">New link</h3>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="label" htmlFor="new-expiry">Expires after</label>
+                <label className="label" htmlFor="new-expiry">
+                  Expires after
+                </label>
                 <select
                   id="new-expiry"
                   className="input"
@@ -247,12 +257,16 @@ export function SharePanel({
                   onChange={(e) => setHours(e.target.value === 'null' ? null : Number(e.target.value))}
                 >
                   {EXPIRY_CHOICES.map((c) => (
-                    <option key={c.label} value={String(c.hours)}>{c.label}</option>
+                    <option key={c.label} value={String(c.hours)}>
+                      {c.label}
+                    </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="label" htmlFor="new-limit">Downloads</label>
+                <label className="label" htmlFor="new-limit">
+                  Downloads
+                </label>
                 <select
                   id="new-limit"
                   className="input"
@@ -260,14 +274,21 @@ export function SharePanel({
                   onChange={(e) => setLimit(e.target.value === 'null' ? null : Number(e.target.value))}
                 >
                   {LIMIT_CHOICES.map((c) => (
-                    <option key={c.label} value={String(c.value)}>{c.label}</option>
+                    <option key={c.label} value={String(c.value)}>
+                      {c.label}
+                    </option>
                   ))}
                 </select>
               </div>
             </div>
             <div>
               <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={usePassword} onChange={(e) => setUsePassword(e.target.checked)} className="h-4 w-4 rounded border-line-strong" />
+                <input
+                  type="checkbox"
+                  checked={usePassword}
+                  onChange={(e) => setUsePassword(e.target.checked)}
+                  className="h-4 w-4 rounded border-line-strong"
+                />
                 Require a password
               </label>
               {usePassword ? (
@@ -334,10 +355,14 @@ function LinkRow({
           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-ink-muted">
             <span>{expiryLabel(link.expiresAt)}</span>
             {link.hasPassword ? (
-              <span className="chip-brand"><KeyRound className="h-3 w-3" aria-hidden /> Password</span>
+              <span className="chip-brand">
+                <KeyRound className="h-3 w-3" aria-hidden /> Password
+              </span>
             ) : null}
             {limit ? (
-              <span className="chip"><Download className="h-3 w-3" aria-hidden /> {limit}</span>
+              <span className="chip">
+                <Download className="h-3 w-3" aria-hidden /> {limit}
+              </span>
             ) : null}
           </div>
         </div>
@@ -385,13 +410,14 @@ function LinkRow({
         {forwarded ? (
           <p className="mt-3 flex gap-2 rounded-lg border border-warn/25 bg-warn-soft px-3 py-2 text-xs text-warn">
             <ShieldAlert className="h-4 w-4 shrink-0" aria-hidden />
-            Opened from {activity.distinctViewers} different networks. If you sent this to one person, consider revoking it
-            and issuing a new link.
+            Opened from {activity.distinctViewers} different networks. If you sent this to one person, consider revoking
+            it and issuing a new link.
           </p>
         ) : null}
         {activity.blockedAttempts > 0 ? (
           <p className="mt-2 text-xs text-ink-muted">
-            {activity.blockedAttempts} blocked attempt{activity.blockedAttempts === 1 ? '' : 's'} (wrong password, expired or used up).
+            {activity.blockedAttempts} blocked attempt{activity.blockedAttempts === 1 ? '' : 's'} (wrong password,
+            expired or used up).
           </p>
         ) : null}
       </div>
@@ -404,7 +430,15 @@ function LinkRow({
             events.map((event, index) => (
               <li key={index} className="flex items-center justify-between gap-3 py-2">
                 <span className="flex items-center gap-2">
-                  <span className={event.outcome === 'downloaded' ? 'chip-ok' : event.outcome === 'bad_password' ? 'chip-warn' : 'chip'}>
+                  <span
+                    className={
+                      event.outcome === 'downloaded'
+                        ? 'chip-ok'
+                        : event.outcome === 'bad_password'
+                          ? 'chip-warn'
+                          : 'chip'
+                    }
+                  >
                     {event.outcome.replace('_', ' ')}
                   </span>
                   <span className="font-mono text-ink-subtle">viewer {event.viewer}</span>
@@ -423,7 +457,15 @@ function LinkRow({
  * Edits a live link in place. The URL stays the same, so the recipient keeps what they have.
  * Every field starts as "keep", so saving only sends what was actually changed.
  */
-function EditLink({ link, onSaved, onCancel }: { link: ShareSummary; onSaved: () => Promise<void>; onCancel: () => void }) {
+function EditLink({
+  link,
+  onSaved,
+  onCancel,
+}: {
+  link: ShareSummary;
+  onSaved: () => Promise<void>;
+  onCancel: () => void;
+}) {
   const [expiry, setExpiry] = useState<string>('keep');
   const [passwordMode, setPasswordMode] = useState<'keep' | 'set' | 'remove'>('keep');
   const [password, setPassword] = useState('');
@@ -465,20 +507,30 @@ function EditLink({ link, onSaved, onCancel }: { link: ShareSummary; onSaved: ()
       {error ? <ErrorNote message={error} /> : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="label" htmlFor={`expiry-${link.id}`}>Expiry</label>
+          <label className="label" htmlFor={`expiry-${link.id}`}>
+            Expiry
+          </label>
           <select id={`expiry-${link.id}`} className="input" value={expiry} onChange={(e) => setExpiry(e.target.value)}>
             <option value="keep">Keep ({expiryLabel(link.expiresAt).toLowerCase()})</option>
             {EXPIRY_CHOICES.map((c) => (
-              <option key={c.label} value={String(c.hours)}>{c.hours === null ? 'Never expires' : `${c.label} from now`}</option>
+              <option key={c.label} value={String(c.hours)}>
+                {c.hours === null ? 'Never expires' : `${c.label} from now`}
+              </option>
             ))}
           </select>
         </div>
         <div>
-          <label className="label" htmlFor={`limit-${link.id}`}>Downloads</label>
+          <label className="label" htmlFor={`limit-${link.id}`}>
+            Downloads
+          </label>
           <select id={`limit-${link.id}`} className="input" value={limit} onChange={(e) => setLimit(e.target.value)}>
             <option value="keep">Keep ({limitLabel(link) ?? 'unlimited'})</option>
             {LIMIT_CHOICES.map((c) => (
-              <option key={c.label} value={String(c.value)} disabled={c.value !== null && c.value <= link.downloadCount}>
+              <option
+                key={c.label}
+                value={String(c.value)}
+                disabled={c.value !== null && c.value <= link.downloadCount}
+              >
                 {c.label}
               </option>
             ))}
@@ -486,7 +538,9 @@ function EditLink({ link, onSaved, onCancel }: { link: ShareSummary; onSaved: ()
         </div>
       </div>
       <div>
-        <label className="label" htmlFor={`password-mode-${link.id}`}>Password</label>
+        <label className="label" htmlFor={`password-mode-${link.id}`}>
+          Password
+        </label>
         <select
           id={`password-mode-${link.id}`}
           className="input"
@@ -509,12 +563,18 @@ function EditLink({ link, onSaved, onCancel }: { link: ShareSummary; onSaved: ()
           />
         ) : null}
         {passwordMode === 'set' && link.hasPassword ? (
-          <p className="mt-1 text-[11px] text-ink-subtle">Anyone who already unlocked the link will need the new password.</p>
+          <p className="mt-1 text-[11px] text-ink-subtle">
+            Anyone who already unlocked the link will need the new password.
+          </p>
         ) : null}
       </div>
       <div className="flex justify-end gap-2">
-        <button type="button" className="btn-secondary btn-sm" onClick={onCancel}>Cancel</button>
-        <button type="submit" className="btn-primary btn-sm" disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button>
+        <button type="button" className="btn-secondary btn-sm" onClick={onCancel}>
+          Cancel
+        </button>
+        <button type="submit" className="btn-primary btn-sm" disabled={saving}>
+          {saving ? 'Saving…' : 'Save changes'}
+        </button>
       </div>
     </form>
   );

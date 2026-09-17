@@ -59,14 +59,26 @@ export default function HomePage() {
             <FolderPlus className="h-5 w-5" aria-hidden />
           </span>
           <h1 className="mt-4 text-[26px] font-semibold tracking-tight">Create a workspace</h1>
-          <p className="mt-1.5 text-sm text-ink-muted">You&rsquo;re not in any workspace right now. Start a new one to upload and share documents.</p>
+          <p className="mt-1.5 text-sm text-ink-muted">
+            You&rsquo;re not in any workspace right now. Start a new one to upload and share documents.
+          </p>
         </div>
         <form onSubmit={create} className="card mt-7 space-y-4 p-6">
           {error ? <ErrorNote message={error} /> : null}
           <div>
-            <label className="label" htmlFor="workspace-name">Workspace name</label>
-            <input id="workspace-name" className="input" required maxLength={120} placeholder="e.g. Marketing" autoFocus
-              value={name} onChange={(e) => setName(e.target.value)} />
+            <label className="label" htmlFor="workspace-name">
+              Workspace name
+            </label>
+            <input
+              id="workspace-name"
+              className="input"
+              required
+              maxLength={120}
+              placeholder="e.g. Marketing"
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
           </div>
           <button type="submit" className="btn-primary h-10 w-full" disabled={busy || !name.trim()}>
             {busy ? 'Creating…' : 'Create workspace'}

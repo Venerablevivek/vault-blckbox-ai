@@ -16,7 +16,6 @@ import type { SharesService } from '../shares/shares.service';
 import type { DocumentsService } from './documents.service';
 import type { DocumentListRow, DocumentRow } from './documents.repo';
 
-
 function toDocumentDto(row: DocumentRow & Partial<DocumentListRow>) {
   return {
     id: row.id,
@@ -109,18 +108,21 @@ export function registerDocumentRoutes(
       const membership = await workspaces.requireMember(workspaceId, user.id);
       const query = ListDocumentsQuery.parse(request.query);
 
-      const [result, storage] = await Promise.all([documents.list({
-        membership,
-        userId: user.id,
-        view: query.view,
-        folderId: query.folderId ?? null,
-        search: query.q ? query.q : null,
-        filter: query.filter,
-        sort: query.sort,
-        ascending: query.order ? query.order === 'asc' : query.sort === 'name',
-        limit: query.limit,
-        cursor: query.cursor ?? null,
-      }), documents.storageUsage(workspaceId)]);
+      const [result, storage] = await Promise.all([
+        documents.list({
+          membership,
+          userId: user.id,
+          view: query.view,
+          folderId: query.folderId ?? null,
+          search: query.q ? query.q : null,
+          filter: query.filter,
+          sort: query.sort,
+          ascending: query.order ? query.order === 'asc' : query.sort === 'name',
+          limit: query.limit,
+          cursor: query.cursor ?? null,
+        }),
+        documents.storageUsage(workspaceId),
+      ]);
 
       return {
         role: membership.role,

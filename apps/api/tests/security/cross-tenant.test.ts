@@ -1,10 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import {
-  createHarness,
-  registerUser,
-  uploadDocument,
-  type Harness,
-} from '../helpers/harness';
+import { createHarness, registerUser, uploadDocument, type Harness } from '../helpers/harness';
 
 /**
  * Blueprint test area 1: "Non-member cannot access another workspace or its documents."

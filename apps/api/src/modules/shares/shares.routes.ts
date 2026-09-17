@@ -1,12 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Config } from '../../config';
-import {
-  CreateShareBody,
-  ShareIdParams,
-  ShareTokenParams,
-  UnlockBody,
-  UpdateShareBody,
-} from '../../contracts/shares';
+import { CreateShareBody, ShareIdParams, ShareTokenParams, UnlockBody, UpdateShareBody } from '../../contracts/shares';
 import { currentUser, requireSession } from '../../plugins/session';
 import { grantCookieName, type SharesService, type Visitor } from './shares.service';
 
@@ -15,11 +9,7 @@ function visitorOf(request: FastifyRequest): Visitor {
   return { ip: request.ip, userAgent: request.headers['user-agent'] ?? null };
 }
 
-
-export function registerShareRoutes(
-  app: FastifyInstance,
-  deps: { config: Config; shares: SharesService },
-): void {
+export function registerShareRoutes(app: FastifyInstance, deps: { config: Config; shares: SharesService }): void {
   const { config, shares } = deps;
 
   const grantOf = (request: FastifyRequest, token: string) => request.cookies[grantCookieName(token)];

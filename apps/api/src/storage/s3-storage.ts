@@ -11,8 +11,8 @@ import type { Readable } from 'node:stream';
 import type { FileStorage, SignedUrlOptions } from './file-storage';
 
 export interface S3StorageOptions {
-  endpoint: string;        // internal: how the API reaches MinIO (e.g. http://minio:9000)
-  publicEndpoint: string;  // public:   what the browser can resolve (e.g. http://localhost:9000)
+  endpoint: string; // internal: how the API reaches MinIO (e.g. http://minio:9000)
+  publicEndpoint: string; // public:   what the browser can resolve (e.g. http://localhost:9000)
   region: string;
   bucket: string;
   accessKeyId: string;
@@ -84,9 +84,7 @@ export class S3Storage implements FileStorage {
   }
 
   async download(key: string): Promise<Readable> {
-    const result = await this.internal.send(
-      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
-    );
+    const result = await this.internal.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
     return result.Body as Readable;
   }
 

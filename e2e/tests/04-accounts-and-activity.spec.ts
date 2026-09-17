@@ -44,11 +44,18 @@ test("an owner's dashboard and activity feed render every kind of event", async 
   await page.request.patch(`/api/workspaces/${workspaceId}/folders/${folderId}`, { data: { name: 'Roadmaps' } });
 
   await page.goto(`/workspaces/${workspaceId}`);
-  await expect(page.getByRole('heading', { name: 'Recent activity' }).or(page.getByText('Recent activity'))).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Recent activity' }).or(page.getByText('Recent activity')),
+  ).toBeVisible();
   await expect(page.getByText(/restored plan\.txt from the trash/)).toBeVisible();
 
   await page.goto(`/workspaces/${workspaceId}/activity`);
-  for (const text of [/moved plan\.txt to the trash/, /created the folder Plans/, /renamed the folder Plans to Roadmaps/, /changed a share link's settings/]) {
+  for (const text of [
+    /moved plan\.txt to the trash/,
+    /created the folder Plans/,
+    /renamed the folder Plans to Roadmaps/,
+    /changed a share link's settings/,
+  ]) {
     await expect(page.getByText(text).first()).toBeVisible();
   }
   expect(errors).toEqual([]);

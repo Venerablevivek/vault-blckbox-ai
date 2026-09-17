@@ -47,7 +47,10 @@ export default function AccountPage({ params }: { params: Promise<{ id: string }
     setSavingPassword(true);
     setPasswordError(null);
     try {
-      const result = await api.post<{ signedOutSessions: number }>('/api/auth/password', { currentPassword, newPassword });
+      const result = await api.post<{ signedOutSessions: number }>('/api/auth/password', {
+        currentPassword,
+        newPassword,
+      });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -69,7 +72,9 @@ export default function AccountPage({ params }: { params: Promise<{ id: string }
     const { browser, os } = describeUserAgent(target.userAgent);
     const ok = await dialogs.confirm({
       title: target.current ? 'Sign out of this browser?' : `Sign out ${browser} on ${os}?`,
-      body: target.current ? 'You’ll need to sign in again here.' : 'That session ends immediately. Anyone using it is signed out on their next click.',
+      body: target.current
+        ? 'You’ll need to sign in again here.'
+        : 'That session ends immediately. Anyone using it is signed out on their next click.',
       confirmLabel: 'Sign out',
       tone: 'danger',
     });
@@ -107,7 +112,13 @@ export default function AccountPage({ params }: { params: Promise<{ id: string }
   const others = sessions?.filter((s) => !s.current).length ?? 0;
 
   return (
-    <Shell workspaces={session.workspaces} activeId={workspaceId} email={session.email} title="Account" subtitle={session.email}>
+    <Shell
+      workspaces={session.workspaces}
+      activeId={workspaceId}
+      email={session.email}
+      title="Account"
+      subtitle={session.email}
+    >
       <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6">
         <section className="card p-6" aria-labelledby="password-heading">
           <div className="flex items-start gap-3">
@@ -115,27 +126,66 @@ export default function AccountPage({ params }: { params: Promise<{ id: string }
               <KeyRound className="h-5 w-5" aria-hidden />
             </span>
             <div>
-              <h2 id="password-heading" className="text-sm font-semibold">Password</h2>
-              <p className="mt-0.5 text-xs text-ink-muted">Changing it signs out every other session and emails you a notice.</p>
+              <h2 id="password-heading" className="text-sm font-semibold">
+                Password
+              </h2>
+              <p className="mt-0.5 text-xs text-ink-muted">
+                Changing it signs out every other session and emails you a notice.
+              </p>
             </div>
           </div>
 
           <form onSubmit={changePassword} className="mt-5 grid gap-4 sm:grid-cols-2">
-            {passwordError ? <div className="sm:col-span-2"><ErrorNote message={passwordError} /></div> : null}
+            {passwordError ? (
+              <div className="sm:col-span-2">
+                <ErrorNote message={passwordError} />
+              </div>
+            ) : null}
             <div className="sm:col-span-2">
-              <label className="label" htmlFor="current-password">Current password</label>
-              <input id="current-password" type="password" className="input" autoComplete="current-password" required
-                value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+              <label className="label" htmlFor="current-password">
+                Current password
+              </label>
+              <input
+                id="current-password"
+                type="password"
+                className="input"
+                autoComplete="current-password"
+                required
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+              />
             </div>
             <div>
-              <label className="label" htmlFor="new-password">New password</label>
-              <input id="new-password" type="password" className="input" autoComplete="new-password" required minLength={8} maxLength={200}
-                value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+              <label className="label" htmlFor="new-password">
+                New password
+              </label>
+              <input
+                id="new-password"
+                type="password"
+                className="input"
+                autoComplete="new-password"
+                required
+                minLength={8}
+                maxLength={200}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
             </div>
             <div>
-              <label className="label" htmlFor="confirm-password">Confirm new password</label>
-              <input id="confirm-password" type="password" className="input" autoComplete="new-password" required minLength={8} maxLength={200}
-                value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+              <label className="label" htmlFor="confirm-password">
+                Confirm new password
+              </label>
+              <input
+                id="confirm-password"
+                type="password"
+                className="input"
+                autoComplete="new-password"
+                required
+                minLength={8}
+                maxLength={200}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
             </div>
             <div className="sm:col-span-2">
               <button className="btn-primary" disabled={savingPassword || !currentPassword || newPassword.length < 8}>
@@ -151,15 +201,23 @@ export default function AccountPage({ params }: { params: Promise<{ id: string }
               <ShieldCheck className="h-5 w-5" aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
-              <h2 id="sessions-heading" className="text-sm font-semibold">Where you&rsquo;re signed in</h2>
-              <p className="mt-0.5 text-xs text-ink-muted">If you don&rsquo;t recognise a session, sign it out and change your password.</p>
+              <h2 id="sessions-heading" className="text-sm font-semibold">
+                Where you&rsquo;re signed in
+              </h2>
+              <p className="mt-0.5 text-xs text-ink-muted">
+                If you don&rsquo;t recognise a session, sign it out and change your password.
+              </p>
             </div>
             <button className="btn-secondary btn-sm" onClick={() => void signOutOthers()} disabled={others === 0}>
               <LogOut className="h-3.5 w-3.5" aria-hidden /> Sign out everywhere else
             </button>
           </div>
 
-          {sessionsError ? <div className="px-6 pb-6"><ErrorNote message={sessionsError} /></div> : null}
+          {sessionsError ? (
+            <div className="px-6 pb-6">
+              <ErrorNote message={sessionsError} />
+            </div>
+          ) : null}
           {!sessions && !sessionsError ? <Skeleton rows={2} /> : null}
           {sessions ? (
             <ul className="divide-y divide-line border-t border-line">

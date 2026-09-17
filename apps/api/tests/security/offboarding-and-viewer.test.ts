@@ -28,7 +28,10 @@ describe('offboarding and the viewer role', () => {
     });
 
   async function join(user: User, email: string, role: 'MEMBER' | 'VIEWER') {
-    const invite = await call('POST', `/api/workspaces/${alice.workspaceId}/invitations`, alice.cookie, { email, role });
+    const invite = await call('POST', `/api/workspaces/${alice.workspaceId}/invitations`, alice.cookie, {
+      email,
+      role,
+    });
     const token = invite.json().inviteUrl.split('/invite/')[1];
     await call('POST', `/api/invitations/${token}/accept`, user.cookie);
   }
@@ -52,7 +55,9 @@ describe('offboarding and the viewer role', () => {
       const { token } = await bobSharesADocument();
       expect((await call('GET', `/api/shares/${token}`)).statusCode).toBe(200);
 
-      expect((await call('DELETE', `/api/workspaces/${alice.workspaceId}/members/${bob.userId}`, alice.cookie)).statusCode).toBe(204);
+      expect(
+        (await call('DELETE', `/api/workspaces/${alice.workspaceId}/members/${bob.userId}`, alice.cookie)).statusCode,
+      ).toBe(204);
 
       expect((await call('GET', `/api/shares/${token}`)).statusCode).toBe(410);
     });
@@ -75,7 +80,9 @@ describe('offboarding and the viewer role', () => {
       await call('POST', `/api/shares/${token}/view`);
       await settle();
       const before = (await call('GET', '/api/notifications', bob.cookie)).json();
-      expect(before.notifications.some((n: { title: string }) => n.title.includes('Confidential-Roadmap.pdf'))).toBe(true);
+      expect(before.notifications.some((n: { title: string }) => n.title.includes('Confidential-Roadmap.pdf'))).toBe(
+        true,
+      );
 
       await call('DELETE', `/api/workspaces/${alice.workspaceId}/members/${bob.userId}`, alice.cookie);
 
@@ -99,7 +106,9 @@ describe('offboarding and the viewer role', () => {
   describe('downgrading to viewer', () => {
     it('revokes the links the person created', async () => {
       const { token } = await bobSharesADocument();
-      const change = await call('PATCH', `/api/workspaces/${alice.workspaceId}/members/${bob.userId}`, alice.cookie, { role: 'VIEWER' });
+      const change = await call('PATCH', `/api/workspaces/${alice.workspaceId}/members/${bob.userId}`, alice.cookie, {
+        role: 'VIEWER',
+      });
       expect(change.statusCode).toBe(204);
       expect((await call('GET', `/api/shares/${token}`)).statusCode).toBe(410);
     });
@@ -116,7 +125,9 @@ describe('offboarding and the viewer role', () => {
     });
 
     it('can list, preview and download', async () => {
-      expect((await call('GET', `/api/workspaces/${alice.workspaceId}/documents`, carol.cookie)).json().documents).toHaveLength(1);
+      expect(
+        (await call('GET', `/api/workspaces/${alice.workspaceId}/documents`, carol.cookie)).json().documents,
+      ).toHaveLength(1);
       expect((await call('GET', `/api/documents/${documentId}/preview`, carol.cookie)).statusCode).toBe(302);
       expect((await call('GET', `/api/documents/${documentId}/download`, carol.cookie)).statusCode).toBe(302);
       expect((await call('GET', `/api/workspaces/${alice.workspaceId}/members`, carol.cookie)).statusCode).toBe(200);
@@ -125,10 +136,20 @@ describe('offboarding and the viewer role', () => {
     it('cannot upload, share, create folders, rename, move or delete', async () => {
       expect((await uploadDocument(h.app, carol.cookie, alice.workspaceId)).statusCode).toBe(403);
       expect((await call('POST', '/api/shares', carol.cookie, { documentId })).statusCode).toBe(403);
-      expect((await call('POST', `/api/workspaces/${alice.workspaceId}/folders`, carol.cookie, { name: 'Mine' })).statusCode).toBe(403);
-      expect((await call('PATCH', `/api/documents/${documentId}`, carol.cookie, { filename: 'x.pdf' })).statusCode).toBe(403);
+      expect(
+        (await call('POST', `/api/workspaces/${alice.workspaceId}/folders`, carol.cookie, { name: 'Mine' })).statusCode,
+      ).toBe(403);
+      expect(
+        (await call('PATCH', `/api/documents/${documentId}`, carol.cookie, { filename: 'x.pdf' })).statusCode,
+      ).toBe(403);
       expect((await call('DELETE', `/api/documents/${documentId}`, carol.cookie)).statusCode).toBe(403);
-      expect((await call('POST', `/api/workspaces/${alice.workspaceId}/invitations`, carol.cookie, { email: 'x@example.com' })).statusCode).toBe(403);
+      expect(
+        (
+          await call('POST', `/api/workspaces/${alice.workspaceId}/invitations`, carol.cookie, {
+            email: 'x@example.com',
+          })
+        ).statusCode,
+      ).toBe(403);
       expect((await call('GET', `/api/workspaces/${alice.workspaceId}/audit`, carol.cookie)).statusCode).toBe(403);
     });
 
@@ -138,7 +159,9 @@ describe('offboarding and the viewer role', () => {
     });
 
     it('can leave the workspace', async () => {
-      expect((await call('DELETE', `/api/workspaces/${alice.workspaceId}/members/${carol.userId}`, carol.cookie)).statusCode).toBe(204);
+      expect(
+        (await call('DELETE', `/api/workspaces/${alice.workspaceId}/members/${carol.userId}`, carol.cookie)).statusCode,
+      ).toBe(204);
     });
   });
 });

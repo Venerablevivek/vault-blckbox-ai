@@ -55,26 +55,39 @@ function RegisterForm() {
       <form onSubmit={onSubmit} className="card mt-7 space-y-4 p-6">
         {error ? <ErrorNote message={error} /> : null}
         <div>
-          <label className="label" htmlFor="email">Email</label>
+          <label className="label" htmlFor="email">
+            Email
+          </label>
           <input
-            id="email" type="email" required autoComplete="email" className="input"
+            id="email"
+            type="email"
+            required
+            autoComplete="email"
+            className="input"
             placeholder="you@company.com"
-            value={email} onChange={(e) => setEmail(e.target.value)}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             // The invitation is bound to this address, so it cannot be changed here.
             readOnly={Boolean(invitedEmail)}
           />
           {invitedEmail ? (
-            <p className="mt-1.5 text-xs text-ink-subtle">
-              This invitation is tied to this address.
-            </p>
+            <p className="mt-1.5 text-xs text-ink-subtle">This invitation is tied to this address.</p>
           ) : null}
         </div>
         <div>
-          <label className="label" htmlFor="password">Password</label>
+          <label className="label" htmlFor="password">
+            Password
+          </label>
           <input
-            id="password" type="password" required minLength={8} autoComplete="new-password"
-            className="input" placeholder="At least 8 characters"
-            value={password} onChange={(e) => setPassword(e.target.value)}
+            id="password"
+            type="password"
+            required
+            minLength={8}
+            autoComplete="new-password"
+            className="input"
+            placeholder="At least 8 characters"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
         </div>
         <button type="submit" className="btn-primary h-10 w-full" disabled={busy}>
@@ -84,7 +97,9 @@ function RegisterForm() {
 
       <p className="mt-5 text-center text-sm text-ink-muted">
         Already have an account?{' '}
-        <Link href="/login" className="font-medium text-brand-600 hover:underline">Sign in</Link>
+        <Link href="/login" className="font-medium text-brand-600 hover:underline">
+          Sign in
+        </Link>
       </p>
     </div>
   );

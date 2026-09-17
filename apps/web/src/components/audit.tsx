@@ -68,33 +68,61 @@ export function describeAuditEvent(event: AuditEvent): string {
   const role = (r: unknown) => (r === 'OWNER' ? 'an owner' : r === 'VIEWER' ? 'a viewer' : 'a member');
 
   switch (event.action) {
-    case 'workspace.created': return `${who} created this workspace`;
-    case 'workspace.renamed': return `${who} renamed the workspace to “${m.to as string}”`;
-    case 'document.uploaded': return `${who} uploaded ${file}`;
-    case 'document.downloaded': return `${who} downloaded ${file}`;
-    case 'document.previewed': return `${who} previewed ${file}`;
-    case 'document.renamed': return `${who} renamed ${m.from as string} to ${m.to as string}`;
-    case 'document.deleted': return `${who} deleted ${file}`;
-    case 'share.created': return `${who} created a share link for ${file}`;
-    case 'share.revoked': return `${who} revoked a share link`;
-    case 'share.accessed': return `${file} was opened through a share link`;
-    case 'share.blocked': return `A share link for ${file} was used after it stopped working`;
-    case 'member.invited': return `${who} invited ${email}`;
-    case 'member.joined': return `${email} joined the workspace`;
-    case 'member.removed': return `${who} removed ${email}`;
-    case 'member.left': return `${email} left the workspace`;
-    case 'member.role_changed': return `${who} made ${email} ${role(m.to)}`;
-    case 'invitation.revoked': return `${who} cancelled the invitation for ${email}`;
-    case 'document.moved': return `${who} moved ${file}`;
-    case 'document.trashed': return `${who} moved ${file} to the trash`;
-    case 'document.restored': return `${who} restored ${file} from the trash`;
+    case 'workspace.created':
+      return `${who} created this workspace`;
+    case 'workspace.renamed':
+      return `${who} renamed the workspace to “${m.to as string}”`;
+    case 'document.uploaded':
+      return `${who} uploaded ${file}`;
+    case 'document.downloaded':
+      return `${who} downloaded ${file}`;
+    case 'document.previewed':
+      return `${who} previewed ${file}`;
+    case 'document.renamed':
+      return `${who} renamed ${m.from as string} to ${m.to as string}`;
+    case 'document.deleted':
+      return `${who} deleted ${file}`;
+    case 'share.created':
+      return `${who} created a share link for ${file}`;
+    case 'share.revoked':
+      return `${who} revoked a share link`;
+    case 'share.accessed':
+      return `${file} was opened through a share link`;
+    case 'share.blocked':
+      return `A share link for ${file} was used after it stopped working`;
+    case 'member.invited':
+      return `${who} invited ${email}`;
+    case 'member.joined':
+      return `${email} joined the workspace`;
+    case 'member.removed':
+      return `${who} removed ${email}`;
+    case 'member.left':
+      return `${email} left the workspace`;
+    case 'member.role_changed':
+      return `${who} made ${email} ${role(m.to)}`;
+    case 'invitation.revoked':
+      return `${who} cancelled the invitation for ${email}`;
+    case 'document.moved':
+      return `${who} moved ${file}`;
+    case 'document.trashed':
+      return `${who} moved ${file} to the trash`;
+    case 'document.restored':
+      return `${who} restored ${file} from the trash`;
     case 'document.purged':
-      return m.reason === 'retention' ? `${file} was deleted forever after 30 days in the trash` : `${who} deleted ${file} forever`;
-    case 'folder.created': return `${who} created the folder ${folder}`;
-    case 'folder.renamed': return `${who} renamed the folder ${m.from as string} to ${m.to as string}`;
-    case 'folder.moved': return `${who} moved the folder ${folder}`;
-    case 'folder.deleted': return `${who} deleted the folder ${folder}`;
-    case 'share.updated': return `${who} changed a share link's settings`;
-    default: return event.action;
+      return m.reason === 'retention'
+        ? `${file} was deleted forever after 30 days in the trash`
+        : `${who} deleted ${file} forever`;
+    case 'folder.created':
+      return `${who} created the folder ${folder}`;
+    case 'folder.renamed':
+      return `${who} renamed the folder ${m.from as string} to ${m.to as string}`;
+    case 'folder.moved':
+      return `${who} moved the folder ${folder}`;
+    case 'folder.deleted':
+      return `${who} deleted the folder ${folder}`;
+    case 'share.updated':
+      return `${who} changed a share link's settings`;
+    default:
+      return event.action;
   }
 }

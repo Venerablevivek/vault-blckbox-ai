@@ -93,10 +93,7 @@ export const notificationsRepo = {
       );
       return;
     }
-    await db.query(
-      `UPDATE notifications SET read_at = $2 WHERE user_id = $1 AND read_at IS NULL`,
-      [userId, at],
-    );
+    await db.query(`UPDATE notifications SET read_at = $2 WHERE user_id = $1 AND read_at IS NULL`, [userId, at]);
   },
 
   /** Everyone in a workspace except the person who caused the event. */

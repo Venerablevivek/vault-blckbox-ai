@@ -32,16 +32,32 @@ export function DocumentDetails({ document, onClose }: { document: DocumentDto |
             <dt className="text-ink-muted">Type</dt>
             <dd className="break-all">{document.mimeType}</dd>
             <dt className="text-ink-muted">Size</dt>
-            <dd>{formatBytes(document.size)} <span className="text-ink-subtle">({document.size.toLocaleString()} bytes)</span></dd>
+            <dd>
+              {formatBytes(document.size)}{' '}
+              <span className="text-ink-subtle">({document.size.toLocaleString()} bytes)</span>
+            </dd>
             <dt className="text-ink-muted">Uploaded</dt>
-            <dd>{formatDate(document.createdAt)}{document.uploadedByEmail ? ` by ${document.uploadedByEmail}` : ''}</dd>
+            <dd>
+              {formatDate(document.createdAt)}
+              {document.uploadedByEmail ? ` by ${document.uploadedByEmail}` : ''}
+            </dd>
             <dt className="text-ink-muted">SHA-256</dt>
             <dd className="min-w-0">
               {document.sha256 ? (
                 <div className="flex items-start gap-2">
-                  <code className="min-w-0 flex-1 break-all rounded-md bg-slate-50 px-2 py-1 font-mono text-[11px] leading-relaxed">{document.sha256}</code>
-                  <button className="btn-ghost btn-sm shrink-0" onClick={() => void copyChecksum()} aria-label="Copy checksum">
-                    {copied ? <Check className="h-3.5 w-3.5 text-ok" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}
+                  <code className="min-w-0 flex-1 break-all rounded-md bg-slate-50 px-2 py-1 font-mono text-[11px] leading-relaxed">
+                    {document.sha256}
+                  </code>
+                  <button
+                    className="btn-ghost btn-sm shrink-0"
+                    onClick={() => void copyChecksum()}
+                    aria-label="Copy checksum"
+                  >
+                    {copied ? (
+                      <Check className="h-3.5 w-3.5 text-ok" aria-hidden />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5" aria-hidden />
+                    )}
                   </button>
                 </div>
               ) : (
@@ -50,7 +66,8 @@ export function DocumentDetails({ document, onClose }: { document: DocumentDto |
             </dd>
           </dl>
           <p className="mt-4 text-xs text-ink-subtle">
-            To check a downloaded copy is intact, compare this with the output of <code className="font-mono">shasum -a 256</code>.
+            To check a downloaded copy is intact, compare this with the output of{' '}
+            <code className="font-mono">shasum -a 256</code>.
           </p>
         </div>
       ) : null}

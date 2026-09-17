@@ -232,7 +232,7 @@ describe('audit trail and notifications', () => {
     expect(aliceAfter.notifications.filter((n) => n.type === 'document.uploaded')).toHaveLength(0);
   });
 
-  it('marks notifications read, and only ever the caller\'s own', async () => {
+  it("marks notifications read, and only ever the caller's own", async () => {
     const bob = await registerUser(h.app, 'bob@example.com');
     const upload = await uploadDocument(h.app, alice.cookie, alice.workspaceId);
     const share = await h.app.inject({

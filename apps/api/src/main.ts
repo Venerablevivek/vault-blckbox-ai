@@ -56,7 +56,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-   
   console.error('Fatal startup error:', error);
   process.exit(1);
 });

@@ -19,7 +19,13 @@ describe('account security', () => {
     alice = await registerUser(h.app, 'alice@example.com');
   });
 
-  const call = (method: string, url: string, cookie?: string, payload?: unknown, headers: Record<string, string> = {}) =>
+  const call = (
+    method: string,
+    url: string,
+    cookie?: string,
+    payload?: unknown,
+    headers: Record<string, string> = {},
+  ) =>
     h.app.inject({
       method: method as 'GET',
       url,
@@ -33,7 +39,13 @@ describe('account security', () => {
   };
 
   const login = async (password = TEST_PASSWORD, userAgent = 'test-agent') => {
-    const response = await call('POST', '/api/auth/login', undefined, { email: 'alice@example.com', password }, { 'user-agent': userAgent });
+    const response = await call(
+      'POST',
+      '/api/auth/login',
+      undefined,
+      { email: 'alice@example.com', password },
+      { 'user-agent': userAgent },
+    );
     return { response, cookie: response.statusCode === 200 ? cookieOf(response) : '' };
   };
 
@@ -92,16 +104,28 @@ describe('account security', () => {
       h.mailer.clear();
       const second = await requestResetToken();
 
-      expect((await call('POST', '/api/auth/password/reset', undefined, { token: second, password: NEW_PASSWORD })).statusCode).toBe(200);
-      const reused = await call('POST', '/api/auth/password/reset', undefined, { token: second, password: 'another-password-1' });
+      expect(
+        (await call('POST', '/api/auth/password/reset', undefined, { token: second, password: NEW_PASSWORD }))
+          .statusCode,
+      ).toBe(200);
+      const reused = await call('POST', '/api/auth/password/reset', undefined, {
+        token: second,
+        password: 'another-password-1',
+      });
       expect(reused.statusCode).toBe(410);
       expect(reused.json().error.code).toBe('RESET_LINK_INVALID');
-      expect((await call('POST', '/api/auth/password/reset', undefined, { token: first, password: 'another-password-2' })).statusCode).toBe(410);
+      expect(
+        (await call('POST', '/api/auth/password/reset', undefined, { token: first, password: 'another-password-2' }))
+          .statusCode,
+      ).toBe(410);
 
       h.mailer.clear();
       const late = await requestResetToken();
       h.clock.advanceHours(1.1);
-      expect((await call('POST', '/api/auth/password/reset', undefined, { token: late, password: 'another-password-3' })).statusCode).toBe(410);
+      expect(
+        (await call('POST', '/api/auth/password/reset', undefined, { token: late, password: 'another-password-3' }))
+          .statusCode,
+      ).toBe(410);
     });
 
     it('lets exactly one of two simultaneous submissions of the same link succeed', async () => {
@@ -115,7 +139,9 @@ describe('account security', () => {
 
     it('sends at most three reset emails an hour to one account', async () => {
       for (let i = 0; i < 5; i++) {
-        expect((await call('POST', '/api/auth/password/forgot', undefined, { email: 'alice@example.com' })).statusCode).toBe(202);
+        expect(
+          (await call('POST', '/api/auth/password/forgot', undefined, { email: 'alice@example.com' })).statusCode,
+        ).toBe(202);
         await new Promise((resolve) => setTimeout(resolve, 60));
       }
       await new Promise((resolve) => setTimeout(resolve, 150));
@@ -135,18 +161,27 @@ describe('account security', () => {
   describe('changing the password', () => {
     it('requires the current password, and wrong guesses count toward the lockout', async () => {
       for (let i = 0; i < 5; i++) {
-        const wrong = await call('POST', '/api/auth/password', alice.cookie, { currentPassword: `guess-${i}`, newPassword: NEW_PASSWORD });
+        const wrong = await call('POST', '/api/auth/password', alice.cookie, {
+          currentPassword: `guess-${i}`,
+          newPassword: NEW_PASSWORD,
+        });
         expect(wrong.statusCode).toBe(400);
         expect(wrong.json().error.code).toBe('INCORRECT_PASSWORD');
       }
-      const locked = await call('POST', '/api/auth/password', alice.cookie, { currentPassword: TEST_PASSWORD, newPassword: NEW_PASSWORD });
+      const locked = await call('POST', '/api/auth/password', alice.cookie, {
+        currentPassword: TEST_PASSWORD,
+        newPassword: NEW_PASSWORD,
+      });
       expect(locked.statusCode).toBe(429);
       expect(locked.json().error.code).toBe('ACCOUNT_LOCKED');
     });
 
     it('keeps this session, ends the others, and emails a notice', async () => {
       const other = await login();
-      const changed = await call('POST', '/api/auth/password', alice.cookie, { currentPassword: TEST_PASSWORD, newPassword: NEW_PASSWORD });
+      const changed = await call('POST', '/api/auth/password', alice.cookie, {
+        currentPassword: TEST_PASSWORD,
+        newPassword: NEW_PASSWORD,
+      });
       expect(changed.statusCode).toBe(200);
       expect(changed.json()).toEqual({ signedOutSessions: 1 });
 
@@ -157,14 +192,27 @@ describe('account security', () => {
     });
 
     it('refuses the same password and a password that is too short', async () => {
-      const same = await call('POST', '/api/auth/password', alice.cookie, { currentPassword: TEST_PASSWORD, newPassword: TEST_PASSWORD });
+      const same = await call('POST', '/api/auth/password', alice.cookie, {
+        currentPassword: TEST_PASSWORD,
+        newPassword: TEST_PASSWORD,
+      });
       expect(same.json().error.code).toBe('PASSWORD_UNCHANGED');
-      expect((await call('POST', '/api/auth/password', alice.cookie, { currentPassword: TEST_PASSWORD, newPassword: 'short' })).statusCode).toBe(400);
+      expect(
+        (
+          await call('POST', '/api/auth/password', alice.cookie, {
+            currentPassword: TEST_PASSWORD,
+            newPassword: 'short',
+          })
+        ).statusCode,
+      ).toBe(400);
     });
 
     it('still succeeds when the notice email cannot be sent', async () => {
       h.mailer.failNext = true;
-      const changed = await call('POST', '/api/auth/password', alice.cookie, { currentPassword: TEST_PASSWORD, newPassword: NEW_PASSWORD });
+      const changed = await call('POST', '/api/auth/password', alice.cookie, {
+        currentPassword: TEST_PASSWORD,
+        newPassword: NEW_PASSWORD,
+      });
       expect(changed.statusCode).toBe(200);
       expect((await login(NEW_PASSWORD)).response.statusCode).toBe(200);
     });
@@ -183,7 +231,10 @@ describe('account security', () => {
 
     it('signs out another session, which stops working at once', async () => {
       const other = await login();
-      const sessions = (await call('GET', '/api/auth/sessions', alice.cookie)).json().sessions as Array<{ id: string; current: boolean }>;
+      const sessions = (await call('GET', '/api/auth/sessions', alice.cookie)).json().sessions as Array<{
+        id: string;
+        current: boolean;
+      }>;
       const target = sessions.find((s) => !s.current)!;
 
       expect((await call('DELETE', `/api/auth/sessions/${target.id}`, alice.cookie)).statusCode).toBe(204);
@@ -193,7 +244,9 @@ describe('account security', () => {
 
     it("cannot sign out someone else's session", async () => {
       const bob = await registerUser(h.app, 'bob@example.com');
-      const bobSessions = (await call('GET', '/api/auth/sessions', bob.cookie)).json().sessions as Array<{ id: string }>;
+      const bobSessions = (await call('GET', '/api/auth/sessions', bob.cookie)).json().sessions as Array<{
+        id: string;
+      }>;
 
       expect((await call('DELETE', `/api/auth/sessions/${bobSessions[0]!.id}`, alice.cookie)).statusCode).toBe(404);
       expect((await call('GET', '/api/auth/me', bob.cookie)).statusCode).toBe(200);
@@ -210,7 +263,10 @@ describe('account security', () => {
     });
 
     it('treats ending the current session as signing out', async () => {
-      const sessions = (await call('GET', '/api/auth/sessions', alice.cookie)).json().sessions as Array<{ id: string; current: boolean }>;
+      const sessions = (await call('GET', '/api/auth/sessions', alice.cookie)).json().sessions as Array<{
+        id: string;
+        current: boolean;
+      }>;
       const response = await call('DELETE', `/api/auth/sessions/${sessions.find((s) => s.current)!.id}`, alice.cookie);
       expect(response.statusCode).toBe(204);
       expect(String(response.headers['set-cookie'])).toContain('fs_session=;');
@@ -218,7 +274,8 @@ describe('account security', () => {
     });
 
     it('updates "last active" at most every five minutes', async () => {
-      const read = async () => (await h.query<{ last_seen_at: Date }>('SELECT last_seen_at FROM sessions'))[0]!.last_seen_at.getTime();
+      const read = async () =>
+        (await h.query<{ last_seen_at: Date }>('SELECT last_seen_at FROM sessions'))[0]!.last_seen_at.getTime();
       const start = await read();
 
       h.clock.advanceHours(1 / 60);
@@ -235,8 +292,13 @@ describe('account security', () => {
 
   describe('invitation email', () => {
     it('emails the invitation link, with user-supplied names escaped', async () => {
-      await call('PATCH', `/api/workspaces/${alice.workspaceId}`, alice.cookie, { name: '<img src=x onerror=alert(1)>' });
-      const invite = await call('POST', `/api/workspaces/${alice.workspaceId}/invitations`, alice.cookie, { email: 'bob@example.com', role: 'VIEWER' });
+      await call('PATCH', `/api/workspaces/${alice.workspaceId}`, alice.cookie, {
+        name: '<img src=x onerror=alert(1)>',
+      });
+      const invite = await call('POST', `/api/workspaces/${alice.workspaceId}/invitations`, alice.cookie, {
+        email: 'bob@example.com',
+        role: 'VIEWER',
+      });
       expect(invite.statusCode).toBe(201);
       expect(invite.json().emailSent).toBe(true);
 
@@ -249,7 +311,9 @@ describe('account security', () => {
 
     it('still creates the invitation when the email fails, and says so', async () => {
       h.mailer.failNext = true;
-      const invite = await call('POST', `/api/workspaces/${alice.workspaceId}/invitations`, alice.cookie, { email: 'bob@example.com' });
+      const invite = await call('POST', `/api/workspaces/${alice.workspaceId}/invitations`, alice.cookie, {
+        email: 'bob@example.com',
+      });
       expect(invite.statusCode).toBe(201);
       expect(invite.json().emailSent).toBe(false);
       expect(await h.query('SELECT 1 FROM invitations WHERE email = $1', ['bob@example.com'])).toHaveLength(1);

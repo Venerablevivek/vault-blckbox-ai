@@ -1,10 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import {
-  createHarness,
-  registerUser,
-  uploadDocument,
-  type Harness,
-} from '../helpers/harness';
+import { createHarness, registerUser, uploadDocument, type Harness } from '../helpers/harness';
 
 type User = Awaited<ReturnType<typeof registerUser>>;
 
@@ -58,13 +53,16 @@ describe('workspace management, rename, preview and overview', () => {
 
   it('allows the original owner to step down once another owner exists', async () => {
     await addBob();
-    const promote = await call(
-      'PATCH', `/api/workspaces/${alice.workspaceId}/members/${bob.userId}`, alice.cookie, { role: 'OWNER' },
-    );
+    const promote = await call('PATCH', `/api/workspaces/${alice.workspaceId}/members/${bob.userId}`, alice.cookie, {
+      role: 'OWNER',
+    });
     expect(promote.statusCode).toBe(204);
 
     const demoteSelf = await call(
-      'PATCH', `/api/workspaces/${alice.workspaceId}/members/${alice.userId}`, alice.cookie, { role: 'MEMBER' },
+      'PATCH',
+      `/api/workspaces/${alice.workspaceId}/members/${alice.userId}`,
+      alice.cookie,
+      { role: 'MEMBER' },
     );
     expect(demoteSelf.statusCode).toBe(204);
 
@@ -121,15 +119,15 @@ describe('workspace management, rename, preview and overview', () => {
   });
 
   it('forbids a member from changing roles, and hides the workspace from outsiders', async () => {
-    const outsider = await call(
-      'PATCH', `/api/workspaces/${alice.workspaceId}/members/${alice.userId}`, bob.cookie, { role: 'MEMBER' },
-    );
+    const outsider = await call('PATCH', `/api/workspaces/${alice.workspaceId}/members/${alice.userId}`, bob.cookie, {
+      role: 'MEMBER',
+    });
     expect(outsider.statusCode).toBe(404);
 
     await addBob();
-    const member = await call(
-      'PATCH', `/api/workspaces/${alice.workspaceId}/members/${bob.userId}`, bob.cookie, { role: 'OWNER' },
-    );
+    const member = await call('PATCH', `/api/workspaces/${alice.workspaceId}/members/${bob.userId}`, bob.cookie, {
+      role: 'OWNER',
+    });
     // A member cannot promote themselves.
     expect(member.statusCode).toBe(403);
   });
@@ -141,7 +139,9 @@ describe('workspace management, rename, preview and overview', () => {
     const id = invite.json().invitation.id;
     const token = invite.json().inviteUrl.split('/invite/')[1];
 
-    expect((await call('DELETE', `/api/workspaces/${alice.workspaceId}/invitations/${id}`, alice.cookie)).statusCode).toBe(204);
+    expect(
+      (await call('DELETE', `/api/workspaces/${alice.workspaceId}/invitations/${id}`, alice.cookie)).statusCode,
+    ).toBe(204);
     expect((await h.app.inject({ method: 'GET', url: `/api/invitations/${token}` })).statusCode).toBe(404);
   });
 
@@ -168,7 +168,8 @@ describe('workspace management, rename, preview and overview', () => {
     expect(rename.json().document.filename).toBe('final.pdf');
 
     const [after] = await h.query<{ storage_key: string; filename: string }>(
-      'SELECT storage_key, filename FROM documents WHERE id = $1', [id],
+      'SELECT storage_key, filename FROM documents WHERE id = $1',
+      [id],
     );
     expect(after!.filename).toBe('final.pdf');
     expect(after!.storage_key).toBe(before!.storage_key);
@@ -180,8 +181,12 @@ describe('workspace management, rename, preview and overview', () => {
     const id = upload.json().document.id;
 
     expect((await call('PATCH', `/api/documents/${id}`, bob.cookie, { filename: 'x.pdf' })).statusCode).toBe(403);
-    expect((await call('PATCH', `/api/workspaces/${alice.workspaceId}`, bob.cookie, { name: 'Mine' })).statusCode).toBe(403);
-    expect((await call('PATCH', `/api/workspaces/${alice.workspaceId}`, alice.cookie, { name: 'Team' })).statusCode).toBe(200);
+    expect((await call('PATCH', `/api/workspaces/${alice.workspaceId}`, bob.cookie, { name: 'Mine' })).statusCode).toBe(
+      403,
+    );
+    expect(
+      (await call('PATCH', `/api/workspaces/${alice.workspaceId}`, alice.cookie, { name: 'Team' })).statusCode,
+    ).toBe(200);
   });
 
   // ---- preview -----------------------------------------------------------------
@@ -193,7 +198,12 @@ describe('workspace management, rename, preview and overview', () => {
     expect(decodeURIComponent(preview.headers.location as string)).toContain('inline;');
 
     const csv = await uploadDocument(
-      h.app, alice.cookie, alice.workspaceId, 'data.csv', Buffer.from('a,b\n1,2\n'), 'text/csv',
+      h.app,
+      alice.cookie,
+      alice.workspaceId,
+      'data.csv',
+      Buffer.from('a,b\n1,2\n'),
+      'text/csv',
     );
     const refused = await call('GET', `/api/documents/${csv.json().document.id}/preview`, alice.cookie);
     expect(refused.statusCode).toBe(415);

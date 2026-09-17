@@ -55,10 +55,13 @@ export default function MembersPage({ params }: { params: Promise<{ id: string }
     setInviteBusy(true);
     setLastInviteUrl(null);
     try {
-      const result = await api.post<{ inviteUrl?: string; emailSent: boolean }>(`/api/workspaces/${workspaceId}/invitations`, {
-        email: inviteEmail,
-        role: inviteRole,
-      });
+      const result = await api.post<{ inviteUrl?: string; emailSent: boolean }>(
+        `/api/workspaces/${workspaceId}/invitations`,
+        {
+          email: inviteEmail,
+          role: inviteRole,
+        },
+      );
       toast(
         result.emailSent
           ? `Invitation emailed to ${inviteEmail}`
@@ -93,7 +96,10 @@ export default function MembersPage({ params }: { params: Promise<{ id: string }
     }
     try {
       await api.patch(`/api/workspaces/${workspaceId}/members/${member.userId}`, { role: next });
-      toast(`${member.email} is now ${next === 'OWNER' ? 'an owner' : next === 'MEMBER' ? 'a member' : 'a viewer'}`, 'success');
+      toast(
+        `${member.email} is now ${next === 'OWNER' ? 'an owner' : next === 'MEMBER' ? 'a member' : 'a viewer'}`,
+        'success',
+      );
       await load();
     } catch (err) {
       toast(err instanceof ApiRequestError ? err.message : 'Could not change role.', 'error');
@@ -188,7 +194,13 @@ export default function MembersPage({ params }: { params: Promise<{ id: string }
                             className="btn-ghost h-8 px-2 hover:text-danger"
                             onClick={() => void removeMember(member)}
                             disabled={lastOwner || isSelf}
-                            title={isSelf ? 'Use Settings → Leave workspace' : lastOwner ? 'A workspace needs at least one owner' : 'Remove'}
+                            title={
+                              isSelf
+                                ? 'Use Settings → Leave workspace'
+                                : lastOwner
+                                  ? 'A workspace needs at least one owner'
+                                  : 'Remove'
+                            }
                             aria-label={`Remove ${member.email}`}
                           >
                             <UserMinus className="h-4 w-4" />
@@ -221,9 +233,14 @@ export default function MembersPage({ params }: { params: Promise<{ id: string }
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{invitation.email}</p>
-                        <p className="text-xs text-ink-muted">Invited as {invitation.role.toLowerCase()} · expires {formatDate(invitation.expiresAt)}</p>
+                        <p className="text-xs text-ink-muted">
+                          Invited as {invitation.role.toLowerCase()} · expires {formatDate(invitation.expiresAt)}
+                        </p>
                       </div>
-                      <button className="btn-ghost btn-sm hover:text-danger" onClick={() => void revokeInvite(invitation)}>
+                      <button
+                        className="btn-ghost btn-sm hover:text-danger"
+                        onClick={() => void revokeInvite(invitation)}
+                      >
                         <X className="h-3.5 w-3.5" aria-hidden /> Cancel
                       </button>
                     </li>
@@ -238,15 +255,31 @@ export default function MembersPage({ params }: { params: Promise<{ id: string }
           {isOwner ? (
             <div className="card p-5">
               <div className="flex items-center gap-2">
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><UserPlus className="h-4 w-4" aria-hidden /></span>
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                  <UserPlus className="h-4 w-4" aria-hidden />
+                </span>
                 <p className="text-sm font-semibold">Invite someone</p>
               </div>
               <p className="mt-2 text-xs leading-relaxed text-ink-muted">
-                They can create an account or sign in first. The invitation is tied to the address you enter, so a forwarded link won&rsquo;t work for anyone else.
+                They can create an account or sign in first. The invitation is tied to the address you enter, so a
+                forwarded link won&rsquo;t work for anyone else.
               </p>
               <form onSubmit={invite} className="mt-4 space-y-3">
-                <input type="email" required placeholder="colleague@company.com" className="input" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} aria-label="Email address" />
-                <select className="input" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as Role)} aria-label="Role">
+                <input
+                  type="email"
+                  required
+                  placeholder="colleague@company.com"
+                  className="input"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  aria-label="Email address"
+                />
+                <select
+                  className="input"
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value as Role)}
+                  aria-label="Role"
+                >
                   <option value="MEMBER">Member — upload, download, share</option>
                   <option value="VIEWER">Viewer — view and download only</option>
                   <option value="OWNER">Owner — also manage people</option>
@@ -259,10 +292,20 @@ export default function MembersPage({ params }: { params: Promise<{ id: string }
               {lastInviteUrl ? (
                 <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50/60 p-3">
                   <p className="text-xs font-medium text-brand-900">
-                    {lastInviteEmailed ? 'Emailed. You can also share the link directly:' : 'The email wasn’t sent. Share this link instead:'}
+                    {lastInviteEmailed
+                      ? 'Emailed. You can also share the link directly:'
+                      : 'The email wasn’t sent. Share this link instead:'}
                   </p>
-                  <p className="mt-2 break-all rounded-lg border border-brand-200 bg-white px-2.5 py-2 font-mono text-[11px]">{lastInviteUrl}</p>
-                  <button className="btn-primary btn-sm mt-2 w-full" onClick={() => { void navigator.clipboard.writeText(lastInviteUrl); toast('Invitation link copied'); }}>
+                  <p className="mt-2 break-all rounded-lg border border-brand-200 bg-white px-2.5 py-2 font-mono text-[11px]">
+                    {lastInviteUrl}
+                  </p>
+                  <button
+                    className="btn-primary btn-sm mt-2 w-full"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(lastInviteUrl);
+                      toast('Invitation link copied');
+                    }}
+                  >
                     <Copy className="h-3.5 w-3.5" aria-hidden /> Copy link
                   </button>
                 </div>
@@ -275,15 +318,24 @@ export default function MembersPage({ params }: { params: Promise<{ id: string }
             <ul className="mt-3 space-y-3 text-xs text-ink-muted">
               <li className="flex gap-2.5">
                 <Crown className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" aria-hidden />
-                <span><span className="font-medium text-ink">Owner</span> — everything a member can do, plus invite and remove people, change roles, view the audit trail, and manage any document or link.</span>
+                <span>
+                  <span className="font-medium text-ink">Owner</span> — everything a member can do, plus invite and
+                  remove people, change roles, view the audit trail, and manage any document or link.
+                </span>
               </li>
               <li className="flex gap-2.5">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-hidden />
-                <span><span className="font-medium text-ink">Member</span> — upload, download, preview, share and create folders. Rename, move or delete only what they created.</span>
+                <span>
+                  <span className="font-medium text-ink">Member</span> — upload, download, preview, share and create
+                  folders. Rename, move or delete only what they created.
+                </span>
               </li>
               <li className="flex gap-2.5">
                 <Eye className="mt-0.5 h-4 w-4 shrink-0 text-warn" aria-hidden />
-                <span><span className="font-medium text-ink">Viewer</span> — view and download only. Can&rsquo;t upload, share or change anything, so documents can&rsquo;t leave the workspace through them.</span>
+                <span>
+                  <span className="font-medium text-ink">Viewer</span> — view and download only. Can&rsquo;t upload,
+                  share or change anything, so documents can&rsquo;t leave the workspace through them.
+                </span>
               </li>
             </ul>
           </div>

@@ -29,30 +29,37 @@ export default function ActivityPage({ params }: { params: Promise<{ id: string 
 
   const PAGE = 50;
 
-  const load = useCallback(async (before?: string) => {
-    try {
-      const qs = new URLSearchParams({ limit: String(PAGE), ...(before ? { before } : {}) });
-      const data = await api.get<{ events: AuditEvent[] }>(`/api/workspaces/${workspaceId}/audit?${qs}`);
-      setEvents((current) => (before ? [...current, ...data.events] : data.events));
-      setExhausted(data.events.length < PAGE);
-      setError(null);
-    } catch (err) {
-      if (err instanceof ApiRequestError && err.status === 403) setForbidden(true);
-      else if (!(err instanceof ApiRequestError && err.status === 401)) {
-        setError(err instanceof ApiRequestError ? err.message : 'Failed to load activity.');
+  const load = useCallback(
+    async (before?: string) => {
+      try {
+        const qs = new URLSearchParams({ limit: String(PAGE), ...(before ? { before } : {}) });
+        const data = await api.get<{ events: AuditEvent[] }>(`/api/workspaces/${workspaceId}/audit?${qs}`);
+        setEvents((current) => (before ? [...current, ...data.events] : data.events));
+        setExhausted(data.events.length < PAGE);
+        setError(null);
+      } catch (err) {
+        if (err instanceof ApiRequestError && err.status === 403) setForbidden(true);
+        else if (!(err instanceof ApiRequestError && err.status === 401)) {
+          setError(err instanceof ApiRequestError ? err.message : 'Failed to load activity.');
+        }
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
       }
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, [workspaceId]);
+    },
+    [workspaceId],
+  );
 
   useEffect(() => {
     void load();
   }, [load]);
 
   const filtered = events.filter((e) =>
-    category === 'all' ? true : category === 'member' ? /^(member|invitation|workspace)\./.test(e.action) : e.action.startsWith(`${category}.`),
+    category === 'all'
+      ? true
+      : category === 'member'
+        ? /^(member|invitation|workspace)\./.test(e.action)
+        : e.action.startsWith(`${category}.`),
   );
 
   // Group by calendar day, so a long trail reads as a timeline rather than a wall.
@@ -78,7 +85,11 @@ export default function ActivityPage({ params }: { params: Promise<{ id: string 
 
         {forbidden ? (
           <div className="card">
-            <EmptyState icon={Lock} title="Only workspace owners can view activity" hint="The trail contains every member's actions and the addresses of people who were invited but never joined." />
+            <EmptyState
+              icon={Lock}
+              title="Only workspace owners can view activity"
+              hint="The trail contains every member's actions and the addresses of people who were invited but never joined."
+            />
           </div>
         ) : (
           <>
@@ -97,27 +108,45 @@ export default function ActivityPage({ params }: { params: Promise<{ id: string 
             </div>
 
             {loading ? (
-              <div className="card overflow-hidden"><Skeleton rows={6} /></div>
+              <div className="card overflow-hidden">
+                <Skeleton rows={6} />
+              </div>
             ) : groups.length === 0 ? (
-              <div className="card"><EmptyState icon={History} title="No activity to show" /></div>
+              <div className="card">
+                <EmptyState icon={History} title="No activity to show" />
+              </div>
             ) : (
               groups.map(([day, dayEvents]) => (
                 <section key={day}>
-                  <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-ink-subtle">{formatDate(dayEvents[0]!.createdAt)}</h2>
+                  <h2 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-ink-subtle">
+                    {formatDate(dayEvents[0]!.createdAt)}
+                  </h2>
                   <ol className="card relative overflow-hidden">
                     {dayEvents.map((event, index) => {
                       const style = AUDIT_STYLE[event.action] ?? AUDIT_STYLE['workspace.created'];
                       const Icon = style.icon;
                       return (
                         <li key={event.id} className="relative flex gap-3.5 px-5 py-3.5">
-                          {index < dayEvents.length - 1 ? <span className="absolute left-[35px] top-12 h-[calc(100%-24px)] w-px bg-line" aria-hidden /> : null}
-                          <span className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-4 ring-white ${style.tone}`} aria-hidden>
+                          {index < dayEvents.length - 1 ? (
+                            <span
+                              className="absolute left-[35px] top-12 h-[calc(100%-24px)] w-px bg-line"
+                              aria-hidden
+                            />
+                          ) : null}
+                          <span
+                            className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-4 ring-white ${style.tone}`}
+                            aria-hidden
+                          >
                             <Icon className="h-4 w-4" />
                           </span>
                           <div className="min-w-0 flex-1 pt-1">
                             <p className="text-sm leading-snug">{describeAuditEvent(event)}</p>
                             <p className="mt-0.5 text-xs text-ink-subtle">
-                              {new Date(event.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })} · {timeAgo(event.createdAt)}
+                              {new Date(event.createdAt).toLocaleTimeString(undefined, {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}{' '}
+                              · {timeAgo(event.createdAt)}
                             </p>
                           </div>
                         </li>
@@ -133,7 +162,10 @@ export default function ActivityPage({ params }: { params: Promise<{ id: string 
                 <button
                   className="btn-secondary"
                   disabled={loadingMore}
-                  onClick={() => { setLoadingMore(true); void load(events[events.length - 1]!.createdAt); }}
+                  onClick={() => {
+                    setLoadingMore(true);
+                    void load(events[events.length - 1]!.createdAt);
+                  }}
                 >
                   {loadingMore ? 'Loading…' : 'Load older activity'}
                 </button>

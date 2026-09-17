@@ -16,7 +16,6 @@ import { requireOwner } from '../../policy';
 import type { OverviewService } from '../overview/overview.service';
 import type { WorkspacesService } from './workspaces.service';
 
-
 export function registerWorkspaceRoutes(
   app: FastifyInstance,
   deps: { workspaces: WorkspacesService; overview: OverviewService },
@@ -93,17 +92,21 @@ export function registerWorkspaceRoutes(
     return reply.status(204).send();
   });
 
-  app.delete('/api/workspaces/:id/invitations/:invitationId', { preHandler: requireSession }, async (request, reply) => {
-    const { id, invitationId } = InvitationParams.parse(request.params);
-    const user = currentUser(request);
-    const membership = await workspaces.requireMember(id, user.id);
-    await workspaces.revokeInvitation({
-      workspaceId: id,
-      actor: { id: user.id, role: membership.role },
-      invitationId,
-    });
-    return reply.status(204).send();
-  });
+  app.delete(
+    '/api/workspaces/:id/invitations/:invitationId',
+    { preHandler: requireSession },
+    async (request, reply) => {
+      const { id, invitationId } = InvitationParams.parse(request.params);
+      const user = currentUser(request);
+      const membership = await workspaces.requireMember(id, user.id);
+      await workspaces.revokeInvitation({
+        workspaceId: id,
+        actor: { id: user.id, role: membership.role },
+        invitationId,
+      });
+      return reply.status(204).send();
+    },
+  );
 
   app.post('/api/workspaces', { preHandler: requireSession }, async (request, reply) => {
     const { name } = CreateWorkspaceBody.parse(request.body);
@@ -129,8 +132,7 @@ export function registerWorkspaceRoutes(
     const members = await workspaces.listMembers(id);
     // Pending invitations are visible to the owner only — they contain email addresses
     // of people who have not joined.
-    const invitations =
-      membership.role === 'OWNER' ? await workspaces.listPendingInvitations(id) : [];
+    const invitations = membership.role === 'OWNER' ? await workspaces.listPendingInvitations(id) : [];
 
     return {
       role: membership.role,
@@ -173,7 +175,10 @@ export function registerWorkspaceRoutes(
 
       // The link carries a bearer token, so it is never logged. It is emailed, and returned
       // here only when EXPOSE_INVITE_LINKS is on (development), so the owner can copy it.
-      request.log.info({ workspaceId: id, invitationId: result.invitation.id, emailSent: result.emailSent }, 'invitation created');
+      request.log.info(
+        { workspaceId: id, invitationId: result.invitation.id, emailSent: result.emailSent },
+        'invitation created',
+      );
 
       return reply.status(201).send({
         invitation: {
@@ -189,10 +194,7 @@ export function registerWorkspaceRoutes(
   });
 }
 
-export function registerInvitationRoutes(
-  app: FastifyInstance,
-  deps: { workspaces: WorkspacesService },
-): void {
+export function registerInvitationRoutes(app: FastifyInstance, deps: { workspaces: WorkspacesService }): void {
   const { workspaces } = deps;
 
   // Public: renders the invite landing page before the recipient has signed in.

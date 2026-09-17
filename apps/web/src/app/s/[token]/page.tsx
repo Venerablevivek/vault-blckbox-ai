@@ -96,7 +96,9 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
             <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" aria-hidden>
               <path
                 d="M10 13a4 4 0 0 0 5.66 0l2.5-2.5a4 4 0 1 0-5.66-5.66l-1 1M14 11a4 4 0 0 0-5.66 0l-2.5 2.5a4 4 0 1 0 5.66 5.66l1-1"
-                stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
               />
               <path d="M4 4l16 16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
             </svg>
@@ -125,7 +127,10 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
       <Frame>
         <div className="panel overflow-hidden">
           <div className="bg-gradient-to-br from-brand-600 to-brand-700 px-8 py-9 text-center">
-            <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 text-white ring-1 ring-white/25" aria-hidden>
+            <span
+              className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 text-white ring-1 ring-white/25"
+              aria-hidden
+            >
               <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none">
                 <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" strokeWidth="1.7" />
                 <path d="M8 11V8a4 4 0 1 1 8 0v3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
@@ -160,10 +165,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
         </div>
 
         <div className="px-8 py-7">
-          <a
-            className="btn-primary h-11 w-full text-[15px]"
-            href={`/api/shares/${encodeURIComponent(token)}/download`}
-          >
+          <a className="btn-primary h-11 w-full text-[15px]" href={`/api/shares/${encodeURIComponent(token)}/download`}>
             Download
           </a>
 
@@ -177,8 +179,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
           {/* The visitor is not our user and never agreed to be tracked, so we say plainly
               what is recorded. The feature is link hygiene, not surveillance. */}
           <p className="mt-5 border-t border-line pt-4 text-center text-[11px] leading-relaxed text-ink-subtle">
-            Shared securely. The sender can see when this link is opened, and can revoke it at
-            any time.
+            Shared securely. The sender can see when this link is opened, and can revoke it at any time.
           </p>
         </div>
       </div>

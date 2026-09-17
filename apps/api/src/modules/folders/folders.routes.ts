@@ -10,7 +10,6 @@ import { currentUser, requireSession } from '../../plugins/session';
 import type { WorkspacesService } from '../workspaces/workspaces.service';
 import { toFolderDto, type FoldersService } from './folders.service';
 
-
 export function registerFolderRoutes(
   app: FastifyInstance,
   deps: { folders: FoldersService; workspaces: WorkspacesService },
@@ -45,11 +44,15 @@ export function registerFolderRoutes(
     return { folder: toFolderDto(folder) };
   });
 
-  app.delete('/api/workspaces/:workspaceId/folders/:folderId', { preHandler: requireSession }, async (request, reply) => {
-    const { workspaceId, folderId } = FolderParams.parse(request.params);
-    const user = currentUser(request);
-    const membership = await workspaces.requireMember(workspaceId, user.id);
-    await folders.remove(membership, user.id, folderId);
-    return reply.status(204).send();
-  });
+  app.delete(
+    '/api/workspaces/:workspaceId/folders/:folderId',
+    { preHandler: requireSession },
+    async (request, reply) => {
+      const { workspaceId, folderId } = FolderParams.parse(request.params);
+      const user = currentUser(request);
+      const membership = await workspaces.requireMember(workspaceId, user.id);
+      await folders.remove(membership, user.id, folderId);
+      return reply.status(204).send();
+    },
+  );
 }

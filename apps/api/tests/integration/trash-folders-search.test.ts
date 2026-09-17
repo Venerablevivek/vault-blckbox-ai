@@ -36,7 +36,9 @@ describe('trash, folders, search and maintenance', () => {
             'content-type': 'multipart/form-data; boundary=----b',
           },
           payload: Buffer.concat([
-            Buffer.from(`------b\r\nContent-Disposition: form-data; name="file"; filename="${name}"\r\nContent-Type: application/pdf\r\n\r\n`),
+            Buffer.from(
+              `------b\r\nContent-Disposition: form-data; name="file"; filename="${name}"\r\nContent-Type: application/pdf\r\n\r\n`,
+            ),
             Buffer.from('%PDF-1.4\nbody\n%%EOF\n'),
             Buffer.from('\r\n------b--\r\n'),
           ]),
@@ -55,8 +57,10 @@ describe('trash, folders, search and maintenance', () => {
     return String(response.headers['set-cookie']).split(';')[0]!;
   };
 
-  const list = (query = '', user: User = alice) => call('GET', `/api/workspaces/${user.workspaceId}/documents${query}`, user.cookie);
-  const names = (response: { json(): { documents: Array<{ filename: string }> } }) => response.json().documents.map((d) => d.filename);
+  const list = (query = '', user: User = alice) =>
+    call('GET', `/api/workspaces/${user.workspaceId}/documents${query}`, user.cookie);
+  const names = (response: { json(): { documents: Array<{ filename: string }> } }) =>
+    response.json().documents.map((d) => d.filename);
 
   // ---------------------------------------------------------------- trash
 
@@ -84,9 +88,11 @@ describe('trash, folders, search and maintenance', () => {
       expect((await call('GET', `/api/shares/${token}`, undefined)).statusCode).toBe(410);
     });
 
-    it("lets only an owner delete permanently, and a member restore only their own", async () => {
+    it('lets only an owner delete permanently, and a member restore only their own', async () => {
       const bob = await registerUser(h.app, 'bob@example.com');
-      const invite = await call('POST', `/api/workspaces/${alice.workspaceId}/invitations`, alice.cookie, { email: 'bob@example.com' });
+      const invite = await call('POST', `/api/workspaces/${alice.workspaceId}/invitations`, alice.cookie, {
+        email: 'bob@example.com',
+      });
       await call('POST', `/api/invitations/${invite.json().inviteUrl.split('/invite/')[1]}/accept`, bob.cookie);
 
       const alicesDoc = await upload('alices.pdf');
@@ -107,7 +113,9 @@ describe('trash, folders, search and maintenance', () => {
       const eve = await registerUser(h.app, 'eve@example.com');
       expect((await call('POST', `/api/documents/${id}/restore`, eve.cookie)).statusCode).toBe(404);
       expect((await call('DELETE', `/api/documents/${id}/permanent`, eve.cookie)).statusCode).toBe(404);
-      expect((await call('GET', `/api/workspaces/${alice.workspaceId}/documents?view=trash`, eve.cookie)).statusCode).toBe(404);
+      expect(
+        (await call('GET', `/api/workspaces/${alice.workspaceId}/documents?view=trash`, eve.cookie)).statusCode,
+      ).toBe(404);
     });
   });
 
@@ -142,10 +150,14 @@ describe('trash, folders, search and maintenance', () => {
     it('refuses to move a folder inside itself or its own subfolder', async () => {
       const a = (await createFolder('A')).json().folder.id;
       const b = (await createFolder('B', a)).json().folder.id;
-      const intoChild = await call('PATCH', `/api/workspaces/${alice.workspaceId}/folders/${a}`, alice.cookie, { parentId: b });
+      const intoChild = await call('PATCH', `/api/workspaces/${alice.workspaceId}/folders/${a}`, alice.cookie, {
+        parentId: b,
+      });
       expect(intoChild.statusCode).toBe(422);
       expect(intoChild.json().error.code).toBe('FOLDER_CYCLE');
-      const intoSelf = await call('PATCH', `/api/workspaces/${alice.workspaceId}/folders/${a}`, alice.cookie, { parentId: a });
+      const intoSelf = await call('PATCH', `/api/workspaces/${alice.workspaceId}/folders/${a}`, alice.cookie, {
+        parentId: a,
+      });
       expect(intoSelf.statusCode).toBe(422);
     });
 
@@ -158,7 +170,9 @@ describe('trash, folders, search and maintenance', () => {
 
       // A trashed document does not keep a folder alive; restoring it later lands at the root.
       await call('DELETE', `/api/documents/${doc}`, alice.cookie);
-      expect((await call('DELETE', `/api/workspaces/${alice.workspaceId}/folders/${folder}`, alice.cookie)).statusCode).toBe(204);
+      expect(
+        (await call('DELETE', `/api/workspaces/${alice.workspaceId}/folders/${folder}`, alice.cookie)).statusCode,
+      ).toBe(204);
       await call('POST', `/api/documents/${doc}/restore`, alice.cookie);
       expect(names(await list())).toContain('inside.pdf');
     });
@@ -178,20 +192,29 @@ describe('trash, folders, search and maintenance', () => {
       const evesFolder = (await createFolder('Eve', null, eve)).json().folder.id;
       const doc = await upload('mine.pdf');
 
-      expect((await call('PATCH', `/api/documents/${doc}`, alice.cookie, { folderId: evesFolder })).statusCode).toBe(404);
+      expect((await call('PATCH', `/api/documents/${doc}`, alice.cookie, { folderId: evesFolder })).statusCode).toBe(
+        404,
+      );
       const intoOther = await h.app.inject({
         method: 'POST',
         url: `/api/workspaces/${alice.workspaceId}/documents?folderId=${evesFolder}`,
         headers: { cookie: alice.cookie, 'content-type': 'multipart/form-data; boundary=----b' },
         payload: Buffer.concat([
-          Buffer.from('------b\r\nContent-Disposition: form-data; name="file"; filename="x.pdf"\r\nContent-Type: application/pdf\r\n\r\n'),
+          Buffer.from(
+            '------b\r\nContent-Disposition: form-data; name="file"; filename="x.pdf"\r\nContent-Type: application/pdf\r\n\r\n',
+          ),
           Buffer.from('%PDF-1.4\nx\n%%EOF\n'),
           Buffer.from('\r\n------b--\r\n'),
         ]),
       });
       expect(intoOther.statusCode).toBe(404);
-      expect((await call('GET', `/api/workspaces/${alice.workspaceId}/documents?folderId=${evesFolder}`, alice.cookie)).statusCode).toBe(404);
-      expect((await call('DELETE', `/api/workspaces/${eve.workspaceId}/folders/${evesFolder}`, alice.cookie)).statusCode).toBe(404);
+      expect(
+        (await call('GET', `/api/workspaces/${alice.workspaceId}/documents?folderId=${evesFolder}`, alice.cookie))
+          .statusCode,
+      ).toBe(404);
+      expect(
+        (await call('DELETE', `/api/workspaces/${eve.workspaceId}/folders/${evesFolder}`, alice.cookie)).statusCode,
+      ).toBe(404);
     });
   });
 
@@ -199,7 +222,9 @@ describe('trash, folders, search and maintenance', () => {
 
   describe('server-side search and pagination', () => {
     it('searches the whole workspace, across folders', async () => {
-      const folder = (await call('POST', `/api/workspaces/${alice.workspaceId}/folders`, alice.cookie, { name: 'Deep' })).json().folder.id;
+      const folder = (
+        await call('POST', `/api/workspaces/${alice.workspaceId}/folders`, alice.cookie, { name: 'Deep' })
+      ).json().folder.id;
       await upload('Quarterly-Report.pdf', folder);
       await upload('quarterly-summary.pdf');
       await upload('invoice.pdf');
@@ -269,7 +294,10 @@ describe('trash, folders, search and maintenance', () => {
     it('purges trash past retention, removing the object, and leaves recent trash alone', async () => {
       const old = await upload('old.pdf');
       await call('DELETE', `/api/documents/${old}`, alice.cookie);
-      const [{ storage_key: oldKey }] = await h.query<{ storage_key: string }>('SELECT storage_key FROM documents WHERE id = $1', [old]);
+      const [{ storage_key: oldKey }] = await h.query<{ storage_key: string }>(
+        'SELECT storage_key FROM documents WHERE id = $1',
+        [old],
+      );
 
       h.clock.advanceHours(24 * (h.config.TRASH_RETENTION_DAYS + 1));
       // Moving time past retention also expired Alice's session; sign in again.
@@ -286,12 +314,23 @@ describe('trash, folders, search and maintenance', () => {
 
       // The audit trail outlives the purged document.
       const events = (await call('GET', `/api/workspaces/${alice.workspaceId}/audit`, alice.cookie)).json().events;
-      expect(events.some((e: { action: string; metadata: { reason?: string } }) => e.action === 'document.purged' && e.metadata.reason === 'retention')).toBe(true);
+      expect(
+        events.some(
+          (e: { action: string; metadata: { reason?: string } }) =>
+            e.action === 'document.purged' && e.metadata.reason === 'retention',
+        ),
+      ).toBe(true);
     });
 
     it('removes expired sessions, old login failures, stale notifications and expired invitations', async () => {
-      await call('POST', `/api/workspaces/${alice.workspaceId}/invitations`, alice.cookie, { email: 'late@example.com' });
-      await h.app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: 'alice@example.com', password: 'wrong-password' } });
+      await call('POST', `/api/workspaces/${alice.workspaceId}/invitations`, alice.cookie, {
+        email: 'late@example.com',
+      });
+      await h.app.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: { email: 'alice@example.com', password: 'wrong-password' },
+      });
       await h.query(
         `INSERT INTO notifications (id, user_id, type, title, read_at, created_at)
          VALUES (gen_random_uuid(), $1, 'member.joined', 'old and read', now(), $2)`,
@@ -316,8 +355,11 @@ describe('trash, folders, search and maintenance', () => {
       // 02:00 UTC on 1 Jan is 21:00 on 31 Dec in New York. The harness clock is 12:00 UTC 1 Jan.
       await h.query("UPDATE documents SET created_at = '2026-01-01T02:00:00Z' WHERE id = $1", [id]);
 
-      const utc = (await call('GET', `/api/workspaces/${alice.workspaceId}/overview?tz=UTC`, alice.cookie)).json().series;
-      const ny = (await call('GET', `/api/workspaces/${alice.workspaceId}/overview?tz=America/New_York`, alice.cookie)).json().series;
+      const utc = (await call('GET', `/api/workspaces/${alice.workspaceId}/overview?tz=UTC`, alice.cookie)).json()
+        .series;
+      const ny = (
+        await call('GET', `/api/workspaces/${alice.workspaceId}/overview?tz=America/New_York`, alice.cookie)
+      ).json().series;
 
       expect(utc.find((d: { day: string }) => d.day === '2026-01-01').uploads).toBe(1);
       expect(ny.find((d: { day: string }) => d.day === '2025-12-31').uploads).toBe(1);

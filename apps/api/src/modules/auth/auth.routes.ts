@@ -17,10 +17,7 @@ import {
 } from '../../plugins/session';
 import type { AuthService } from './auth.service';
 
-export function registerAuthRoutes(
-  app: FastifyInstance,
-  deps: { config: Config; auth: AuthService },
-): void {
+export function registerAuthRoutes(app: FastifyInstance, deps: { config: Config; auth: AuthService }): void {
   const { config, auth } = deps;
 
   app.post('/api/auth/register', {

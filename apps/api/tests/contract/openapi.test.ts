@@ -24,7 +24,11 @@ describe('API contract', () => {
   const key = (method: string, url: string) => `${method.toUpperCase()} ${url}`;
 
   /** Checks a response against the operation's documented success status and schema. */
-  function expectContract(method: string, template: string, response: { statusCode: number; body: string; headers: Record<string, unknown> }) {
+  function expectContract(
+    method: string,
+    template: string,
+    response: { statusCode: number; body: string; headers: Record<string, unknown> },
+  ) {
     const op = allOperations.find((o) => o.method === method.toLowerCase() && o.path === template);
     expect(op, `${key(method, template)} is not documented`).toBeDefined();
     covered.add(key(method, template));
@@ -40,7 +44,10 @@ describe('API contract', () => {
       return;
     }
     const parsed = schema.safeParse(JSON.parse(response.body));
-    expect(parsed.success, `${key(method, template)} response does not match its schema: ${parsed.success ? '' : JSON.stringify(parsed.error.issues, null, 2)}`).toBe(true);
+    expect(
+      parsed.success,
+      `${key(method, template)} response does not match its schema: ${parsed.success ? '' : JSON.stringify(parsed.error.issues, null, 2)}`,
+    ).toBe(true);
   }
 
   const send = (method: string, url: string, cookie?: string, payload?: unknown) =>
@@ -54,8 +61,14 @@ describe('API contract', () => {
   it('documents exactly the routes the server registers', () => {
     const server = new Set(h.app.routeTable.map((r) => key(r.method, r.url)));
     const documented = new Set(allOperations.map((o) => key(o.method, o.path)));
-    expect([...server].filter((r) => !documented.has(r)), 'registered but not documented').toEqual([]);
-    expect([...documented].filter((r) => !server.has(r)), 'documented but not registered').toEqual([]);
+    expect(
+      [...server].filter((r) => !documented.has(r)),
+      'registered but not documented',
+    ).toEqual([]);
+    expect(
+      [...documented].filter((r) => !server.has(r)),
+      'documented but not registered',
+    ).toEqual([]);
   });
 
   it('is a valid OpenAPI 3.1 document', async () => {
@@ -86,9 +99,15 @@ describe('API contract', () => {
     expectContract('GET', '/api/openapi.json', await send('GET', '/api/openapi.json'));
 
     // Accounts
-    const register = await send('POST', '/api/auth/register', undefined, { email: 'owner@example.com', password: 'password123' });
+    const register = await send('POST', '/api/auth/register', undefined, {
+      email: 'owner@example.com',
+      password: 'password123',
+    });
     ok('POST', '/api/auth/register', register);
-    const login = await send('POST', '/api/auth/login', undefined, { email: 'owner@example.com', password: 'password123' });
+    const login = await send('POST', '/api/auth/login', undefined, {
+      email: 'owner@example.com',
+      password: 'password123',
+    });
     ok('POST', '/api/auth/login', login);
     const cookie = String(([] as string[]).concat(login.headers['set-cookie'] as string)[0]).split(';')[0]!;
     const me = await send('GET', '/api/auth/me', cookie);
@@ -101,11 +120,22 @@ describe('API contract', () => {
     const other = sessions.json().sessions.find((s: { current: boolean }) => !s.current);
     ok('DELETE', '/api/auth/sessions/:sessionId', await send('DELETE', `/api/auth/sessions/${other.id}`, cookie));
     ok('DELETE', '/api/auth/sessions', await send('DELETE', '/api/auth/sessions', cookie));
-    ok('POST', '/api/auth/password', await send('POST', '/api/auth/password', cookie, { currentPassword: 'password123', newPassword: 'password456' }));
-    ok('POST', '/api/auth/password/forgot', await send('POST', '/api/auth/password/forgot', undefined, { email: 'owner@example.com' }));
+    ok(
+      'POST',
+      '/api/auth/password',
+      await send('POST', '/api/auth/password', cookie, { currentPassword: 'password123', newPassword: 'password456' }),
+    );
+    ok(
+      'POST',
+      '/api/auth/password/forgot',
+      await send('POST', '/api/auth/password/forgot', undefined, { email: 'owner@example.com' }),
+    );
     const resetMail = await h.mailer.waitFor((m) => m.subject.includes('Reset'));
     const resetToken = /token=(pwr_[\w-]+)/.exec(resetMail.text)![1]!;
-    const reset = await send('POST', '/api/auth/password/reset', undefined, { token: resetToken, password: 'password789' });
+    const reset = await send('POST', '/api/auth/password/reset', undefined, {
+      token: resetToken,
+      password: 'password789',
+    });
     ok('POST', '/api/auth/password/reset', reset);
     const owner = String(([] as string[]).concat(reset.headers['set-cookie'] as string)[0]).split(';')[0]!;
 
@@ -117,22 +147,48 @@ describe('API contract', () => {
     ok('GET', '/api/workspaces/:id/storage', await send('GET', `/api/workspaces/${workspaceId}/storage`, owner));
 
     const member = await registerUser(h.app, 'member@example.com');
-    const invite = await send('POST', `/api/workspaces/${workspaceId}/invitations`, owner, { email: 'member@example.com', role: 'MEMBER' });
+    const invite = await send('POST', `/api/workspaces/${workspaceId}/invitations`, owner, {
+      email: 'member@example.com',
+      role: 'MEMBER',
+    });
     ok('POST', '/api/workspaces/:id/invitations', invite);
     const inviteToken = invite.json().inviteUrl.split('/invite/')[1];
     ok('GET', '/api/invitations/:token', await send('GET', `/api/invitations/${inviteToken}`));
-    ok('POST', '/api/invitations/:token/accept', await send('POST', `/api/invitations/${inviteToken}/accept`, member.cookie));
-    const pending = await send('POST', `/api/workspaces/${workspaceId}/invitations`, owner, { email: 'pending@example.com', role: 'VIEWER' });
+    ok(
+      'POST',
+      '/api/invitations/:token/accept',
+      await send('POST', `/api/invitations/${inviteToken}/accept`, member.cookie),
+    );
+    const pending = await send('POST', `/api/workspaces/${workspaceId}/invitations`, owner, {
+      email: 'pending@example.com',
+      role: 'VIEWER',
+    });
     ok('GET', '/api/workspaces/:id/members', await send('GET', `/api/workspaces/${workspaceId}/members`, owner));
-    ok('DELETE', '/api/workspaces/:id/invitations/:invitationId', await send('DELETE', `/api/workspaces/${workspaceId}/invitations/${pending.json().invitation.id}`, owner));
-    ok('PATCH', '/api/workspaces/:id/members/:userId', await send('PATCH', `/api/workspaces/${workspaceId}/members/${member.userId}`, owner, { role: 'OWNER' }));
+    ok(
+      'DELETE',
+      '/api/workspaces/:id/invitations/:invitationId',
+      await send('DELETE', `/api/workspaces/${workspaceId}/invitations/${pending.json().invitation.id}`, owner),
+    );
+    ok(
+      'PATCH',
+      '/api/workspaces/:id/members/:userId',
+      await send('PATCH', `/api/workspaces/${workspaceId}/members/${member.userId}`, owner, { role: 'OWNER' }),
+    );
 
     // Folders and documents
     const folder = await send('POST', `/api/workspaces/${workspaceId}/folders`, owner, { name: 'Contracts' });
     ok('POST', '/api/workspaces/:workspaceId/folders', folder);
     const folderId = folder.json().folder.id;
-    ok('GET', '/api/workspaces/:workspaceId/folders', await send('GET', `/api/workspaces/${workspaceId}/folders`, owner));
-    ok('PATCH', '/api/workspaces/:workspaceId/folders/:folderId', await send('PATCH', `/api/workspaces/${workspaceId}/folders/${folderId}`, owner, { name: 'Signed contracts' }));
+    ok(
+      'GET',
+      '/api/workspaces/:workspaceId/folders',
+      await send('GET', `/api/workspaces/${workspaceId}/folders`, owner),
+    );
+    ok(
+      'PATCH',
+      '/api/workspaces/:workspaceId/folders/:folderId',
+      await send('PATCH', `/api/workspaces/${workspaceId}/folders/${folderId}`, owner, { name: 'Signed contracts' }),
+    );
 
     const upload = await uploadDocument(h.app, owner, workspaceId, 'msa.pdf', SAMPLE_PDF);
     ok('POST', '/api/workspaces/:workspaceId/documents', upload);
@@ -153,14 +209,26 @@ describe('API contract', () => {
     const locked = await send('GET', `/api/shares/${token}`);
     ok('GET', '/api/shares/:token', locked);
     expect(locked.json().requiresPassword).toBe(true);
-    ok('POST', '/api/shares/:token/unlock', await send('POST', `/api/shares/${token}/unlock`, undefined, { password: 'open-sesame' }));
+    ok(
+      'POST',
+      '/api/shares/:token/unlock',
+      await send('POST', `/api/shares/${token}/unlock`, undefined, { password: 'open-sesame' }),
+    );
     await new Promise((resolve) => setTimeout(resolve, 100));
     ok('GET', '/api/documents/:id/shares', await send('GET', `/api/documents/${documentId}/shares`, owner));
     ok('GET', '/api/shares/:id/events', await send('GET', `/api/shares/${shareId}/events`, owner));
     ok('DELETE', '/api/shares/:id', await send('DELETE', `/api/shares/${shareId}`, owner));
 
-    ok('GET', '/api/workspaces/:workspaceId/documents', await send('GET', `/api/workspaces/${workspaceId}/documents?q=msa`, owner));
-    ok('GET', '/api/workspaces/:id/overview', await send('GET', `/api/workspaces/${workspaceId}/overview?tz=Europe/London`, owner));
+    ok(
+      'GET',
+      '/api/workspaces/:workspaceId/documents',
+      await send('GET', `/api/workspaces/${workspaceId}/documents?q=msa`, owner),
+    );
+    ok(
+      'GET',
+      '/api/workspaces/:id/overview',
+      await send('GET', `/api/workspaces/${workspaceId}/overview?tz=Europe/London`, owner),
+    );
     ok('GET', '/api/workspaces/:id/audit', await send('GET', `/api/workspaces/${workspaceId}/audit`, owner));
     ok('GET', '/api/notifications', await send('GET', '/api/notifications', member.cookie));
     ok('POST', '/api/notifications/read', await send('POST', '/api/notifications/read', member.cookie, {}));
@@ -169,9 +237,21 @@ describe('API contract', () => {
     ok('POST', '/api/documents/:id/restore', await send('POST', `/api/documents/${documentId}/restore`, owner));
     await send('DELETE', `/api/documents/${documentId}`, owner);
     ok('DELETE', '/api/documents/:id/permanent', await send('DELETE', `/api/documents/${documentId}/permanent`, owner));
-    ok('DELETE', '/api/workspaces/:workspaceId/folders/:folderId', await send('DELETE', `/api/workspaces/${workspaceId}/folders/${folderId}`, owner));
-    ok('DELETE', '/api/workspaces/:id/members/:userId', await send('DELETE', `/api/workspaces/${workspaceId}/members/${member.userId}`, owner));
-    ok('DELETE', '/api/workspaces/:id', await send('DELETE', `/api/workspaces/${created.json().workspace.id}`, owner, { confirmName: 'Spare' }));
+    ok(
+      'DELETE',
+      '/api/workspaces/:workspaceId/folders/:folderId',
+      await send('DELETE', `/api/workspaces/${workspaceId}/folders/${folderId}`, owner),
+    );
+    ok(
+      'DELETE',
+      '/api/workspaces/:id/members/:userId',
+      await send('DELETE', `/api/workspaces/${workspaceId}/members/${member.userId}`, owner),
+    );
+    ok(
+      'DELETE',
+      '/api/workspaces/:id',
+      await send('DELETE', `/api/workspaces/${created.json().workspace.id}`, owner, { confirmName: 'Spare' }),
+    );
     ok('POST', '/api/auth/logout', await send('POST', '/api/auth/logout', owner));
     void userId;
 

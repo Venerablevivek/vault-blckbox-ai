@@ -70,8 +70,8 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
       title: `Delete “${workspace.name}”?`,
       body: (
         <>
-          Every document, folder, share link and invitation in this workspace is deleted, and everyone in it loses access
-          immediately. <strong>This cannot be undone.</strong>
+          Every document, folder, share link and invitation in this workspace is deleted, and everyone in it loses
+          access immediately. <strong>This cannot be undone.</strong>
         </>
       ),
       label: `Type ${workspace.name} to confirm`,
@@ -93,21 +93,39 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
   }
 
   return (
-    <Shell workspaces={session.workspaces} activeId={workspaceId} email={session.email} title="Settings" subtitle={workspace?.name}>
+    <Shell
+      workspaces={session.workspaces}
+      activeId={workspaceId}
+      email={session.email}
+      title="Settings"
+      subtitle={workspace?.name}
+    >
       <div className="mx-auto max-w-3xl space-y-5 p-4 sm:p-6">
         <section className="card p-6">
           <div className="flex items-center gap-3">
             {workspace ? <WorkspaceAvatar id={workspace.id} name={workspace.name} /> : null}
             <div>
               <p className="text-sm font-semibold">Workspace</p>
-              <p className="text-xs text-ink-muted">Your role: {workspace ? <RoleBadge role={workspace.role} /> : null}</p>
+              <p className="text-xs text-ink-muted">
+                Your role: {workspace ? <RoleBadge role={workspace.role} /> : null}
+              </p>
             </div>
           </div>
 
           <form onSubmit={save} className="mt-5">
-            <label className="label" htmlFor="name">Name</label>
+            <label className="label" htmlFor="name">
+              Name
+            </label>
             <div className="flex gap-2">
-              <input id="name" className="input" value={name} onChange={(e) => setName(e.target.value)} disabled={!isOwner} maxLength={120} required />
+              <input
+                id="name"
+                className="input"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={!isOwner}
+                maxLength={120}
+                required
+              />
               <button className="btn-primary h-10" disabled={!isOwner || saving || name.trim() === workspace?.name}>
                 <Pencil className="h-4 w-4" aria-hidden /> Save
               </button>
@@ -118,12 +136,22 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
 
         <section className="card p-6" aria-labelledby="storage-heading">
           <div className="flex items-start gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><HardDrive className="h-5 w-5" aria-hidden /></span>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+              <HardDrive className="h-5 w-5" aria-hidden />
+            </span>
             <div className="min-w-0 flex-1">
-              <p id="storage-heading" className="text-sm font-semibold">Storage</p>
-              <p className="mt-0.5 text-xs text-ink-muted">Files in the trash still count until they&rsquo;re deleted forever or expire after 30 days.</p>
+              <p id="storage-heading" className="text-sm font-semibold">
+                Storage
+              </p>
+              <p className="mt-0.5 text-xs text-ink-muted">
+                Files in the trash still count until they&rsquo;re deleted forever or expire after 30 days.
+              </p>
               <div className="mt-4">
-                {storage ? <StorageMeter usedBytes={storage.usedBytes} quotaBytes={storage.quotaBytes} /> : <div className="h-8 animate-pulse rounded bg-slate-100" />}
+                {storage ? (
+                  <StorageMeter usedBytes={storage.usedBytes} quotaBytes={storage.quotaBytes} />
+                ) : (
+                  <div className="h-8 animate-pulse rounded bg-slate-100" />
+                )}
               </div>
             </div>
           </div>
@@ -131,7 +159,9 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
 
         <section className="card p-6">
           <div className="flex items-start gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-ok-soft text-ok"><ShieldCheck className="h-5 w-5" aria-hidden /></span>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-ok-soft text-ok">
+              <ShieldCheck className="h-5 w-5" aria-hidden />
+            </span>
             <div>
               <p className="text-sm font-semibold">How this workspace protects documents</p>
               <ul className="mt-2 list-disc space-y-1 pl-4 text-xs leading-relaxed text-ink-muted">
@@ -139,7 +169,9 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
                 <li>Share links are 256-bit random tokens stored only as hashes — revocable at any time.</li>
                 <li>Removing someone ends their access on their very next request.</li>
                 <li>Uploads are checked against their real content, not the name or declared type.</li>
-                <li>Every file gets a SHA-256 checksum, so identical copies are spotted and integrity can be verified.</li>
+                <li>
+                  Every file gets a SHA-256 checksum, so identical copies are spotted and integrity can be verified.
+                </li>
               </ul>
             </div>
           </div>
@@ -147,11 +179,14 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
 
         <section className="card border-danger/25 p-6">
           <div className="flex items-start gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-danger-soft text-danger"><AlertTriangle className="h-5 w-5" aria-hidden /></span>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-danger-soft text-danger">
+              <AlertTriangle className="h-5 w-5" aria-hidden />
+            </span>
             <div className="flex-1">
               <p className="text-sm font-semibold">Leave workspace</p>
               <p className="mt-1 text-xs leading-relaxed text-ink-muted">
-                You lose access to every document here. Anything you uploaded stays in the workspace. If you&rsquo;re the only owner, make someone else an owner first.
+                You lose access to every document here. Anything you uploaded stays in the workspace. If you&rsquo;re
+                the only owner, make someone else an owner first.
               </p>
               <button className="btn-danger mt-4" onClick={() => void leave()}>
                 <LogOut className="h-4 w-4" aria-hidden /> Leave workspace
@@ -163,12 +198,14 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
         {isOwner ? (
           <section className="card border-danger/25 p-6">
             <div className="flex items-start gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-danger-soft text-danger"><Trash2 className="h-5 w-5" aria-hidden /></span>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-danger-soft text-danger">
+                <Trash2 className="h-5 w-5" aria-hidden />
+              </span>
               <div className="flex-1">
                 <p className="text-sm font-semibold">Delete workspace</p>
                 <p className="mt-1 text-xs leading-relaxed text-ink-muted">
-                  Permanently deletes every document, folder and share link here, and removes everyone&rsquo;s access. To hand the
-                  workspace over instead, make someone else an owner on the Members page, then leave.
+                  Permanently deletes every document, folder and share link here, and removes everyone&rsquo;s access.
+                  To hand the workspace over instead, make someone else an owner on the Members page, then leave.
                 </p>
                 <button className="btn-danger mt-4" onClick={() => void deleteWorkspace()}>
                   <Trash2 className="h-4 w-4" aria-hidden /> Delete workspace

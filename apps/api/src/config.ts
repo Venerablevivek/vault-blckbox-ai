@@ -26,7 +26,12 @@ const schema = z.object({
   TRUSTED_PROXIES: z
     .string()
     .default('127.0.0.1,::1')
-    .transform((value) => value.split(',').map((entry) => entry.trim()).filter(Boolean)),
+    .transform((value) =>
+      value
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter(Boolean),
+    ),
   API_PORT: z.coerce.number().int().positive().default(4000),
   WEB_URL: z.string().url().default('http://localhost:3000'),
 
@@ -90,9 +95,7 @@ export type Config = z.infer<typeof schema>;
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const parsed = schema.safeParse(env);
   if (!parsed.success) {
-    const issues = parsed.error.issues
-      .map((i) => `  - ${i.path.join('.')}: ${i.message}`)
-      .join('\n');
+    const issues = parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`).join('\n');
     throw new Error(`Invalid environment configuration:\n${issues}`);
   }
   return parsed.data;

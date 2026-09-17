@@ -26,9 +26,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     credentials: 'same-origin',
     headers: {
-      ...(init?.body && !(init.body instanceof FormData)
-        ? { 'Content-Type': 'application/json' }
-        : {}),
+      ...(init?.body && !(init.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
       ...init?.headers,
     },
   });
@@ -49,8 +47,7 @@ export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) }),
-  patch: <T>(path: string, body: unknown) =>
-    request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
+  patch: <T>(path: string, body: unknown) => request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
   del: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'DELETE', body: body === undefined ? undefined : JSON.stringify(body) }),
   upload: <T>(path: string, file: File, onProgress?: (percent: number) => void) =>
@@ -76,9 +73,7 @@ export const api = {
         const error: ApiError = payload.error ?? { code: 'UNKNOWN', message: 'Upload failed.' };
         reject(new ApiRequestError(xhr.status, error.code, error.message));
       });
-      xhr.addEventListener('error', () =>
-        reject(new ApiRequestError(0, 'NETWORK', 'Network error during upload.')),
-      );
+      xhr.addEventListener('error', () => reject(new ApiRequestError(0, 'NETWORK', 'Network error during upload.')));
 
       xhr.send(form);
     }),

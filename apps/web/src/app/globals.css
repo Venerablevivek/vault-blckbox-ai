@@ -3,15 +3,26 @@
 @tailwind utilities;
 
 @layer base {
-  html { -webkit-font-smoothing: antialiased; }
-  body { @apply bg-canvas text-ink; }
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply bg-canvas text-ink;
+  }
 
   /* Focus is always visible. Never remove an outline without replacing it. */
-  :focus-visible { @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-white; }
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-white;
+  }
 
   /* Motion is feedback, not personality — and it is opt-out. */
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
@@ -26,32 +37,50 @@
   .btn-secondary {
     @apply btn bg-white border border-line-strong text-ink hover:bg-slate-50 active:translate-y-px;
   }
-  .btn-ghost { @apply btn px-2.5 text-ink-muted hover:bg-slate-100 hover:text-ink; }
-  .btn-danger { @apply btn bg-danger text-white hover:brightness-95 active:translate-y-px; }
-  .btn-sm { @apply h-8 px-3 text-[13px]; }
+  .btn-ghost {
+    @apply btn px-2.5 text-ink-muted hover:bg-slate-100 hover:text-ink;
+  }
+  .btn-danger {
+    @apply btn bg-danger text-white hover:brightness-95 active:translate-y-px;
+  }
+  .btn-sm {
+    @apply h-8 px-3 text-[13px];
+  }
 
   .input {
     @apply w-full h-10 rounded-lg border border-line-strong bg-white px-3 text-sm
            placeholder:text-ink-subtle transition-colors
            focus:border-brand-500 disabled:bg-slate-50 read-only:bg-slate-50;
   }
-  .label { @apply block text-sm font-medium text-ink mb-1.5; }
+  .label {
+    @apply block text-sm font-medium text-ink mb-1.5;
+  }
 
-  .card { @apply bg-white border border-line rounded-xl shadow-card; }
-  .panel { @apply bg-white border border-line rounded-2xl shadow-lift; }
+  .card {
+    @apply bg-white border border-line rounded-xl shadow-card;
+  }
+  .panel {
+    @apply bg-white border border-line rounded-2xl shadow-lift;
+  }
 
   .chip {
     @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium
            bg-slate-100 text-ink-muted;
   }
-  .chip-brand { @apply chip bg-brand-50 text-brand-700; }
-  .chip-ok    { @apply chip bg-ok-soft text-ok; }
-  .chip-warn  { @apply chip bg-warn-soft text-warn; }
+  .chip-brand {
+    @apply chip bg-brand-50 text-brand-700;
+  }
+  .chip-ok {
+    @apply chip bg-ok-soft text-ok;
+  }
+  .chip-warn {
+    @apply chip bg-warn-soft text-warn;
+  }
 
   /* The page background: a very soft brand wash that keeps white cards feeling lifted. */
   .aurora {
     background-image:
-      radial-gradient(60rem 30rem at 12% -8%, rgb(99 102 241 / 0.10), transparent 60%),
-      radial-gradient(48rem 26rem at 92% 4%, rgb(56 189 248 / 0.10), transparent 60%);
+      radial-gradient(60rem 30rem at 12% -8%, rgb(99 102 241 / 0.1), transparent 60%),
+      radial-gradient(48rem 26rem at 92% 4%, rgb(56 189 248 / 0.1), transparent 60%);
   }
 }

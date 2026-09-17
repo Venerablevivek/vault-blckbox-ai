@@ -1,11 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import {
-  createHarness,
-  registerUser,
-  uploadDocument,
-  SAMPLE_PDF,
-  type Harness,
-} from '../helpers/harness';
+import { createHarness, registerUser, uploadDocument, SAMPLE_PDF, type Harness } from '../helpers/harness';
 
 /**
  * Blueprint test area 3: "Valid upload succeeds; oversize/unsupported files are rejected."
@@ -36,29 +30,26 @@ describe('uploads', () => {
     const rows = await h.query<{ storage_key: string }>('SELECT storage_key FROM documents');
     expect(rows).toHaveLength(1);
     // The key is built from UUIDs only; no part of it comes from the filename.
-    expect(rows[0]!.storage_key).toMatch(
-      /^workspaces\/[0-9a-f-]{36}\/documents\/[0-9a-f-]{36}$/,
-    );
+    expect(rows[0]!.storage_key).toMatch(/^workspaces\/[0-9a-f-]{36}\/documents\/[0-9a-f-]{36}$/);
     expect(await h.objectExists(rows[0]!.storage_key)).toBe(true);
   });
 
   it('rejects a file over the 25 MB limit and stores nothing', async () => {
-    const tooBig = Buffer.concat([
-      Buffer.from('%PDF-1.4\n'),
-      Buffer.alloc(h.config.MAX_UPLOAD_BYTES + 1024, 0x41),
-    ]);
+    const tooBig = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(h.config.MAX_UPLOAD_BYTES + 1024, 0x41)]);
 
-    const response = await uploadDocument(
-      h.app, alice.cookie, alice.workspaceId, 'huge.pdf', tooBig,
-    );
+    const response = await uploadDocument(h.app, alice.cookie, alice.workspaceId, 'huge.pdf', tooBig);
     expect(response.statusCode).toBe(413);
     expect(await h.query('SELECT 1 FROM documents')).toHaveLength(0);
   });
 
   it('rejects a disallowed type', async () => {
     const response = await uploadDocument(
-      h.app, alice.cookie, alice.workspaceId, 'malware.exe',
-      Buffer.from([0x4d, 0x5a, 0x90, 0x00]), 'application/x-msdownload',
+      h.app,
+      alice.cookie,
+      alice.workspaceId,
+      'malware.exe',
+      Buffer.from([0x4d, 0x5a, 0x90, 0x00]),
+      'application/x-msdownload',
     );
     expect(response.statusCode).toBe(415);
     expect(await h.query('SELECT 1 FROM documents')).toHaveLength(0);
@@ -67,17 +58,19 @@ describe('uploads', () => {
   it('rejects an executable renamed and declared as a PDF', async () => {
     // The declared Content-Type is attacker-controlled, so it is checked against the bytes.
     const response = await uploadDocument(
-      h.app, alice.cookie, alice.workspaceId, 'invoice.pdf',
-      Buffer.from([0x4d, 0x5a, 0x90, 0x00]), 'application/pdf',
+      h.app,
+      alice.cookie,
+      alice.workspaceId,
+      'invoice.pdf',
+      Buffer.from([0x4d, 0x5a, 0x90, 0x00]),
+      'application/pdf',
     );
     expect(response.statusCode).toBe(415);
     expect(await h.query('SELECT 1 FROM documents')).toHaveLength(0);
   });
 
   it('rejects an empty file', async () => {
-    const response = await uploadDocument(
-      h.app, alice.cookie, alice.workspaceId, 'empty.pdf', Buffer.alloc(0),
-    );
+    const response = await uploadDocument(h.app, alice.cookie, alice.workspaceId, 'empty.pdf', Buffer.alloc(0));
     expect(response.statusCode).toBe(400);
   });
 

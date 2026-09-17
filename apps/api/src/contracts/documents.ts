@@ -43,7 +43,11 @@ export const Document = obj({
   filename: z.string(),
   mimeType: z.string(),
   size: z.number().int().nonnegative(),
-  sha256: z.string().regex(/^[0-9a-f]{64}$/).nullable().openapi({ description: 'Hex SHA-256 of the stored bytes; null only while an older file is backfilled.' }),
+  sha256: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/)
+    .nullable()
+    .openapi({ description: 'Hex SHA-256 of the stored bytes; null only while an older file is backfilled.' }),
   folderId: uuid.nullable(),
   uploadedBy: uuid,
   uploadedByEmail: z.string().optional().openapi({ description: 'Present in listings.' }),
@@ -58,7 +62,9 @@ export const Document = obj({
 export const DocumentResponse = obj({ document: Document });
 export const UploadResponse = obj({
   document: Document,
-  duplicateOf: obj({ id: uuid, filename: z.string() }).nullable().openapi({ description: 'A live document in the workspace with identical content.' }),
+  duplicateOf: obj({ id: uuid, filename: z.string() })
+    .nullable()
+    .openapi({ description: 'A live document in the workspace with identical content.' }),
 });
 export const DocumentListResponse = obj({
   role: Role,

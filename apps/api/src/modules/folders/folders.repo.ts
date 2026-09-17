@@ -27,10 +27,10 @@ export const foldersRepo = {
 
   /** Workspace-scoped lookup: a folder id from another workspace matches nothing. */
   async findInWorkspace(db: Db, workspaceId: string, id: string): Promise<FolderRow | null> {
-    const { rows } = await db.query<FolderRow>(
-      'SELECT * FROM folders WHERE id = $1 AND workspace_id = $2',
-      [id, workspaceId],
-    );
+    const { rows } = await db.query<FolderRow>('SELECT * FROM folders WHERE id = $1 AND workspace_id = $2', [
+      id,
+      workspaceId,
+    ]);
     return rows[0] ?? null;
   },
 

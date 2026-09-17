@@ -200,9 +200,7 @@ export function createSharesService(opts: SharesServiceOptions) {
     if (visitor) record(state.id, visitor, reason);
 
     throw Errors.gone(
-      reason === 'exhausted'
-        ? 'This link has reached its download limit.'
-        : 'This link is no longer available.',
+      reason === 'exhausted' ? 'This link has reached its download limit.' : 'This link is no longer available.',
     );
   }
 
@@ -291,7 +289,11 @@ export function createSharesService(opts: SharesServiceOptions) {
       const share = await requireManageable(shareId, userId);
       if (share.revoked_at) throw Errors.conflict('LINK_REVOKED', 'A revoked link cannot be edited.');
 
-      if (changes.maxDownloads !== undefined && changes.maxDownloads !== null && changes.maxDownloads <= share.download_count) {
+      if (
+        changes.maxDownloads !== undefined &&
+        changes.maxDownloads !== null &&
+        changes.maxDownloads <= share.download_count
+      ) {
         throw Errors.unprocessable(
           'LIMIT_BELOW_USAGE',
           `This link has already been downloaded ${share.download_count} time${share.download_count === 1 ? '' : 's'}. Set a higher limit.`,
@@ -301,7 +303,11 @@ export function createSharesService(opts: SharesServiceOptions) {
       const updated = await sharesRepo.updateSettings(pool, shareId, {
         expiresAt: changes.expiresInHours !== undefined ? expiresAtFor(changes.expiresInHours) : undefined,
         passwordHash:
-          changes.password === undefined ? undefined : changes.password === null ? null : await hashPassword(changes.password),
+          changes.password === undefined
+            ? undefined
+            : changes.password === null
+              ? null
+              : await hashPassword(changes.password),
         maxDownloads: changes.maxDownloads,
       });
 
@@ -324,7 +330,10 @@ export function createSharesService(opts: SharesServiceOptions) {
     /** Live links for a document, each with its access rollup. */
     async listForDocument(documentId: string) {
       const shares = await sharesRepo.listForDocument(pool, documentId);
-      const activity = await sharesRepo.activityFor(pool, shares.map((s) => s.id));
+      const activity = await sharesRepo.activityFor(
+        pool,
+        shares.map((s) => s.id),
+      );
       const empty: ShareActivity = {
         opens: 0,
         downloads: 0,

@@ -90,7 +90,11 @@ describe('protected share links', () => {
       expect(response.statusCode).toBe(401);
       expect(response.json().error.code).toBe('WRONG_PASSWORD');
 
-      const events = await h.app.inject({ method: 'GET', url: `/api/shares/${id}/events`, headers: { cookie: alice.cookie } });
+      const events = await h.app.inject({
+        method: 'GET',
+        url: `/api/shares/${id}/events`,
+        headers: { cookie: alice.cookie },
+      });
       expect(events.json().events[0].outcome).toBe('bad_password');
     });
 
@@ -111,7 +115,12 @@ describe('protected share links', () => {
       const { cookie } = await unlock(token, 'correct-horse');
       expect((await publicGet(`/api/shares/${token}`, cookie)).json().requiresPassword).toBe(false);
 
-      await h.app.inject({ method: 'PATCH', url: `/api/shares/${id}`, headers: { cookie: alice.cookie }, payload: { password: 'new-password' } });
+      await h.app.inject({
+        method: 'PATCH',
+        url: `/api/shares/${id}`,
+        headers: { cookie: alice.cookie },
+        payload: { password: 'new-password' },
+      });
 
       expect((await publicGet(`/api/shares/${token}`, cookie)).json().requiresPassword).toBe(true);
     });
@@ -135,9 +144,7 @@ describe('protected share links', () => {
 
     it('never lets concurrent downloads exceed the limit', async () => {
       const { token } = await createLink({ maxDownloads: 1 });
-      const results = await Promise.all(
-        Array.from({ length: 8 }, () => publicGet(`/api/shares/${token}/download`)),
-      );
+      const results = await Promise.all(Array.from({ length: 8 }, () => publicGet(`/api/shares/${token}/download`)));
       expect(results.filter((r) => r.statusCode === 302)).toHaveLength(1);
       const [row] = await h.query<{ download_count: number }>('SELECT download_count FROM shares');
       expect(row!.download_count).toBe(1);
@@ -167,14 +174,24 @@ describe('protected share links', () => {
       h.clock.advanceHours(2);
       expect((await publicGet(`/api/shares/${token}`)).statusCode).toBe(410);
 
-      const edit = await h.app.inject({ method: 'PATCH', url: `/api/shares/${id}`, headers: { cookie: alice.cookie }, payload: { expiresInHours: 24 } });
+      const edit = await h.app.inject({
+        method: 'PATCH',
+        url: `/api/shares/${id}`,
+        headers: { cookie: alice.cookie },
+        payload: { expiresInHours: 24 },
+      });
       expect(edit.statusCode).toBe(200);
       expect((await publicGet(`/api/shares/${token}`)).statusCode).toBe(200);
     });
 
     it('can remove a password and a limit', async () => {
       const { id, token } = await createLink({ password: 'correct-horse', maxDownloads: 1 });
-      await h.app.inject({ method: 'PATCH', url: `/api/shares/${id}`, headers: { cookie: alice.cookie }, payload: { password: null, maxDownloads: null } });
+      await h.app.inject({
+        method: 'PATCH',
+        url: `/api/shares/${id}`,
+        headers: { cookie: alice.cookie },
+        payload: { password: null, maxDownloads: null },
+      });
       const metadata = (await publicGet(`/api/shares/${token}`)).json();
       expect(metadata).toMatchObject({ requiresPassword: false, downloadsRemaining: null });
     });
@@ -183,25 +200,62 @@ describe('protected share links', () => {
       const { id, token } = await createLink({ maxDownloads: 5 });
       await publicGet(`/api/shares/${token}/download`);
       await publicGet(`/api/shares/${token}/download`);
-      const edit = await h.app.inject({ method: 'PATCH', url: `/api/shares/${id}`, headers: { cookie: alice.cookie }, payload: { maxDownloads: 2 } });
+      const edit = await h.app.inject({
+        method: 'PATCH',
+        url: `/api/shares/${id}`,
+        headers: { cookie: alice.cookie },
+        payload: { maxDownloads: 2 },
+      });
       expect(edit.statusCode).toBe(422);
     });
 
     it('cannot edit a revoked link', async () => {
       const { id } = await createLink();
       await h.app.inject({ method: 'DELETE', url: `/api/shares/${id}`, headers: { cookie: alice.cookie } });
-      const edit = await h.app.inject({ method: 'PATCH', url: `/api/shares/${id}`, headers: { cookie: alice.cookie }, payload: { expiresInHours: 24 } });
+      const edit = await h.app.inject({
+        method: 'PATCH',
+        url: `/api/shares/${id}`,
+        headers: { cookie: alice.cookie },
+        payload: { expiresInHours: 24 },
+      });
       expect(edit.statusCode).toBe(409);
     });
 
     it("does not let a member edit someone else's link, or an outsider see it", async () => {
       const { id } = await createLink();
       const bob = await registerUser(h.app, 'bob@example.com');
-      expect((await h.app.inject({ method: 'PATCH', url: `/api/shares/${id}`, headers: { cookie: bob.cookie }, payload: { expiresInHours: 1 } })).statusCode).toBe(404);
+      expect(
+        (
+          await h.app.inject({
+            method: 'PATCH',
+            url: `/api/shares/${id}`,
+            headers: { cookie: bob.cookie },
+            payload: { expiresInHours: 1 },
+          })
+        ).statusCode,
+      ).toBe(404);
 
-      const invite = await h.app.inject({ method: 'POST', url: `/api/workspaces/${alice.workspaceId}/invitations`, headers: { cookie: alice.cookie }, payload: { email: 'bob@example.com', role: 'MEMBER' } });
-      await h.app.inject({ method: 'POST', url: `/api/invitations/${invite.json().inviteUrl.split('/invite/')[1]}/accept`, headers: { cookie: bob.cookie } });
-      expect((await h.app.inject({ method: 'PATCH', url: `/api/shares/${id}`, headers: { cookie: bob.cookie }, payload: { expiresInHours: 1 } })).statusCode).toBe(403);
+      const invite = await h.app.inject({
+        method: 'POST',
+        url: `/api/workspaces/${alice.workspaceId}/invitations`,
+        headers: { cookie: alice.cookie },
+        payload: { email: 'bob@example.com', role: 'MEMBER' },
+      });
+      await h.app.inject({
+        method: 'POST',
+        url: `/api/invitations/${invite.json().inviteUrl.split('/invite/')[1]}/accept`,
+        headers: { cookie: bob.cookie },
+      });
+      expect(
+        (
+          await h.app.inject({
+            method: 'PATCH',
+            url: `/api/shares/${id}`,
+            headers: { cookie: bob.cookie },
+            payload: { expiresInHours: 1 },
+          })
+        ).statusCode,
+      ).toBe(403);
     });
   });
 });

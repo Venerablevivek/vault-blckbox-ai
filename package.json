@@ -11,6 +11,11 @@
     "test:unit": "npm --prefix apps/api run test:unit",
     "typecheck": "npm --prefix apps/api run typecheck && npm --prefix apps/web run typecheck",
     "test:e2e": "npm --prefix e2e test",
-    "lint": "npm --prefix apps/api run lint && npm --prefix apps/web run lint"
+    "lint": "npm --prefix apps/api run lint && npm --prefix apps/web run lint",
+    "format": "prettier --write \"apps/**/*.{ts,tsx,mjs,css}\" \"e2e/**/*.{ts,mjs}\" \".github/**/*.yml\" \"docker-compose.yml\"",
+    "format:check": "prettier --check \"apps/**/*.{ts,tsx,mjs,css}\" \"e2e/**/*.{ts,mjs}\" \".github/**/*.yml\" \"docker-compose.yml\""
+  },
+  "devDependencies": {
+    "prettier": "3.9.7"
   }
 }

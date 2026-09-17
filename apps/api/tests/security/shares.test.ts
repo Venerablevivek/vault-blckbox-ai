@@ -77,9 +77,7 @@ describe('share links', () => {
     expect(revoke.statusCode).toBe(204);
 
     expect((await h.app.inject({ method: 'GET', url: `/api/shares/${token}` })).statusCode).toBe(410);
-    expect(
-      (await h.app.inject({ method: 'GET', url: `/api/shares/${token}/download` })).statusCode,
-    ).toBe(410);
+    expect((await h.app.inject({ method: 'GET', url: `/api/shares/${token}/download` })).statusCode).toBe(410);
   });
 
   it('returns 410 once the link has expired', async () => {
@@ -115,7 +113,7 @@ describe('share links', () => {
     expect((await h.app.inject({ method: 'GET', url: `/api/shares/${token}` })).statusCode).toBe(410);
   });
 
-  it('does not return the token when listing a document\'s links', async () => {
+  it("does not return the token when listing a document's links", async () => {
     const { token } = await createShare();
     const response = await h.app.inject({
       method: 'GET',

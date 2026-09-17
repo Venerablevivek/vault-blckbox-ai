@@ -91,7 +91,11 @@ export function createAuthService({
    */
   async function assertNotLocked(email: string): Promise<void> {
     const windowMs = lockoutMinutes * 60_000;
-    const recent = await authRepo.recentLoginFailures(pool, loginKey(email), new Date(clock.now().getTime() - windowMs));
+    const recent = await authRepo.recentLoginFailures(
+      pool,
+      loginKey(email),
+      new Date(clock.now().getTime() - windowMs),
+    );
     if (recent.count >= lockoutAttempts && recent.oldest) {
       const unlockAt = recent.oldest.getTime() + windowMs;
       throw Errors.tooManyRequests(
@@ -276,7 +280,11 @@ export function createAuthService({
       // The token travels in the URL fragment, which browsers never send to a server: it stays
       // out of access logs, proxies and Referer headers.
       await sendSafely(
-        passwordResetEmail({ to: user.email, url: `${webUrl}/reset-password#token=${token}`, ttlMinutes: passwordResetTtlMinutes }),
+        passwordResetEmail({
+          to: user.email,
+          url: `${webUrl}/reset-password#token=${token}`,
+          ttlMinutes: passwordResetTtlMinutes,
+        }),
         'password-reset',
       );
     },
@@ -292,10 +300,19 @@ export function createAuthService({
       const result = await withTransaction(pool, async (tx) => {
         const reset = await authRepo.claimPasswordReset(tx, hashToken(input.token), now);
         if (!reset) {
-          throw new AppError(410, 'RESET_LINK_INVALID', 'This reset link is invalid, already used or expired. Request a new one.');
+          throw new AppError(
+            410,
+            'RESET_LINK_INVALID',
+            'This reset link is invalid, already used or expired. Request a new one.',
+          );
         }
         const user = await authRepo.findUserById(tx, reset.user_id);
-        if (!user) throw new AppError(410, 'RESET_LINK_INVALID', 'This reset link is invalid, already used or expired. Request a new one.');
+        if (!user)
+          throw new AppError(
+            410,
+            'RESET_LINK_INVALID',
+            'This reset link is invalid, already used or expired. Request a new one.',
+          );
 
         await authRepo.updatePassword(tx, user.id, passwordHash, now);
         await authRepo.invalidatePasswordResets(tx, user.id, now);

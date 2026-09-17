@@ -33,9 +33,11 @@ export function SharePasswordForm({ token }: { token: string }) {
       }
       const payload = (await response.json().catch(() => ({}))) as { error?: { code?: string; message?: string } };
       if (response.status === 429) {
-        setError(payload.error?.code === 'LINK_LOCKED'
-          ? 'Too many wrong passwords for this link. Try again later, or ask the sender.'
-          : 'Too many attempts. Please wait a moment and try again.');
+        setError(
+          payload.error?.code === 'LINK_LOCKED'
+            ? 'Too many wrong passwords for this link. Try again later, or ask the sender.'
+            : 'Too many attempts. Please wait a moment and try again.',
+        );
       } else if (response.status === 410) {
         router.refresh();
       } else {
@@ -71,7 +73,11 @@ export function SharePasswordForm({ token }: { token: string }) {
           {error}
         </p>
       ) : null}
-      <button type="submit" className="btn-primary mt-4 h-11 w-full text-[15px]" disabled={busy || password.length === 0}>
+      <button
+        type="submit"
+        className="btn-primary mt-4 h-11 w-full text-[15px]"
+        disabled={busy || password.length === 0}
+      >
         <KeyRound className="h-4 w-4" aria-hidden /> {busy ? 'Checking…' : 'Unlock'}
       </button>
     </form>

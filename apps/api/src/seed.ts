@@ -28,12 +28,7 @@ const SAMPLE_PDF = Buffer.from(
 
 const SAMPLE_CSV = Buffer.from('quarter,revenue\nQ1,120000\nQ2,138500\nQ3,151200\n', 'utf8');
 
-export async function seedDemoData(
-  pool: Pool,
-  storage: FileStorage,
-  logger: Logger,
-  webUrl: string,
-): Promise<void> {
+export async function seedDemoData(pool: Pool, storage: FileStorage, logger: Logger, webUrl: string): Promise<void> {
   const { rows: existing } = await pool.query('SELECT 1 FROM users LIMIT 1');
   if (existing.length > 0) {
     logger.info('demo seed skipped (database already has users)');
@@ -51,10 +46,13 @@ export async function seedDemoData(
   try {
     await client.query('BEGIN');
 
-    await client.query(
-      `INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $4), ($3, $5, $4)`,
-      [aliceId, DEMO_USERS[0]!.email, bobId, passwordHash, DEMO_USERS[1]!.email],
-    );
+    await client.query(`INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $4), ($3, $5, $4)`, [
+      aliceId,
+      DEMO_USERS[0]!.email,
+      bobId,
+      passwordHash,
+      DEMO_USERS[1]!.email,
+    ]);
 
     await client.query(
       `INSERT INTO workspaces (id, name, created_by) VALUES ($1, 'My Workspace', $3), ($2, 'Marketing', $3)`,

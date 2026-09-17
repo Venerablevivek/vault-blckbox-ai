@@ -34,10 +34,7 @@ export const authRepo = {
     return rows[0] ?? null;
   },
 
-  async insertUser(
-    db: Db,
-    user: { id: string; email: string; passwordHash: string },
-  ): Promise<UserRow> {
+  async insertUser(db: Db, user: { id: string; email: string; passwordHash: string }): Promise<UserRow> {
     const { rows } = await db.query<UserRow>(
       `INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3) RETURNING *`,
       [user.id, user.email, user.passwordHash],

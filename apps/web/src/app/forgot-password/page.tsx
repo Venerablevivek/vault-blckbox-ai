@@ -38,7 +38,13 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <PublicShell action={<Link href="/login" className="btn-secondary btn-sm">Sign in</Link>}>
+    <PublicShell
+      action={
+        <Link href="/login" className="btn-secondary btn-sm">
+          Sign in
+        </Link>
+      }
+    >
       <div className="w-full max-w-sm">
         <div className="text-center">
           <h1 className="text-[26px] font-semibold tracking-tight">Reset your password</h1>
@@ -52,19 +58,30 @@ export default function ForgotPasswordPage() {
             </span>
             <p className="mt-4 text-sm font-semibold">Check your email</p>
             <p className="mt-1.5 text-sm text-ink-muted">
-              If an account exists for <span className="font-medium text-ink">{email}</span>, a reset link is on its way.
-              It works once and expires in an hour.
+              If an account exists for <span className="font-medium text-ink">{email}</span>, a reset link is on its
+              way. It works once and expires in an hour.
             </p>
-            <Link href="/login" className="btn-secondary mt-5 w-full">Back to sign in</Link>
+            <Link href="/login" className="btn-secondary mt-5 w-full">
+              Back to sign in
+            </Link>
           </div>
         ) : (
           <form onSubmit={onSubmit} className="card mt-7 space-y-4 p-6">
             {error ? <ErrorNote message={error} /> : null}
             <div>
-              <label className="label" htmlFor="email">Email</label>
+              <label className="label" htmlFor="email">
+                Email
+              </label>
               <input
-                id="email" type="email" required autoComplete="email" className="input" autoFocus
-                placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)}
+                id="email"
+                type="email"
+                required
+                autoComplete="email"
+                className="input"
+                autoFocus
+                placeholder="you@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <button type="submit" className="btn-primary h-10 w-full" disabled={busy}>
@@ -74,7 +91,10 @@ export default function ForgotPasswordPage() {
         )}
 
         <p className="mt-5 text-center text-sm text-ink-muted">
-          Remembered it? <Link href="/login" className="font-medium text-brand-600 hover:underline">Sign in</Link>
+          Remembered it?{' '}
+          <Link href="/login" className="font-medium text-brand-600 hover:underline">
+            Sign in
+          </Link>
         </p>
       </div>
     </PublicShell>

@@ -19,11 +19,7 @@ import type { Logger } from 'pino';
  */
 const ADVISORY_LOCK_KEY = 8_273_461_209;
 
-export async function runMigrations(
-  pool: Pool,
-  migrationsDir: string,
-  logger: Logger,
-): Promise<string[]> {
+export async function runMigrations(pool: Pool, migrationsDir: string, logger: Logger): Promise<string[]> {
   const client = await pool.connect();
   const applied: string[] = [];
 
@@ -37,14 +33,10 @@ export async function runMigrations(
       )
     `);
 
-    const { rows } = await client.query<{ version: string }>(
-      'SELECT version FROM schema_migrations',
-    );
+    const { rows } = await client.query<{ version: string }>('SELECT version FROM schema_migrations');
     const done = new Set(rows.map((r) => r.version));
 
-    const files = (await readdir(migrationsDir))
-      .filter((f) => f.endsWith('.sql'))
-      .sort((a, b) => a.localeCompare(b));
+    const files = (await readdir(migrationsDir)).filter((f) => f.endsWith('.sql')).sort((a, b) => a.localeCompare(b));
 
     for (const file of files) {
       if (done.has(file)) continue;

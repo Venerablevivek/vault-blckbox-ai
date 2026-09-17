@@ -80,11 +80,7 @@ export const auditRepo = {
    * reflected everywhere — but `metadata` keeps a snapshot of the subject (a filename, an
    * invited address) because that subject may no longer exist.
    */
-  async listForWorkspace(
-    db: Db,
-    workspaceId: string,
-    options: { limit: number; before?: Date },
-  ): Promise<AuditRow[]> {
+  async listForWorkspace(db: Db, workspaceId: string, options: { limit: number; before?: Date }): Promise<AuditRow[]> {
     const { rows } = await db.query<AuditRow>(
       `SELECT a.id, a.actor_user_id, u.email AS actor_email, a.action,
               a.resource_type, a.resource_id, a.metadata, a.created_at

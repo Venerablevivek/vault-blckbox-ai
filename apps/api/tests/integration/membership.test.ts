@@ -42,10 +42,10 @@ describe('membership and invitations', () => {
     });
     expect(accept.statusCode).toBe(200);
 
-    const rows = await h.query(
-      'SELECT 1 FROM workspace_members WHERE workspace_id = $1 AND user_id = $2',
-      [alice.workspaceId, bob.userId],
-    );
+    const rows = await h.query('SELECT 1 FROM workspace_members WHERE workspace_id = $1 AND user_id = $2', [
+      alice.workspaceId,
+      bob.userId,
+    ]);
     expect(rows).toHaveLength(1);
   });
 
@@ -65,9 +65,7 @@ describe('membership and invitations', () => {
     });
 
     expect(second.statusCode).toBe(410);
-    const rows = await h.query('SELECT 1 FROM workspace_members WHERE workspace_id = $1', [
-      alice.workspaceId,
-    ]);
+    const rows = await h.query('SELECT 1 FROM workspace_members WHERE workspace_id = $1', [alice.workspaceId]);
     expect(rows).toHaveLength(2); // alice + bob, not three
   });
 
@@ -159,10 +157,9 @@ describe('membership and invitations', () => {
   });
 
   it('gives every new account its own workspace, owned by them', async () => {
-    const rows = await h.query<{ role: string }>(
-      'SELECT role FROM workspace_members WHERE user_id = $1',
-      [alice.userId],
-    );
+    const rows = await h.query<{ role: string }>('SELECT role FROM workspace_members WHERE user_id = $1', [
+      alice.userId,
+    ]);
     expect(rows).toHaveLength(1);
     expect(rows[0]!.role).toBe('OWNER');
   });

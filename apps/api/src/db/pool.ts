@@ -6,10 +6,7 @@ import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg
  * identically inside and outside a transaction.
  */
 export interface Db {
-  query<T extends QueryResultRow = QueryResultRow>(
-    text: string,
-    params?: readonly unknown[],
-  ): Promise<QueryResult<T>>;
+  query<T extends QueryResultRow = QueryResultRow>(text: string, params?: readonly unknown[]): Promise<QueryResult<T>>;
 }
 
 export function createPool(connectionString: string): Pool {

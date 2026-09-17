@@ -5,9 +5,13 @@ export const password = z.string().min(8).max(200);
 const email = z.string().email().max(255);
 
 export const CredentialsBody = z.object({ email, password }).openapi('Credentials');
-export const RegisterBody = CredentialsBody.extend({ inviteToken: z.string().max(200).optional() }).openapi('RegisterRequest');
+export const RegisterBody = CredentialsBody.extend({ inviteToken: z.string().max(200).optional() }).openapi(
+  'RegisterRequest',
+);
 export const ForgotPasswordBody = z.object({ email }).openapi('ForgotPasswordRequest');
-export const ResetPasswordBody = z.object({ token: z.string().min(10).max(200), password }).openapi('ResetPasswordRequest');
+export const ResetPasswordBody = z
+  .object({ token: z.string().min(10).max(200), password })
+  .openapi('ResetPasswordRequest');
 export const ChangePasswordBody = z
   .object({ currentPassword: z.string().min(1).max(200), newPassword: password })
   .openapi('ChangePasswordRequest');

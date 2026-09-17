@@ -55,7 +55,13 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
   }
 
   return (
-    <PublicShell action={<Link href="/login" className="btn-secondary btn-sm">Sign in</Link>}>
+    <PublicShell
+      action={
+        <Link href="/login" className="btn-secondary btn-sm">
+          Sign in
+        </Link>
+      }
+    >
       <div className="card w-full max-w-md p-7">
         {loading ? (
           <p className="text-sm text-ink-muted">Loading invitation…</p>
@@ -63,7 +69,9 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
           <>
             <h1 className="text-lg font-semibold">Invitation unavailable</h1>
             <p className="mt-2 text-sm text-ink-muted">{error}</p>
-            <Link href="/login" className="btn-secondary mt-5 w-full">Go to sign in</Link>
+            <Link href="/login" className="btn-secondary mt-5 w-full">
+              Go to sign in
+            </Link>
           </>
         ) : (
           <>
@@ -73,19 +81,18 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
               </svg>
             </div>
 
-            <h1 className="mt-4 text-lg font-semibold">
-              Join “{preview.workspaceName}”
-            </h1>
+            <h1 className="mt-4 text-lg font-semibold">Join “{preview.workspaceName}”</h1>
             <p className="mt-2 text-sm text-ink-muted">
-              This invitation was sent to{' '}
-              <span className="font-medium text-ink">{preview.email}</span>. You will join as{' '}
-              {preview.role.toLowerCase()}.
+              This invitation was sent to <span className="font-medium text-ink">{preview.email}</span>. You will join
+              as {preview.role.toLowerCase()}.
             </p>
-            <p className="mt-1 text-xs text-ink-subtle">
-              Expires {formatDate(preview.expiresAt)}
-            </p>
+            <p className="mt-1 text-xs text-ink-subtle">Expires {formatDate(preview.expiresAt)}</p>
 
-            {error ? <div className="mt-4"><ErrorNote message={error} /></div> : null}
+            {error ? (
+              <div className="mt-4">
+                <ErrorNote message={error} />
+              </div>
+            ) : null}
 
             <div className="mt-6 flex flex-col gap-2 sm:flex-row">
               {signedIn ? (

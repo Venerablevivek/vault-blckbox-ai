@@ -20,7 +20,6 @@ import { DailyBars, StorageBreakdown } from '@/components/charts';
 import { EmptyState, ErrorNote, FileGlyph, Shell, useSession } from '@/components/ui';
 import { describeAuditEvent, AUDIT_STYLE } from '@/components/audit';
 
-
 function greeting(): string {
   const hour = new Date().getHours();
   if (hour < 12) return 'Good morning';
@@ -108,12 +107,22 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
 
         {/* Welcome banner */}
         <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600 via-indigo-600 to-violet-600 p-6 text-white shadow-lift sm:p-7">
-          <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-2xl" aria-hidden />
-          <div className="pointer-events-none absolute -bottom-24 right-40 h-56 w-56 rounded-full bg-sky-400/20 blur-2xl" aria-hidden />
+          <div
+            className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-2xl"
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute -bottom-24 right-40 h-56 w-56 rounded-full bg-sky-400/20 blur-2xl"
+            aria-hidden
+          />
           <div className="relative flex flex-wrap items-end justify-between gap-5">
             <div>
-              <p className="text-sm text-brand-100">{hello}, {firstName}</p>
-              <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{workspace?.name ?? 'Your workspace'}</h2>
+              <p className="text-sm text-brand-100">
+                {hello}, {firstName}
+              </p>
+              <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
+                {workspace?.name ?? 'Your workspace'}
+              </h2>
               <p className="mt-2 max-w-xl text-sm text-brand-100">
                 {data
                   ? `${data.totals.documents} documents · ${data.totals.members} member${data.totals.members === 1 ? '' : 's'} · ${data.totals.liveLinks} live share link${data.totals.liveLinks === 1 ? '' : 's'}`
@@ -122,16 +131,25 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
             </div>
             <div className="flex flex-wrap gap-2">
               {data?.role !== 'VIEWER' ? (
-                <Link href={`/workspaces/${workspaceId}/documents?upload=1`} className="btn h-10 bg-white text-brand-700 hover:bg-brand-50">
+                <Link
+                  href={`/workspaces/${workspaceId}/documents?upload=1`}
+                  className="btn h-10 bg-white text-brand-700 hover:bg-brand-50"
+                >
                   <Upload className="h-4 w-4" aria-hidden /> Upload file
                 </Link>
               ) : (
-                <Link href={`/workspaces/${workspaceId}/documents`} className="btn h-10 bg-white text-brand-700 hover:bg-brand-50">
+                <Link
+                  href={`/workspaces/${workspaceId}/documents`}
+                  className="btn h-10 bg-white text-brand-700 hover:bg-brand-50"
+                >
                   Browse documents
                 </Link>
               )}
               {isOwner ? (
-                <Link href={`/workspaces/${workspaceId}/members`} className="btn h-10 bg-white/15 text-white ring-1 ring-white/30 hover:bg-white/25">
+                <Link
+                  href={`/workspaces/${workspaceId}/members`}
+                  className="btn h-10 bg-white/15 text-white ring-1 ring-white/30 hover:bg-white/25"
+                >
                   <UserPlus className="h-4 w-4" aria-hidden /> Invite
                 </Link>
               ) : null}
@@ -141,18 +159,43 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
 
         {/* Stat tiles */}
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6" aria-label="Workspace totals">
-          <Tile icon={FileText} label="Documents" value={data?.totals.documents ?? '—'} tone="bg-brand-50 text-brand-600" />
+          <Tile
+            icon={FileText}
+            label="Documents"
+            value={data?.totals.documents ?? '—'}
+            tone="bg-brand-50 text-brand-600"
+          />
           <Tile
             icon={HardDrive}
             label="Storage used"
             value={data ? formatBytes(data.storage.usedBytes) : '—'}
-            hint={data ? `of ${formatBytes(data.storage.quotaBytes)} (${Math.round((data.storage.usedBytes / data.storage.quotaBytes) * 100)}%)` : undefined}
+            hint={
+              data
+                ? `of ${formatBytes(data.storage.quotaBytes)} (${Math.round((data.storage.usedBytes / data.storage.quotaBytes) * 100)}%)`
+                : undefined
+            }
             tone="bg-sky-50 text-sky-600"
           />
           <Tile icon={Users} label="Members" value={data?.totals.members ?? '—'} tone="bg-violet-50 text-violet-600" />
-          <Tile icon={Link2} label="Live share links" value={data?.totals.liveLinks ?? '—'} tone="bg-emerald-50 text-emerald-600" />
-          <Tile icon={Eye} label="Link opens" value={data?.totals.opens ?? '—'} hint="all time" tone="bg-amber-50 text-amber-600" />
-          <Tile icon={Mail} label="Pending invites" value={data?.totals.pendingInvites ?? '—'} tone="bg-rose-50 text-rose-600" />
+          <Tile
+            icon={Link2}
+            label="Live share links"
+            value={data?.totals.liveLinks ?? '—'}
+            tone="bg-emerald-50 text-emerald-600"
+          />
+          <Tile
+            icon={Eye}
+            label="Link opens"
+            value={data?.totals.opens ?? '—'}
+            hint="all time"
+            tone="bg-amber-50 text-amber-600"
+          />
+          <Tile
+            icon={Mail}
+            label="Pending invites"
+            value={data?.totals.pendingInvites ?? '—'}
+            tone="bg-rose-50 text-rose-600"
+          />
         </section>
 
         {/* Activity charts — two single-series charts rather than one dual-scale chart. */}
@@ -182,12 +225,19 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
                 <p className="text-sm font-semibold">Most viewed share links</p>
                 <p className="mt-0.5 text-xs text-ink-muted">Documents people outside the team actually opened</p>
               </div>
-              <Link href={`/workspaces/${workspaceId}/documents`} className="text-xs font-medium text-brand-600 hover:underline">
+              <Link
+                href={`/workspaces/${workspaceId}/documents`}
+                className="text-xs font-medium text-brand-600 hover:underline"
+              >
                 All documents
               </Link>
             </div>
             {data && data.topShared.length === 0 ? (
-              <EmptyState icon={Link2} title="No link has been opened yet" hint="Share a document and you'll see who opens it here." />
+              <EmptyState
+                icon={Link2}
+                title="No link has been opened yet"
+                hint="Share a document and you'll see who opens it here."
+              />
             ) : (
               <ul className="mt-3 divide-y divide-line">
                 {(data?.topShared ?? []).map((doc, index) => {
@@ -199,12 +249,18 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{doc.filename}</p>
                         <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                          <div className="h-full rounded-full bg-brand-500" style={{ width: `${(doc.opens / peak) * 100}%` }} />
+                          <div
+                            className="h-full rounded-full bg-brand-500"
+                            style={{ width: `${(doc.opens / peak) * 100}%` }}
+                          />
                         </div>
                       </div>
                       <div className="w-40 shrink-0 text-right">
                         <p className="text-sm font-semibold tabular-nums">{doc.opens} opens</p>
-                        <p className="text-[11px] text-ink-muted">~{doc.viewers} viewer{doc.viewers === 1 ? '' : 's'}{doc.lastAccessedAt ? ` · ${timeAgo(doc.lastAccessedAt)}` : ''}</p>
+                        <p className="text-[11px] text-ink-muted">
+                          ~{doc.viewers} viewer{doc.viewers === 1 ? '' : 's'}
+                          {doc.lastAccessedAt ? ` · ${timeAgo(doc.lastAccessedAt)}` : ''}
+                        </p>
                       </div>
                     </li>
                   );
@@ -218,7 +274,10 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
           <div className="card overflow-hidden">
             <div className="flex items-center justify-between px-5 pt-5">
               <p className="text-sm font-semibold">Recently added</p>
-              <Link href={`/workspaces/${workspaceId}/documents`} className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline">
+              <Link
+                href={`/workspaces/${workspaceId}/documents`}
+                className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline"
+              >
                 View all <ArrowRight className="h-3 w-3" aria-hidden />
               </Link>
             </div>
@@ -231,7 +290,9 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
                     <FileGlyph filename={doc.filename} mimeType={doc.mimeType} size="sm" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{doc.filename}</p>
-                      <p className="truncate text-xs text-ink-muted">{doc.uploadedByEmail} · {formatBytes(doc.size)}</p>
+                      <p className="truncate text-xs text-ink-muted">
+                        {doc.uploadedByEmail} · {formatBytes(doc.size)}
+                      </p>
                     </div>
                     <span className="shrink-0 text-xs text-ink-subtle">{timeAgo(doc.createdAt)}</span>
                   </li>
@@ -244,7 +305,10 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
             <div className="flex items-center justify-between px-5 pt-5">
               <p className="text-sm font-semibold">Recent activity</p>
               {isOwner ? (
-                <Link href={`/workspaces/${workspaceId}/activity`} className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline">
+                <Link
+                  href={`/workspaces/${workspaceId}/activity`}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline"
+                >
                   Full audit trail <ArrowRight className="h-3 w-3" aria-hidden />
                 </Link>
               ) : null}
@@ -264,7 +328,10 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
                   const Icon = style.icon;
                   return (
                     <li key={event.id} className="flex items-center gap-3 px-5 py-3">
-                      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${style.tone}`} aria-hidden>
+                      <span
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${style.tone}`}
+                        aria-hidden
+                      >
                         <Icon className="h-4 w-4" />
                       </span>
                       <p className="min-w-0 flex-1 truncate text-sm">{describeAuditEvent(event)}</p>

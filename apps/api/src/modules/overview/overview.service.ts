@@ -123,7 +123,14 @@ export function createOverviewService(deps: { pool: Pool; clock: Clock; audit: A
             GROUP BY days.day ORDER BY days.day`,
           [workspaceId, now, tz],
         ),
-        pool.query<{ id: string; filename: string; mime_type: string; opens: string; viewers: string; last_at: Date | null }>(
+        pool.query<{
+          id: string;
+          filename: string;
+          mime_type: string;
+          opens: string;
+          viewers: string;
+          last_at: Date | null;
+        }>(
           `SELECT d.id, d.filename, d.mime_type,
                   COUNT(e.id) FILTER (WHERE e.outcome = 'resolved') AS opens,
                   COUNT(DISTINCT e.ip_hash) AS viewers,

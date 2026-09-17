@@ -39,9 +39,7 @@ export function NotificationBell() {
 
   const load = useCallback(async () => {
     try {
-      const data = await api.get<{ unread: number; notifications: NotificationDto[] }>(
-        '/api/notifications',
-      );
+      const data = await api.get<{ unread: number; notifications: NotificationDto[] }>('/api/notifications');
       setUnread(data.unread);
       setItems(data.notifications);
     } catch {
@@ -111,7 +109,10 @@ export function NotificationBell() {
             <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <p className="text-sm font-semibold">Notifications</p>
               {unread > 0 ? (
-                <button className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline" onClick={() => void markAllRead()}>
+                <button
+                  className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline"
+                  onClick={() => void markAllRead()}
+                >
                   <CheckCheck className="h-3.5 w-3.5" aria-hidden /> Mark all read
                 </button>
               ) : null}
@@ -143,23 +144,20 @@ export function NotificationBell() {
                             const style = ICONS[item.type];
                             const Icon = style.icon;
                             return (
-                              <span aria-hidden className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${style.tone}`}>
+                              <span
+                                aria-hidden
+                                className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${style.tone}`}
+                              >
                                 <Icon className="h-4 w-4" />
                               </span>
                             );
                           })()}
                           <span className="min-w-0">
-                            <span className="block text-[13px] font-medium leading-snug">
-                              {item.title}
-                            </span>
+                            <span className="block text-[13px] font-medium leading-snug">{item.title}</span>
                             {item.body ? (
-                              <span className="mt-0.5 block text-xs leading-snug text-ink-muted">
-                                {item.body}
-                              </span>
+                              <span className="mt-0.5 block text-xs leading-snug text-ink-muted">{item.body}</span>
                             ) : null}
-                            <span className="mt-1 block text-[11px] text-ink-subtle">
-                              {timeAgo(item.createdAt)}
-                            </span>
+                            <span className="mt-1 block text-[11px] text-ink-subtle">{timeAgo(item.createdAt)}</span>
                           </span>
                         </Link>
                       </li>

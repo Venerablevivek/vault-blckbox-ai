@@ -1,13 +1,7 @@
 import type { Db } from '../../db/pool';
 
 export type AccessOutcome =
-  | 'resolved'
-  | 'downloaded'
-  | 'expired'
-  | 'revoked'
-  | 'document_deleted'
-  | 'exhausted'
-  | 'bad_password';
+  'resolved' | 'downloaded' | 'expired' | 'revoked' | 'document_deleted' | 'exhausted' | 'bad_password';
 
 export interface ShareRow {
   id: string;
@@ -76,7 +70,15 @@ export const sharesRepo = {
       `INSERT INTO shares AS s (id, document_id, token_hash, expires_at, created_by, password_hash, max_downloads)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING ${SHARE_COLUMNS}`,
-      [share.id, share.documentId, share.tokenHash, share.expiresAt, share.createdBy, share.passwordHash, share.maxDownloads],
+      [
+        share.id,
+        share.documentId,
+        share.tokenHash,
+        share.expiresAt,
+        share.createdBy,
+        share.passwordHash,
+        share.maxDownloads,
+      ],
     );
     return rows[0]!;
   },
@@ -238,7 +240,12 @@ export const sharesRepo = {
   },
 
   async listEvents(db: Db, shareId: string, limit = 20) {
-    const { rows } = await db.query<{ accessed_at: Date; outcome: AccessOutcome; user_agent: string | null; ip_hash: Buffer }>(
+    const { rows } = await db.query<{
+      accessed_at: Date;
+      outcome: AccessOutcome;
+      user_agent: string | null;
+      ip_hash: Buffer;
+    }>(
       `SELECT accessed_at, outcome, user_agent, ip_hash FROM share_access_events
         WHERE share_id = $1 ORDER BY accessed_at DESC LIMIT $2`,
       [shareId, limit],
@@ -284,19 +291,22 @@ export const sharesRepo = {
         RETURNING ${SHARE_COLUMNS}`,
       [
         id,
-        changes.expiresAt !== undefined, changes.expiresAt ?? null,
-        changes.passwordHash !== undefined, changes.passwordHash ?? null,
-        changes.maxDownloads !== undefined, changes.maxDownloads ?? null,
+        changes.expiresAt !== undefined,
+        changes.expiresAt ?? null,
+        changes.passwordHash !== undefined,
+        changes.passwordHash ?? null,
+        changes.maxDownloads !== undefined,
+        changes.maxDownloads ?? null,
       ],
     );
     return rows[0]!;
   },
 
   async revoke(db: Db, id: string, now: Date): Promise<boolean> {
-    const { rowCount } = await db.query(
-      `UPDATE shares SET revoked_at = $2 WHERE id = $1 AND revoked_at IS NULL`,
-      [id, now],
-    );
+    const { rowCount } = await db.query(`UPDATE shares SET revoked_at = $2 WHERE id = $1 AND revoked_at IS NULL`, [
+      id,
+      now,
+    ]);
     return (rowCount ?? 0) > 0;
   },
 

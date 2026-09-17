@@ -84,7 +84,17 @@ export const documentsRepo = {
       `INSERT INTO documents (id, workspace_id, folder_id, uploaded_by, filename, storage_key, mime_type, size, sha256)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [doc.id, doc.workspaceId, doc.folderId, doc.uploadedBy, doc.filename, doc.storageKey, doc.mimeType, doc.size, doc.sha256],
+      [
+        doc.id,
+        doc.workspaceId,
+        doc.folderId,
+        doc.uploadedBy,
+        doc.filename,
+        doc.storageKey,
+        doc.mimeType,
+        doc.size,
+        doc.sha256,
+      ],
     );
     return rows[0]!;
   },
@@ -106,7 +116,11 @@ export const documentsRepo = {
   },
 
   /** Any documents of a workspace, live or trashed, for purging a deleted workspace. */
-  async anyInWorkspace(db: Db, workspaceId: string, limit: number): Promise<Array<{ id: string; storage_key: string }>> {
+  async anyInWorkspace(
+    db: Db,
+    workspaceId: string,
+    limit: number,
+  ): Promise<Array<{ id: string; storage_key: string }>> {
     const { rows } = await db.query<{ id: string; storage_key: string }>(
       'SELECT id, storage_key FROM documents WHERE workspace_id = $1 LIMIT $2',
       [workspaceId, limit],
@@ -166,7 +180,9 @@ export const documentsRepo = {
     }
 
     if (q.after) {
-      where.push(`(${sort.expr}, d.id) ${comparator} (${bind(q.after.value)}::${sort.cast}, ${bind(q.after.id)}::uuid)`);
+      where.push(
+        `(${sort.expr}, d.id) ${comparator} (${bind(q.after.value)}::${sort.cast}, ${bind(q.after.id)}::uuid)`,
+      );
     }
 
     const limit = bind(q.limit);
@@ -217,18 +233,14 @@ export const documentsRepo = {
    * the returned row before anything is returned to them — see authorizeById.
    */
   async findLiveById(db: Db, id: string): Promise<DocumentRow | null> {
-    const { rows } = await db.query<DocumentRow>(
-      `SELECT * FROM documents WHERE id = $1 AND deleted_at IS NULL`,
-      [id],
-    );
+    const { rows } = await db.query<DocumentRow>(`SELECT * FROM documents WHERE id = $1 AND deleted_at IS NULL`, [id]);
     return rows[0] ?? null;
   },
 
   async findTrashedById(db: Db, id: string): Promise<DocumentRow | null> {
-    const { rows } = await db.query<DocumentRow>(
-      `SELECT * FROM documents WHERE id = $1 AND deleted_at IS NOT NULL`,
-      [id],
-    );
+    const { rows } = await db.query<DocumentRow>(`SELECT * FROM documents WHERE id = $1 AND deleted_at IS NOT NULL`, [
+      id,
+    ]);
     return rows[0] ?? null;
   },
 

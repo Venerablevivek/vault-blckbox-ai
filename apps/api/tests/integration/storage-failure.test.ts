@@ -96,10 +96,9 @@ describe('storage failure handling', () => {
     expect(remove.statusCode).toBe(200);
 
     // In the trash: the row is soft-deleted but the bytes stay, so the delete can be undone.
-    const [deleted] = await h.query<{ deleted_at: Date | null }>(
-      'SELECT deleted_at FROM documents WHERE id = $1',
-      [documentId],
-    );
+    const [deleted] = await h.query<{ deleted_at: Date | null }>('SELECT deleted_at FROM documents WHERE id = $1', [
+      documentId,
+    ]);
     expect(deleted!.deleted_at).not.toBeNull();
     expect(await h.objectExists(row!.storage_key)).toBe(true);
 

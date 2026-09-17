@@ -3,10 +3,7 @@ import { MarkReadBody } from '../../contracts/activity';
 import { currentUser, requireSession } from '../../plugins/session';
 import type { NotificationsService } from './notifications.service';
 
-export function registerNotificationRoutes(
-  app: FastifyInstance,
-  deps: { notifications: NotificationsService },
-): void {
+export function registerNotificationRoutes(app: FastifyInstance, deps: { notifications: NotificationsService }): void {
   const { notifications } = deps;
 
   // Polled by the web client roughly every 20 seconds. Both queries are index-only, so

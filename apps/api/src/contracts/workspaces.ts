@@ -17,7 +17,10 @@ export const InviteBody = z
   .object({ email: z.string().email().max(255), role: Role.default('MEMBER') })
   .openapi('InviteRequest');
 export const OverviewQuery = z.object({
-  tz: z.string().max(64).optional().openapi({ description: 'IANA time zone for daily series; unknown zones fall back to UTC.', example: 'Europe/London' }),
+  tz: z.string().max(64).optional().openapi({
+    description: 'IANA time zone for daily series; unknown zones fall back to UTC.',
+    example: 'Europe/London',
+  }),
 });
 
 export const WorkspaceResponse = obj({ workspace: obj({ id: uuid, name: z.string(), role: Role }) });
@@ -26,7 +29,9 @@ export const WorkspacesResponse = obj({ workspaces: z.array(obj({ id: uuid, name
 export const StorageResponse = obj({ storage: StorageUsage });
 
 export const Member = obj({ userId: uuid, email: z.string(), role: Role, joinedAt: timestamp }).openapi('Member');
-export const PendingInvitation = obj({ id: uuid, email: z.string(), role: Role, expiresAt: timestamp }).openapi('PendingInvitation');
+export const PendingInvitation = obj({ id: uuid, email: z.string(), role: Role, expiresAt: timestamp }).openapi(
+  'PendingInvitation',
+);
 export const MembersResponse = obj({
   role: Role,
   members: z.array(Member),
@@ -35,10 +40,19 @@ export const MembersResponse = obj({
 
 export const InvitationCreatedResponse = obj({
   invitation: PendingInvitation,
-  inviteUrl: z.string().url().optional().openapi({ description: 'Only when EXPOSE_INVITE_LINKS is enabled (development).' }),
+  inviteUrl: z
+    .string()
+    .url()
+    .optional()
+    .openapi({ description: 'Only when EXPOSE_INVITE_LINKS is enabled (development).' }),
   emailSent: z.boolean(),
 });
-export const InvitationPreviewResponse = obj({ workspaceName: z.string(), email: z.string(), role: Role, expiresAt: timestamp }).openapi('InvitationPreview');
+export const InvitationPreviewResponse = obj({
+  workspaceName: z.string(),
+  email: z.string(),
+  role: Role,
+  expiresAt: timestamp,
+}).openapi('InvitationPreview');
 export const InvitationAcceptedResponse = obj({ workspaceId: uuid, workspaceName: z.string() });
 
 export const OverviewResponse = obj({
@@ -53,7 +67,9 @@ export const OverviewResponse = obj({
   }),
   storage: StorageUsage,
   storageByType: z.array(obj({ category: z.string(), count: z.number().int(), bytes: z.number().int() })),
-  series: z.array(obj({ day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), uploads: z.number().int(), opens: z.number().int() })),
+  series: z.array(
+    obj({ day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), uploads: z.number().int(), opens: z.number().int() }),
+  ),
   topShared: z.array(
     obj({
       id: uuid,
@@ -65,7 +81,14 @@ export const OverviewResponse = obj({
     }),
   ),
   recentDocuments: z.array(
-    obj({ id: uuid, filename: z.string(), mimeType: z.string(), size: z.number().int(), createdAt: timestamp, uploadedByEmail: z.string() }),
+    obj({
+      id: uuid,
+      filename: z.string(),
+      mimeType: z.string(),
+      size: z.number().int(),
+      createdAt: timestamp,
+      uploadedByEmail: z.string(),
+    }),
   ),
   recentActivity: z.array(AuditEvent).nullable().openapi({ description: 'null for non-owners.' }),
 }).openapi('Overview');

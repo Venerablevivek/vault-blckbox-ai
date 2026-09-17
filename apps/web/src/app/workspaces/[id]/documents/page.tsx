@@ -84,7 +84,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
   const [sort, setSort] = useState<SortChoice>('date-desc');
   const [view, setView] = useState<'list' | 'grid'>('list');
 
-  const [data, setData] = useState<DocumentListResponse & { trashRetentionDays: number } | null>(null);
+  const [data, setData] = useState<(DocumentListResponse & { trashRetentionDays: number }) | null>(null);
   const [documents, setDocuments] = useState<DocumentDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -167,7 +167,9 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
     setLoadingMore(true);
     const requestId = latestRequest.current;
     try {
-      const result = await api.get<DocumentListResponse>(`/api/workspaces/${workspaceId}/documents?${buildQuery(data.nextCursor)}`);
+      const result = await api.get<DocumentListResponse>(
+        `/api/workspaces/${workspaceId}/documents?${buildQuery(data.nextCursor)}`,
+      );
       if (requestId !== latestRequest.current) return; // the list was reloaded meanwhile
       setDocuments((current) => [...current, ...result.documents]);
       setData((current) => (current ? { ...current, nextCursor: result.nextCursor } : current));
@@ -182,9 +184,12 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
   useEffect(() => {
     const node = loadMoreSentinel.current;
     if (!node || !data?.nextCursor) return;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) void loadMore();
-    }, { rootMargin: '200px' });
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) void loadMore();
+      },
+      { rootMargin: '200px' },
+    );
     observer.observe(node);
     return () => observer.disconnect();
   }, [data?.nextCursor, loadMore]);
@@ -275,7 +280,12 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
 
   async function renameFolder(folder: FolderDto) {
     setMenuFor(null);
-    const name = await dialogs.prompt({ title: 'Rename folder', label: 'Folder name', defaultValue: folder.name, maxLength: 120 });
+    const name = await dialogs.prompt({
+      title: 'Rename folder',
+      label: 'Folder name',
+      defaultValue: folder.name,
+      maxLength: 120,
+    });
     if (!name || name === folder.name) return;
     try {
       await api.patch(`/api/workspaces/${workspaceId}/folders/${folder.id}`, { name });
@@ -327,7 +337,8 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
           It can be restored for {data?.trashRetentionDays ?? 30} days.
           {shared ? (
             <strong className="mt-2 block font-medium">
-              Its {doc.links!.count} share link{doc.links!.count === 1 ? '' : 's'} will stop working and won&rsquo;t come back if you restore it.
+              Its {doc.links!.count} share link{doc.links!.count === 1 ? '' : 's'} will stop working and won&rsquo;t
+              come back if you restore it.
             </strong>
           ) : null}
         </>
@@ -400,8 +411,22 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
   const purgeDate = (doc: DocumentDto) =>
     doc.deletedAt ? new Date(new Date(doc.deletedAt).getTime() + (data?.trashRetentionDays ?? 30) * 86_400_000) : null;
 
-  function MenuItem({ icon: Icon, label, onClick, href, danger, disabled, title }: {
-    icon: typeof Download; label: string; onClick?: () => void; href?: string; danger?: boolean; disabled?: boolean; title?: string;
+  function MenuItem({
+    icon: Icon,
+    label,
+    onClick,
+    href,
+    danger,
+    disabled,
+    title,
+  }: {
+    icon: typeof Download;
+    label: string;
+    onClick?: () => void;
+    href?: string;
+    danger?: boolean;
+    disabled?: boolean;
+    title?: string;
   }) {
     const className = `flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm disabled:cursor-not-allowed disabled:opacity-40 ${
       danger ? 'text-danger hover:bg-danger-soft' : 'hover:bg-slate-100'
@@ -431,7 +456,12 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
         </button>
         {menuFor === id ? (
           <>
-            <button className="fixed inset-0 z-10 cursor-default" aria-hidden tabIndex={-1} onClick={() => setMenuFor(null)} />
+            <button
+              className="fixed inset-0 z-10 cursor-default"
+              aria-hidden
+              tabIndex={-1}
+              onClick={() => setMenuFor(null)}
+            />
             <div className="panel absolute right-0 top-9 z-20 w-52 animate-rise p-1.5" role="menu">
               {children}
             </div>
@@ -445,8 +475,12 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
     if (trash) {
       return (
         <div className="flex items-center gap-1">
-          <button className="btn-secondary btn-sm" onClick={() => void restoreDocument(doc)} disabled={!canModify(doc)}
-            title={canModify(doc) ? undefined : 'Only the uploader or an owner can restore this'}>
+          <button
+            className="btn-secondary btn-sm"
+            onClick={() => void restoreDocument(doc)}
+            disabled={!canModify(doc)}
+            title={canModify(doc) ? undefined : 'Only the uploader or an owner can restore this'}
+          >
             <ArchiveRestore className="h-3.5 w-3.5" aria-hidden /> Restore
           </button>
           {role === 'OWNER' ? (
@@ -461,7 +495,12 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
     return (
       <div className="flex items-center gap-1">
         {previewable ? (
-          <button className="btn-ghost h-8 px-2" onClick={() => setPreviewFor(doc)} aria-label={`Preview ${doc.filename}`} title="Preview">
+          <button
+            className="btn-ghost h-8 px-2"
+            onClick={() => setPreviewFor(doc)}
+            aria-label={`Preview ${doc.filename}`}
+            title="Preview"
+          >
             <Eye className="h-4 w-4" />
           </button>
         ) : null}
@@ -476,18 +515,60 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
         )}
         <Menu id={doc.id}>
           <MenuItem icon={Download} label="Download" href={`/api/documents/${doc.id}/download`} />
-          <MenuItem icon={Info} label="Details" onClick={() => { setMenuFor(null); setDetailsFor(doc); }} />
-          {previewable ? <MenuItem icon={Eye} label="Preview" onClick={() => { setMenuFor(null); setPreviewFor(doc); }} /> : null}
+          <MenuItem
+            icon={Info}
+            label="Details"
+            onClick={() => {
+              setMenuFor(null);
+              setDetailsFor(doc);
+            }}
+          />
+          {previewable ? (
+            <MenuItem
+              icon={Eye}
+              label="Preview"
+              onClick={() => {
+                setMenuFor(null);
+                setPreviewFor(doc);
+              }}
+            />
+          ) : null}
           {contributor ? (
             <>
-              <MenuItem icon={Share2} label="Share & activity" onClick={() => { setMenuFor(null); setShareFor(doc); }} />
-              <MenuItem icon={Pencil} label="Rename" onClick={() => void renameDocument(doc)} disabled={!canModify(doc)}
-                title={canModify(doc) ? undefined : 'Only the uploader or an owner can rename this'} />
-              <MenuItem icon={FolderInput} label="Move to…" onClick={() => { setMenuFor(null); setMoving({ kind: 'document', doc }); }}
-                disabled={!canModify(doc)} title={canModify(doc) ? undefined : 'Only the uploader or an owner can move this'} />
+              <MenuItem
+                icon={Share2}
+                label="Share & activity"
+                onClick={() => {
+                  setMenuFor(null);
+                  setShareFor(doc);
+                }}
+              />
+              <MenuItem
+                icon={Pencil}
+                label="Rename"
+                onClick={() => void renameDocument(doc)}
+                disabled={!canModify(doc)}
+                title={canModify(doc) ? undefined : 'Only the uploader or an owner can rename this'}
+              />
+              <MenuItem
+                icon={FolderInput}
+                label="Move to…"
+                onClick={() => {
+                  setMenuFor(null);
+                  setMoving({ kind: 'document', doc });
+                }}
+                disabled={!canModify(doc)}
+                title={canModify(doc) ? undefined : 'Only the uploader or an owner can move this'}
+              />
               <div className="my-1 h-px bg-line" />
-              <MenuItem icon={Trash2} label="Move to trash" danger onClick={() => void trashDocument(doc)} disabled={!canModify(doc)}
-                title={canModify(doc) ? undefined : 'Only the uploader or an owner can delete this'} />
+              <MenuItem
+                icon={Trash2}
+                label="Move to trash"
+                danger
+                onClick={() => void trashDocument(doc)}
+                disabled={!canModify(doc)}
+                title={canModify(doc) ? undefined : 'Only the uploader or an owner can delete this'}
+              />
             </>
           ) : null}
         </Menu>
@@ -500,7 +581,9 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
     return (
       <span className={doc.links.opens > 0 ? 'chip-ok' : 'chip-brand'}>
         {doc.links.opens > 0 ? <Eye className="h-3 w-3" aria-hidden /> : <Share2 className="h-3 w-3" aria-hidden />}
-        {doc.links.opens > 0 ? `${doc.links.opens} opens` : `${doc.links.count} link${doc.links.count === 1 ? '' : 's'} · unopened`}
+        {doc.links.opens > 0
+          ? `${doc.links.opens} opens`
+          : `${doc.links.count} link${doc.links.count === 1 ? '' : 's'} · unopened`}
       </span>
     );
   }
@@ -524,13 +607,29 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
       actions={
         contributor && !trash ? (
           <>
-            <input ref={fileInput} type="file" multiple className="sr-only" onChange={(e) => e.target.files && void uploadFiles(e.target.files)} />
-            <button className="btn-secondary hidden sm:inline-flex" onClick={() => void createFolder()} disabled={searching}>
+            <input
+              ref={fileInput}
+              type="file"
+              multiple
+              className="sr-only"
+              onChange={(e) => e.target.files && void uploadFiles(e.target.files)}
+            />
+            <button
+              className="btn-secondary hidden sm:inline-flex"
+              onClick={() => void createFolder()}
+              disabled={searching}
+            >
               <FolderPlus className="h-4 w-4" aria-hidden /> New folder
             </button>
-            <button className="btn-primary" onClick={() => fileInput.current?.click()} disabled={uploadPercent !== null}>
+            <button
+              className="btn-primary"
+              onClick={() => fileInput.current?.click()}
+              disabled={uploadPercent !== null}
+            >
               <UploadCloud className="h-4 w-4" aria-hidden />
-              <span className="hidden sm:inline">{uploadPercent !== null ? `Uploading ${uploadPercent}%` : 'Upload'}</span>
+              <span className="hidden sm:inline">
+                {uploadPercent !== null ? `Uploading ${uploadPercent}%` : 'Upload'}
+              </span>
             </button>
           </>
         ) : null
@@ -538,16 +637,28 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
     >
       <div
         className="mx-auto max-w-7xl space-y-4 p-4 sm:p-6"
-        onDragOver={(e) => { if (contributor && !trash) { e.preventDefault(); setDragging(true); } }}
-        onDragLeave={(e) => { if (e.currentTarget === e.target) setDragging(false); }}
-        onDrop={(e) => { e.preventDefault(); setDragging(false); if (contributor && !trash && e.dataTransfer.files.length) void uploadFiles(e.dataTransfer.files); }}
+        onDragOver={(e) => {
+          if (contributor && !trash) {
+            e.preventDefault();
+            setDragging(true);
+          }
+        }}
+        onDragLeave={(e) => {
+          if (e.currentTarget === e.target) setDragging(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          if (contributor && !trash && e.dataTransfer.files.length) void uploadFiles(e.dataTransfer.files);
+        }}
       >
         {error ? <ErrorNote message={error} /> : null}
 
         {role === 'VIEWER' ? (
           <div className="flex items-center gap-2 rounded-xl border border-warn/20 bg-warn-soft px-4 py-2.5 text-sm text-warn">
             <Lock className="h-4 w-4 shrink-0" aria-hidden />
-            You have read-only access to this workspace: you can view and download documents, but not upload, share or change them.
+            You have read-only access to this workspace: you can view and download documents, but not upload, share or
+            change them.
           </div>
         ) : null}
 
@@ -561,24 +672,38 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
         ) : null}
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex rounded-lg border border-line bg-white p-0.5 shadow-card" role="tablist" aria-label="Filter documents">
+          <div
+            className="flex rounded-lg border border-line bg-white p-0.5 shadow-card"
+            role="tablist"
+            aria-label="Filter documents"
+          >
             {tabs.map((t) => (
               <button
                 key={t.key}
                 role="tab"
                 aria-selected={tab === t.key}
-                onClick={() => { setTab(t.key); setMenuFor(null); }}
+                onClick={() => {
+                  setTab(t.key);
+                  setMenuFor(null);
+                }}
                 className={`rounded-md px-3 py-1.5 text-sm transition-colors ${tab === t.key ? 'bg-brand-600 font-medium text-white' : 'text-ink-muted hover:text-ink'}`}
               >
                 {t.key === 'trash' ? <Trash2 className="mr-1 inline h-3.5 w-3.5" aria-hidden /> : null}
                 {t.label}
-                {t.count !== undefined ? <span className={`ml-1.5 text-xs ${tab === t.key ? 'text-brand-100' : 'text-ink-subtle'}`}>{t.count}</span> : null}
+                {t.count !== undefined ? (
+                  <span className={`ml-1.5 text-xs ${tab === t.key ? 'text-brand-100' : 'text-ink-subtle'}`}>
+                    {t.count}
+                  </span>
+                ) : null}
               </button>
             ))}
           </div>
 
           <div className="relative ml-auto w-full sm:w-72">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-subtle" aria-hidden />
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-subtle"
+              aria-hidden
+            />
             <input
               ref={searchInput}
               type="search"
@@ -588,20 +713,41 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
               onChange={(e) => setQuery(e.target.value)}
               aria-label="Search documents"
             />
-            <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-line-strong bg-white px-1.5 text-[10px] text-ink-subtle">/</kbd>
+            <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-line-strong bg-white px-1.5 text-[10px] text-ink-subtle">
+              /
+            </kbd>
           </div>
 
           {!trash ? (
-            <select className="input h-9 w-auto" value={sort} onChange={(e) => setSort(e.target.value as SortChoice)} aria-label="Sort documents">
-              {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+            <select
+              className="input h-9 w-auto"
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortChoice)}
+              aria-label="Sort documents"
+            >
+              {SORTS.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
             </select>
           ) : null}
 
           <div className="flex rounded-lg border border-line bg-white p-0.5 shadow-card">
-            <button className={`rounded-md p-1.5 ${view === 'list' ? 'bg-slate-100 text-ink' : 'text-ink-subtle'}`} onClick={() => setView('list')} aria-label="List view" aria-pressed={view === 'list'}>
+            <button
+              className={`rounded-md p-1.5 ${view === 'list' ? 'bg-slate-100 text-ink' : 'text-ink-subtle'}`}
+              onClick={() => setView('list')}
+              aria-label="List view"
+              aria-pressed={view === 'list'}
+            >
               <List className="h-4 w-4" />
             </button>
-            <button className={`rounded-md p-1.5 ${view === 'grid' ? 'bg-slate-100 text-ink' : 'text-ink-subtle'}`} onClick={() => setView('grid')} aria-label="Grid view" aria-pressed={view === 'grid'}>
+            <button
+              className={`rounded-md p-1.5 ${view === 'grid' ? 'bg-slate-100 text-ink' : 'text-ink-subtle'}`}
+              onClick={() => setView('grid')}
+              aria-label="Grid view"
+              aria-pressed={view === 'grid'}
+            >
               <LayoutGrid className="h-4 w-4" />
             </button>
           </div>
@@ -616,7 +762,10 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
               </span>
             ) : (
               <>
-                <button onClick={() => openFolder(null)} className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 ${path.length ? 'text-ink-muted hover:bg-slate-100 hover:text-ink' : 'font-medium text-ink'}`}>
+                <button
+                  onClick={() => openFolder(null)}
+                  className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 ${path.length ? 'text-ink-muted hover:bg-slate-100 hover:text-ink' : 'font-medium text-ink'}`}
+                >
                   <Home className="h-3.5 w-3.5" aria-hidden /> All documents
                 </button>
                 {path.map((f, i) => (
@@ -647,7 +796,10 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{uploadingName}</p>
               <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                <div className="h-full rounded-full bg-brand-600 transition-[width] duration-150" style={{ width: `${uploadPercent}%` }} />
+                <div
+                  className="h-full rounded-full bg-brand-600 transition-[width] duration-150"
+                  style={{ width: `${uploadPercent}%` }}
+                />
               </div>
             </div>
             <span className="text-xs font-medium tabular-nums text-ink-muted">{uploadPercent}%</span>
@@ -656,28 +808,44 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
 
         {dragging ? (
           <div className="flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-brand-400 bg-brand-50/60 py-10 text-sm font-medium text-brand-700">
-            <UploadCloud className="h-5 w-5" aria-hidden /> Drop files to upload{path.length ? ` into “${path[path.length - 1]!.name}”` : ''}
+            <UploadCloud className="h-5 w-5" aria-hidden /> Drop files to upload
+            {path.length ? ` into “${path[path.length - 1]!.name}”` : ''}
           </div>
         ) : null}
 
         {loading ? (
-          <div className="card overflow-hidden"><Skeleton rows={5} /></div>
+          <div className="card overflow-hidden">
+            <Skeleton rows={5} />
+          </div>
         ) : empty ? (
           <div className="card">
             <EmptyState
               icon={trash ? Trash2 : searching ? Search : folderId ? Folder : FileText}
-              title={trash ? 'The trash is empty' : searching || tab !== 'all' ? 'No documents match' : folderId ? 'This folder is empty' : 'No documents yet'}
+              title={
+                trash
+                  ? 'The trash is empty'
+                  : searching || tab !== 'all'
+                    ? 'No documents match'
+                    : folderId
+                      ? 'This folder is empty'
+                      : 'No documents yet'
+              }
               hint={
-                trash ? 'Deleted documents appear here and can be restored.'
-                  : searching || tab !== 'all' ? 'Try a different search or filter.'
-                    : contributor ? 'Drag files here or use Upload. Up to 25 MB — PDFs, Office documents, text and images.'
+                trash
+                  ? 'Deleted documents appear here and can be restored.'
+                  : searching || tab !== 'all'
+                    ? 'Try a different search or filter.'
+                    : contributor
+                      ? 'Drag files here or use Upload. Up to 25 MB — PDFs, Office documents, text and images.'
                       : 'Nothing has been shared into this folder yet.'
               }
-              action={!trash && !searching && tab === 'all' && contributor ? (
-                <button className="btn-primary" onClick={() => fileInput.current?.click()}>
-                  <UploadCloud className="h-4 w-4" aria-hidden /> Upload a file
-                </button>
-              ) : null}
+              action={
+                !trash && !searching && tab === 'all' && contributor ? (
+                  <button className="btn-primary" onClick={() => fileInput.current?.click()}>
+                    <UploadCloud className="h-4 w-4" aria-hidden /> Upload a file
+                  </button>
+                ) : null
+              }
             />
           </div>
         ) : (
@@ -691,34 +859,82 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
               </div>
             ) : null}
 
-            <ul className={view === 'grid' ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'divide-y divide-line'}>
+            <ul
+              className={
+                view === 'grid'
+                  ? 'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+                  : 'divide-y divide-line'
+              }
+            >
               {folders.map((folder) => {
                 const mayModify = ownsOrAdministers(role, folder.createdBy, session.userId);
                 return (
-                  <li key={folder.id} className={view === 'grid' ? 'card flex items-center gap-3 p-4' : 'flex items-center gap-4 px-5 py-3 hover:bg-slate-50/70'}>
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600" aria-hidden>
+                  <li
+                    key={folder.id}
+                    className={
+                      view === 'grid'
+                        ? 'card flex items-center gap-3 p-4'
+                        : 'flex items-center gap-4 px-5 py-3 hover:bg-slate-50/70'
+                    }
+                  >
+                    <span
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600"
+                      aria-hidden
+                    >
                       <Folder className="h-5 w-5" />
                     </span>
                     <button className="min-w-0 flex-1 text-left" onClick={() => openFolder(folder.id)}>
                       <span className="block truncate text-sm font-medium hover:text-brand-700">{folder.name}</span>
                       <span className="block text-xs text-ink-muted">
                         {folder.documentCount ?? 0} document{folder.documentCount === 1 ? '' : 's'}
-                        {folder.folderCount ? ` · ${folder.folderCount} folder${folder.folderCount === 1 ? '' : 's'}` : ''}
+                        {folder.folderCount
+                          ? ` · ${folder.folderCount} folder${folder.folderCount === 1 ? '' : 's'}`
+                          : ''}
                       </span>
                     </button>
                     {view === 'list' ? <span className="hidden w-20 md:block" /> : null}
-                    {view === 'list' ? <span className="hidden w-28 text-sm text-ink-muted md:block">{formatDate(folder.createdAt)}</span> : null}
+                    {view === 'list' ? (
+                      <span className="hidden w-28 text-sm text-ink-muted md:block">
+                        {formatDate(folder.createdAt)}
+                      </span>
+                    ) : null}
                     <div className={view === 'list' ? 'flex w-[168px] justify-end' : ''}>
                       {contributor ? (
                         <Menu id={`folder-${folder.id}`}>
-                          <MenuItem icon={Folder} label="Open" onClick={() => { setMenuFor(null); openFolder(folder.id); }} />
-                          <MenuItem icon={Pencil} label="Rename" onClick={() => void renameFolder(folder)} disabled={!mayModify}
-                            title={mayModify ? undefined : 'Only the creator or an owner can rename this folder'} />
-                          <MenuItem icon={FolderInput} label="Move to…" onClick={() => { setMenuFor(null); setMoving({ kind: 'folder', folder }); }}
-                            disabled={!mayModify} title={mayModify ? undefined : 'Only the creator or an owner can move this folder'} />
+                          <MenuItem
+                            icon={Folder}
+                            label="Open"
+                            onClick={() => {
+                              setMenuFor(null);
+                              openFolder(folder.id);
+                            }}
+                          />
+                          <MenuItem
+                            icon={Pencil}
+                            label="Rename"
+                            onClick={() => void renameFolder(folder)}
+                            disabled={!mayModify}
+                            title={mayModify ? undefined : 'Only the creator or an owner can rename this folder'}
+                          />
+                          <MenuItem
+                            icon={FolderInput}
+                            label="Move to…"
+                            onClick={() => {
+                              setMenuFor(null);
+                              setMoving({ kind: 'folder', folder });
+                            }}
+                            disabled={!mayModify}
+                            title={mayModify ? undefined : 'Only the creator or an owner can move this folder'}
+                          />
                           <div className="my-1 h-px bg-line" />
-                          <MenuItem icon={Trash2} label="Delete folder" danger onClick={() => void deleteFolder(folder)} disabled={!mayModify}
-                            title={mayModify ? undefined : 'Only the creator or an owner can delete this folder'} />
+                          <MenuItem
+                            icon={Trash2}
+                            label="Delete folder"
+                            danger
+                            onClick={() => void deleteFolder(folder)}
+                            disabled={!mayModify}
+                            title={mayModify ? undefined : 'Only the creator or an owner can delete this folder'}
+                          />
                         </Menu>
                       ) : null}
                     </div>
@@ -733,10 +949,18 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                       <FileGlyph filename={doc.filename} mimeType={doc.mimeType} />
                       <LinkChip doc={doc} />
                     </div>
-                    <p className="mt-3 truncate text-sm font-semibold" title={doc.filename}>{doc.filename}</p>
-                    <p className="mt-0.5 truncate text-xs text-ink-muted">{formatBytes(doc.size)} · {timeAgo(trash && doc.deletedAt ? doc.deletedAt : doc.createdAt)}</p>
-                    <p className="truncate text-xs text-ink-subtle">{trash ? `Deleted by ${doc.deletedByEmail ?? 'someone'}` : doc.uploadedByEmail}</p>
-                    <div className="mt-4 flex justify-end border-t border-line pt-3"><DocumentActions doc={doc} /></div>
+                    <p className="mt-3 truncate text-sm font-semibold" title={doc.filename}>
+                      {doc.filename}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-ink-muted">
+                      {formatBytes(doc.size)} · {timeAgo(trash && doc.deletedAt ? doc.deletedAt : doc.createdAt)}
+                    </p>
+                    <p className="truncate text-xs text-ink-subtle">
+                      {trash ? `Deleted by ${doc.deletedByEmail ?? 'someone'}` : doc.uploadedByEmail}
+                    </p>
+                    <div className="mt-4 flex justify-end border-t border-line pt-3">
+                      <DocumentActions doc={doc} />
+                    </div>
                   </li>
                 ) : (
                   <li key={doc.id} className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-slate-50/70">
@@ -744,7 +968,13 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                     <div className="min-w-0 flex-1">
                       <button
                         className="block max-w-full truncate text-left text-sm font-medium hover:text-brand-700 disabled:hover:text-ink"
-                        onClick={() => (PREVIEWABLE.has(doc.mimeType) ? setPreviewFor(doc) : contributor ? setShareFor(doc) : undefined)}
+                        onClick={() =>
+                          PREVIEWABLE.has(doc.mimeType)
+                            ? setPreviewFor(doc)
+                            : contributor
+                              ? setShareFor(doc)
+                              : undefined
+                        }
                         disabled={trash}
                         title={doc.filename}
                       >
@@ -753,16 +983,27 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
                         {trash ? (
                           <>
-                            {doc.deletedAt ? <span>Deleted {timeAgo(doc.deletedAt)} by {doc.deletedByEmail ?? 'someone'}</span> : null}
-                            {purgeDate(doc) ? <span className="chip">Purged {formatDate(purgeDate(doc)!.toISOString())}</span> : null}
+                            {doc.deletedAt ? (
+                              <span>
+                                Deleted {timeAgo(doc.deletedAt)} by {doc.deletedByEmail ?? 'someone'}
+                              </span>
+                            ) : null}
+                            {purgeDate(doc) ? (
+                              <span className="chip">Purged {formatDate(purgeDate(doc)!.toISOString())}</span>
+                            ) : null}
                           </>
                         ) : (
                           <>
                             <span className="truncate">{doc.uploadedByEmail}</span>
                             <LinkChip doc={doc} />
-                            {doc.links?.lastAccessedAt ? <span className="text-ink-subtle">last opened {timeAgo(doc.links.lastAccessedAt)}</span> : null}
+                            {doc.links?.lastAccessedAt ? (
+                              <span className="text-ink-subtle">last opened {timeAgo(doc.links.lastAccessedAt)}</span>
+                            ) : null}
                             {searching && doc.folderId ? (
-                              <Link href={`/workspaces/${workspaceId}/documents?folder=${doc.folderId}`} className="inline-flex items-center gap-1 text-brand-600 hover:underline">
+                              <Link
+                                href={`/workspaces/${workspaceId}/documents?folder=${doc.folderId}`}
+                                className="inline-flex items-center gap-1 text-brand-600 hover:underline"
+                              >
                                 <Folder className="h-3 w-3" aria-hidden /> in a folder
                               </Link>
                             ) : null}
@@ -770,9 +1011,15 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                         )}
                       </div>
                     </div>
-                    <span className="hidden w-20 text-right text-sm tabular-nums text-ink-muted md:block">{formatBytes(doc.size)}</span>
-                    {!trash ? <span className="hidden w-28 text-sm text-ink-muted md:block">{formatDate(doc.createdAt)}</span> : null}
-                    <div className={`flex justify-end ${trash ? '' : 'w-[168px]'}`}><DocumentActions doc={doc} /></div>
+                    <span className="hidden w-20 text-right text-sm tabular-nums text-ink-muted md:block">
+                      {formatBytes(doc.size)}
+                    </span>
+                    {!trash ? (
+                      <span className="hidden w-28 text-sm text-ink-muted md:block">{formatDate(doc.createdAt)}</span>
+                    ) : null}
+                    <div className={`flex justify-end ${trash ? '' : 'w-[168px]'}`}>
+                      <DocumentActions doc={doc} />
+                    </div>
                   </li>
                 ),
               )}
@@ -790,7 +1037,13 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
       </div>
 
       {shareFor ? (
-        <SharePanel document={shareFor} role={role} userId={session.userId} onClose={() => setShareFor(null)} onChanged={() => void load()} />
+        <SharePanel
+          document={shareFor}
+          role={role}
+          userId={session.userId}
+          onClose={() => setShareFor(null)}
+          onChanged={() => void load()}
+        />
       ) : null}
       {previewFor ? <PreviewModal document={previewFor} onClose={() => setPreviewFor(null)} /> : null}
       <DocumentDetails document={detailsFor} onClose={() => setDetailsFor(null)} />

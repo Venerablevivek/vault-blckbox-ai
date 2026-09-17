@@ -13,11 +13,7 @@ export interface NotifyInput {
   resourceId?: string | null;
 }
 
-export function createNotificationsService(deps: {
-  pool: Pool;
-  clock: Clock;
-  logger: Logger;
-}) {
+export function createNotificationsService(deps: { pool: Pool; clock: Clock; logger: Logger }) {
   const { pool, clock, logger } = deps;
 
   function row(input: NotifyInput) {

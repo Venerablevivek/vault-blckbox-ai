@@ -32,7 +32,12 @@ async function main(): Promise<void> {
   const audit = createAuditService({ pool, clock, logger });
   const notifications = createNotificationsService({ pool, clock, logger });
   const documents = createDocumentsService({
-    pool, storage, clock, logger, audit, notifications,
+    pool,
+    storage,
+    clock,
+    logger,
+    audit,
+    notifications,
     maxUploadBytes: config.MAX_UPLOAD_BYTES,
     signedUrlTtlSeconds: config.SIGNED_URL_TTL_SECONDS,
     trashRetentionDays: config.TRASH_RETENTION_DAYS,
