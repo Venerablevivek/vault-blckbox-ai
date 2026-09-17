@@ -8,30 +8,15 @@ import {
   CheckCheck,
   Eye,
   FilePlus2,
+  Trash2,
   UserCheck,
   UserCog,
   UserMinus,
   type LucideIcon,
 } from 'lucide-react';
-import { api, timeAgo } from '@/lib/api';
+import { api, timeAgo, type NotificationDto } from '@/lib/api';
 
-export interface NotificationDto {
-  id: string;
-  type:
-    | 'share.first_open'
-    | 'share.new_viewer'
-    | 'share.forwarding_suspected'
-    | 'document.uploaded'
-    | 'member.joined'
-    | 'member.removed'
-    | 'member.role_changed';
-  title: string;
-  body: string | null;
-  workspaceId: string | null;
-  resourceId: string | null;
-  read: boolean;
-  createdAt: string;
-}
+export type { NotificationDto };
 
 /** Poll interval. Long enough to be cheap, short enough to feel live. */
 const POLL_MS = 20_000;
@@ -44,6 +29,7 @@ const ICONS: Record<NotificationDto['type'], { icon: LucideIcon; tone: string }>
   'member.joined': { icon: UserCheck, tone: 'bg-ok-soft text-ok' },
   'member.removed': { icon: UserMinus, tone: 'bg-danger-soft text-danger' },
   'member.role_changed': { icon: UserCog, tone: 'bg-violet-50 text-violet-600' },
+  'workspace.deleted': { icon: Trash2, tone: 'bg-danger-soft text-danger' },
 };
 
 export function NotificationBell() {

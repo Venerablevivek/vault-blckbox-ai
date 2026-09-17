@@ -1,6 +1,12 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { z } from 'zod';
 import type { Config } from '../../config';
+import {
+  CreateShareBody,
+  ShareIdParams,
+  ShareTokenParams,
+  UnlockBody,
+  UpdateShareBody,
+} from '../../contracts/shares';
 import { currentUser, requireSession } from '../../plugins/session';
 import { grantCookieName, type SharesService, type Visitor } from './shares.service';
 
@@ -9,16 +15,6 @@ function visitorOf(request: FastifyRequest): Visitor {
   return { ip: request.ip, userAgent: request.headers['user-agent'] ?? null };
 }
 
-const tokenParams = z.object({ token: z.string().min(10).max(200) });
-
-const linkSettings = {
-  // null = never expires; omitted = the default (on create) or unchanged (on edit).
-  expiresInHours: z.number().int().positive().max(8760).nullable().optional(),
-  // null = remove the password.
-  password: z.string().min(6).max(128).nullable().optional(),
-  // null = unlimited; 1 = a one-time link.
-  maxDownloads: z.number().int().min(1).max(1000).nullable().optional(),
-};
 
 export function registerShareRoutes(
   app: FastifyInstance,
@@ -31,7 +27,7 @@ export function registerShareRoutes(
   app.post('/api/shares', {
     preHandler: requireSession,
     handler: async (request, reply) => {
-      const body = z.object({ documentId: z.string().uuid(), ...linkSettings }).parse(request.body);
+      const body = CreateShareBody.parse(request.body);
       const user = currentUser(request);
       const result = await shares.create({ ...body, userId: user.id });
 
@@ -52,9 +48,9 @@ export function registerShareRoutes(
   app.patch('/api/shares/:id', {
     preHandler: requireSession,
     handler: async (request) => {
-      const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+      const { id } = ShareIdParams.parse(request.params);
       const user = currentUser(request);
-      const changes = z.object(linkSettings).parse(request.body);
+      const changes = UpdateShareBody.parse(request.body);
       const share = await shares.update(id, user.id, changes);
       return {
         share: {
@@ -71,7 +67,7 @@ export function registerShareRoutes(
   app.get('/api/shares/:id/events', {
     preHandler: requireSession,
     handler: async (request) => {
-      const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+      const { id } = ShareIdParams.parse(request.params);
       return { events: await shares.listEvents(id, currentUser(request).id) };
     },
   });
@@ -79,7 +75,7 @@ export function registerShareRoutes(
   app.delete('/api/shares/:id', {
     preHandler: requireSession,
     handler: async (request, reply) => {
-      const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
+      const { id } = ShareIdParams.parse(request.params);
       await shares.revoke(id, currentUser(request).id);
       return reply.status(204).send();
     },
@@ -95,7 +91,7 @@ export function registerShareRoutes(
   app.get('/api/shares/:token', {
     config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
     handler: async (request) => {
-      const { token } = tokenParams.parse(request.params);
+      const { token } = ShareTokenParams.parse(request.params);
       return shares.resolvePublic(token, grantOf(request, token));
     },
   });
@@ -103,8 +99,8 @@ export function registerShareRoutes(
   app.post('/api/shares/:token/unlock', {
     config: { rateLimit: { max: 10, timeWindow: '15 minutes' } },
     handler: async (request, reply) => {
-      const { token } = tokenParams.parse(request.params);
-      const { password } = z.object({ password: z.string().min(1).max(128) }).parse(request.body);
+      const { token } = ShareTokenParams.parse(request.params);
+      const { password } = UnlockBody.parse(request.body);
       const result = await shares.unlock(token, password, visitorOf(request));
       if (result.grant) {
         reply.setCookie(grantCookieName(token), result.grant, {
@@ -123,7 +119,7 @@ export function registerShareRoutes(
   app.post('/api/shares/:token/view', {
     config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
     handler: async (request, reply) => {
-      const { token } = tokenParams.parse(request.params);
+      const { token } = ShareTokenParams.parse(request.params);
       await shares.recordView(token, visitorOf(request), grantOf(request, token));
       return reply.status(204).send();
     },
@@ -132,7 +128,7 @@ export function registerShareRoutes(
   app.get('/api/shares/:token/download', {
     config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
     handler: async (request, reply) => {
-      const { token } = tokenParams.parse(request.params);
+      const { token } = ShareTokenParams.parse(request.params);
       const url = await shares.downloadUrl(token, visitorOf(request), grantOf(request, token));
       return reply.redirect(url, 302);
     },

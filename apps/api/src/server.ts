@@ -25,6 +25,7 @@ import { createFoldersService } from './modules/folders/folders.service';
 import { registerFolderRoutes } from './modules/folders/folders.routes';
 import { createMaintenanceService } from './modules/maintenance/maintenance.service';
 import { LogMailer, SmtpMailer } from './mail/mailer';
+import { buildOpenApiDocument } from './openapi/document';
 import { systemClock, type AppDeps } from './types';
 
 /**
@@ -48,7 +49,22 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     // Only the configured proxies may speak for the client — see TRUSTED_PROXIES in config.ts.
     trustProxy: config.TRUSTED_PROXIES,
     bodyLimit: 1_048_576,
+    // /api/v1/* is the stable, versioned address for the same routes. Rewriting keeps one set of
+    // handlers; a future v2 would register its own routes rather than change these.
+    rewriteUrl: (request) => {
+      const url = request.url ?? '/';
+      return url.startsWith('/api/v1/') ? `/api/${url.slice('/api/v1/'.length)}` : url;
+    },
   });
+
+  // Every registered route, so a contract test can check the OpenAPI document covers them all.
+  const routeTable: Array<{ method: string; url: string }> = [];
+  app.addHook('onRoute', (route) => {
+    for (const method of ([] as string[]).concat(route.method)) {
+      if (method !== 'HEAD') routeTable.push({ method, url: route.url });
+    }
+  });
+  app.decorate('routeTable', routeTable);
 
   await app.register(helmet, {
     // The API serves JSON and redirects only; it never renders HTML.
@@ -133,6 +149,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   registerSession(app, config, auth);
 
   app.get('/health', async () => ({ status: 'ok' }));
+
+  // The API contract, generated from the same Zod schemas the routes validate with.
+  const openApiDocument = buildOpenApiDocument();
+  app.get('/api/openapi.json', async () => openApiDocument);
 
   // Readiness: both dependencies must actually answer, because compose gates the web
   // container on this.

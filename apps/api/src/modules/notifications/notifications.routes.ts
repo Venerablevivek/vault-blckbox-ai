@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { z } from 'zod';
+import { MarkReadBody } from '../../contracts/activity';
 import { currentUser, requireSession } from '../../plugins/session';
 import type { NotificationsService } from './notifications.service';
 
@@ -17,7 +17,7 @@ export function registerNotificationRoutes(
   });
 
   app.post('/api/notifications/read', { preHandler: requireSession }, async (request, reply) => {
-    const body = z.object({ id: z.string().uuid().optional() }).parse(request.body ?? {});
+    const body = MarkReadBody.parse(request.body ?? {});
     const user = currentUser(request);
     // user_id is part of the UPDATE's WHERE clause, so this can only ever affect the
     // caller's own rows even if an arbitrary id is supplied.

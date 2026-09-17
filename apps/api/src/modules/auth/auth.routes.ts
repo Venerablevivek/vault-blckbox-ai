@@ -1,6 +1,13 @@
 import type { FastifyInstance } from 'fastify';
-import { z } from 'zod';
 import type { Config } from '../../config';
+import {
+  ChangePasswordBody,
+  CredentialsBody,
+  ForgotPasswordBody,
+  RegisterBody,
+  ResetPasswordBody,
+  SessionParams,
+} from '../../contracts/auth';
 import {
   clearSessionCookie,
   currentSessionId,
@@ -9,16 +16,6 @@ import {
   setSessionCookie,
 } from '../../plugins/session';
 import type { AuthService } from './auth.service';
-
-// 8 characters is the floor; Argon2id does the heavy lifting from there.
-const password = z.string().min(8).max(200);
-
-const credentials = z.object({
-  email: z.string().email().max(255),
-  password,
-});
-
-const registerBody = credentials.extend({ inviteToken: z.string().max(200).optional() });
 
 export function registerAuthRoutes(
   app: FastifyInstance,
@@ -30,7 +27,7 @@ export function registerAuthRoutes(
     // Account creation is cheap to automate, so it is rate limited per IP.
     config: { rateLimit: { max: 10, timeWindow: '1 hour' } },
     handler: async (request, reply) => {
-      const body = registerBody.parse(request.body);
+      const body = RegisterBody.parse(request.body);
       const { user, session } = await auth.register({ ...body, userAgent: request.headers['user-agent'] });
       setSessionCookie(reply, config, session.token, session.expiresAt);
       return reply.status(201).send({ user });
@@ -40,7 +37,7 @@ export function registerAuthRoutes(
   app.post('/api/auth/login', {
     config: { rateLimit: { max: 20, timeWindow: '15 minutes' } },
     handler: async (request, reply) => {
-      const body = credentials.parse(request.body);
+      const body = CredentialsBody.parse(request.body);
       const { user, session } = await auth.login({ ...body, userAgent: request.headers['user-agent'] });
       setSessionCookie(reply, config, session.token, session.expiresAt);
       return reply.send({ user });
@@ -72,7 +69,7 @@ export function registerAuthRoutes(
   app.post('/api/auth/password/forgot', {
     config: { rateLimit: { max: 5, timeWindow: '1 hour' } },
     handler: async (request, reply) => {
-      const { email } = z.object({ email: z.string().email().max(255) }).parse(request.body);
+      const { email } = ForgotPasswordBody.parse(request.body);
       auth.requestPasswordReset(email).catch((error: unknown) => {
         request.log.error({ err: error }, 'password reset request failed');
       });
@@ -85,7 +82,7 @@ export function registerAuthRoutes(
   app.post('/api/auth/password/reset', {
     config: { rateLimit: { max: 10, timeWindow: '15 minutes' } },
     handler: async (request, reply) => {
-      const body = z.object({ token: z.string().min(10).max(200), password }).parse(request.body);
+      const body = ResetPasswordBody.parse(request.body);
       const { user, session, signedOut } = await auth.resetPassword({
         ...body,
         userAgent: request.headers['user-agent'],
@@ -99,9 +96,7 @@ export function registerAuthRoutes(
     preHandler: requireSession,
     config: { rateLimit: { max: 10, timeWindow: '15 minutes' } },
     handler: async (request) => {
-      const body = z
-        .object({ currentPassword: z.string().min(1).max(200), newPassword: password })
-        .parse(request.body);
+      const body = ChangePasswordBody.parse(request.body);
       return auth.changePassword({
         user: currentUser(request),
         sessionId: currentSessionId(request),
@@ -122,7 +117,7 @@ export function registerAuthRoutes(
   });
 
   app.delete('/api/auth/sessions/:sessionId', { preHandler: requireSession }, async (request, reply) => {
-    const { sessionId } = z.object({ sessionId: z.string().uuid() }).parse(request.params);
+    const { sessionId } = SessionParams.parse(request.params);
     const { current } = await auth.revokeSession(currentUser(request).id, sessionId, currentSessionId(request));
     // Ending the session you're using is signing out.
     if (current) clearSessionCookie(reply, config);

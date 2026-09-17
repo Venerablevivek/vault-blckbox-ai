@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { z } from 'zod';
+import { AuditQuery } from '../../contracts/activity';
+import { WorkspaceParams } from '../../contracts/workspaces';
 import { currentUser, requireSession } from '../../plugins/session';
 import { requireOwner } from '../../policy';
 import type { WorkspacesService } from '../workspaces/workspaces.service';
@@ -21,13 +22,8 @@ export function registerAuditRoutes(
   app.get('/api/workspaces/:id/audit', {
     preHandler: requireSession,
     handler: async (request) => {
-      const { id } = z.object({ id: z.string().uuid() }).parse(request.params);
-      const query = z
-        .object({
-          limit: z.coerce.number().int().min(1).max(200).default(50),
-          before: z.coerce.date().optional(),
-        })
-        .parse(request.query);
+      const { id } = WorkspaceParams.parse(request.params);
+      const query = AuditQuery.parse(request.query);
 
       const user = currentUser(request);
       const membership = await workspaces.requireMember(id, user.id);

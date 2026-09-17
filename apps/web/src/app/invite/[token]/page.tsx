@@ -3,16 +3,11 @@
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { api, ApiRequestError, formatDate } from '@/lib/api';
+import { api, ApiRequestError, formatDate, type Schemas } from '@/lib/api';
 import { PublicShell } from '@/components/site-chrome';
 import { ErrorNote } from '@/components/ui';
 
-interface Preview {
-  workspaceName: string;
-  email: string;
-  role: 'OWNER' | 'MEMBER';
-  expiresAt: string;
-}
+type Preview = Schemas['InvitationPreview'];
 
 /**
  * Invitation landing page. The recipient may or may not have an account, so this offers

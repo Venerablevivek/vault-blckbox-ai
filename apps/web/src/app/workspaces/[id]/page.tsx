@@ -15,21 +15,11 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import { api, ApiRequestError, formatBytes, timeAgo } from '@/lib/api';
+import { api, ApiRequestError, formatBytes, timeAgo, type Overview } from '@/lib/api';
 import { DailyBars, StorageBreakdown } from '@/components/charts';
 import { EmptyState, ErrorNote, FileGlyph, Shell, useSession } from '@/components/ui';
-import { describeAuditEvent, AUDIT_STYLE, type AuditEvent } from '@/components/audit';
+import { describeAuditEvent, AUDIT_STYLE } from '@/components/audit';
 
-interface Overview {
-  role: 'OWNER' | 'MEMBER' | 'VIEWER';
-  totals: { documents: number; bytes: number; members: number; liveLinks: number; opens: number; pendingInvites: number };
-  storageByType: Array<{ category: string; count: number; bytes: number }>;
-  storage: { usedBytes: number; quotaBytes: number };
-  series: Array<{ day: string; uploads: number; opens: number }>;
-  topShared: Array<{ id: string; filename: string; mimeType: string; opens: number; viewers: number; lastAccessedAt: string | null }>;
-  recentDocuments: Array<{ id: string; filename: string; mimeType: string; size: number; createdAt: string; uploadedByEmail: string }>;
-  recentActivity: AuditEvent[] | null;
-}
 
 function greeting(): string {
   const hour = new Date().getHours();
@@ -69,6 +59,10 @@ function Tile({
 export default function OverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: workspaceId } = use(params);
   const session = useSession(workspaceId);
+  // The greeting depends on the viewer's clock, so it is chosen after hydration: computed during
+  // the server render it used the server's time zone and made React discard the page (error #418).
+  const [hello, setHello] = useState('Welcome back');
+  useEffect(() => setHello(greeting()), []);
 
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -118,7 +112,7 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
           <div className="pointer-events-none absolute -bottom-24 right-40 h-56 w-56 rounded-full bg-sky-400/20 blur-2xl" aria-hidden />
           <div className="relative flex flex-wrap items-end justify-between gap-5">
             <div>
-              <p className="text-sm text-brand-100">{greeting()}, {firstName}</p>
+              <p className="text-sm text-brand-100">{hello}, {firstName}</p>
               <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{workspace?.name ?? 'Your workspace'}</h2>
               <p className="mt-2 max-w-xl text-sm text-brand-100">
                 {data
@@ -266,7 +260,7 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
             ) : (
               <ul className="mt-3 divide-y divide-line">
                 {(data?.recentActivity ?? []).map((event) => {
-                  const style = AUDIT_STYLE[event.action];
+                  const style = AUDIT_STYLE[event.action] ?? AUDIT_STYLE['workspace.created'];
                   const Icon = style.icon;
                   return (
                     <li key={event.id} className="flex items-center gap-3 px-5 py-3">

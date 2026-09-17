@@ -1,0 +1,5181 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Vault API",
+    "version": "1.0.0",
+    "description": "Document storage, workspaces and revocable share links. JSON over HTTPS with a session cookie. Every error has the shape { error: { code, message } }. The same routes are served under /api/v1."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "fs_session",
+        "description": "Session cookie set by /api/auth/login or /api/auth/register."
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email"
+        ],
+        "additionalProperties": false
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "example": "NOT_FOUND"
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Per-field problems, for VALIDATION_FAILED."
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "Credentials": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 255,
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "RegisterRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Credentials"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "inviteToken": {
+                "type": "string",
+                "maxLength": 200
+              }
+            }
+          }
+        ]
+      },
+      "Role": {
+        "type": "string",
+        "enum": [
+          "OWNER",
+          "MEMBER",
+          "VIEWER"
+        ]
+      },
+      "WorkspaceSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "role"
+        ],
+        "additionalProperties": false
+      },
+      "Me": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "workspaces": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceSummary"
+            }
+          }
+        },
+        "required": [
+          "user",
+          "workspaces"
+        ],
+        "additionalProperties": false
+      },
+      "ForgotPasswordRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 255,
+            "format": "email"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 200
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "token",
+          "password"
+        ]
+      },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ]
+      },
+      "Session": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userAgent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-17T10:15:00.000Z"
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-17T10:15:00.000Z"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-17T10:15:00.000Z"
+          },
+          "current": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "userAgent",
+          "createdAt",
+          "lastSeenAt",
+          "expiresAt",
+          "current"
+        ],
+        "additionalProperties": false
+      },
+      "CreateWorkspaceRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "RenameWorkspaceRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "DeleteWorkspaceRequest": {
+        "type": "object",
+        "properties": {
+          "confirmName": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "The workspace's exact current name."
+          }
+        },
+        "required": [
+          "confirmName"
+        ]
+      },
+      "StorageUsage": {
+        "type": "object",
+        "properties": {
+          "usedBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "quotaBytes": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          }
+        },
+        "required": [
+          "usedBytes",
+          "quotaBytes"
+        ],
+        "additionalProperties": false
+      },
+      "AuditAction": {
+        "type": "string",
+        "enum": [
+          "workspace.created",
+          "workspace.renamed",
+          "document.uploaded",
+          "document.downloaded",
+          "document.previewed",
+          "document.deleted",
+          "document.renamed",
+          "document.moved",
+          "document.trashed",
+          "document.restored",
+          "document.purged",
+          "folder.created",
+          "folder.renamed",
+          "folder.moved",
+          "folder.deleted",
+          "share.created",
+          "share.updated",
+          "share.revoked",
+          "share.accessed",
+          "share.blocked",
+          "member.invited",
+          "member.joined",
+          "member.removed",
+          "member.left",
+          "member.role_changed",
+          "invitation.revoked"
+        ]
+      },
+      "AuditEvent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "actorEmail": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "action": {
+            "$ref": "#/components/schemas/AuditAction"
+          },
+          "resourceType": {
+            "type": "string",
+            "enum": [
+              "workspace",
+              "document",
+              "folder",
+              "share",
+              "member",
+              "invitation"
+            ]
+          },
+          "resourceId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-17T10:15:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "actorEmail",
+          "action",
+          "resourceType",
+          "resourceId",
+          "metadata",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "Overview": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "documents": {
+                "type": "integer"
+              },
+              "bytes": {
+                "type": "integer"
+              },
+              "members": {
+                "type": "integer"
+              },
+              "liveLinks": {
+                "type": "integer"
+              },
+              "opens": {
+                "type": "integer"
+              },
+              "pendingInvites": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "documents",
+              "bytes",
+              "members",
+              "liveLinks",
+              "opens",
+              "pendingInvites"
+            ],
+            "additionalProperties": false
+          },
+          "storage": {
+            "$ref": "#/components/schemas/StorageUsage"
+          },
+          "storageByType": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "category": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "integer"
+                },
+                "bytes": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "category",
+                "count",
+                "bytes"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "uploads": {
+                  "type": "integer"
+                },
+                "opens": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "day",
+                "uploads",
+                "opens"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "topShared": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "filename": {
+                  "type": "string"
+                },
+                "mimeType": {
+                  "type": "string"
+                },
+                "opens": {
+                  "type": "integer"
+                },
+                "viewers": {
+                  "type": "integer"
+                },
+                "lastAccessedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time",
+                  "example": "2026-09-17T10:15:00.000Z"
+                }
+              },
+              "required": [
+                "id",
+                "filename",
+                "mimeType",
+                "opens",
+                "viewers",
+                "lastAccessedAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "recentDocuments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "filename": {
+                  "type": "string"
+                },
+                "mimeType": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "integer"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2026-09-17T10:15:00.000Z"
+                },
+                "uploadedByEmail": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "filename",
+                "mimeType",
+                "size",
+                "createdAt",
+                "uploadedByEmail"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "recentActivity": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/AuditEvent"
+            },
+            "description": "null for non-owners."
+          }
+        },
+        "required": [
+          "role",
+          "totals",
+          "storage",
+          "storageByType",
+          "series",
+          "topShared",
+          "recentDocuments",
+          "recentActivity"
+        ],
+        "additionalProperties": false
+      },
+      "Member": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-17T10:15:00.000Z"
+          }
+        },
+        "required": [
+          "userId",
+          "email",
+          "role",
+          "joinedAt"
+        ],
+        "additionalProperties": false
+      },
+      "PendingInvitation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-17T10:15:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "role",
+          "expiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "ChangeRoleRequest": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
+      "InviteRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 255,
+            "format": "email"
+          },
+          "role": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Role"
+              },
+              {
+                "default": "MEMBER"
+              }
+            ]
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "InvitationPreview": {
+        "type": "object",
+        "properties": {
+          "workspaceName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-17T10:15:00.000Z"
+          }
+        },
+        "required": [
+          "workspaceName",
+          "email",
+          "role",
+          "expiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "Document": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sha256": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "Hex SHA-256 of the stored bytes; null only while an older file is backfilled."
+          },
+          "folderId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "uploadedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uploadedByEmail": {
+            "type": "string",
+            "description": "Present in listings."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-17T10:15:00.000Z"
+          },
+          "deletedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-09-17T10:15:00.000Z"
+          },
+          "deletedByEmail": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "links": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer"
+              },
+              "opens": {
+                "type": "integer"
+              },
+              "lastAccessedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time",
+                "example": "2026-09-17T10:15:00.000Z"
+              }
+            },
+            "required": [
+              "count",
+              "opens",
+              "lastAccessedAt"
+            ],
+            "additionalProperties": false,
+            "description": "Rollup of live share links. Present in listings."
+          }
+        },
+        "required": [
+          "id",
+          "filename",
+          "mimeType",
+          "size",
+          "sha256",
+          "folderId",
+          "uploadedBy",
+          "createdAt",
+          "deletedAt",
+          "deletedByEmail"
+        ],
+        "additionalProperties": false
+      },
+      "Folder": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "createdBy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-17T10:15:00.000Z"
+          },
+          "documentCount": {
+            "type": "integer"
+          },
+          "folderCount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "parentId",
+          "createdBy",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "DocumentList": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/Role"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Document"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "folders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Folder"
+            }
+          },
+          "path": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Folder"
+            }
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "all": {
+                "type": "integer"
+              },
+              "shared": {
+                "type": "integer"
+              },
+              "mine": {
+                "type": "integer"
+              },
+              "trash": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "all",
+              "shared",
+              "mine",
+              "trash"
+            ],
+            "additionalProperties": false
+          },
+          "storage": {
+            "$ref": "#/components/schemas/StorageUsage"
+          },
+          "trashRetentionDays": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "role",
+          "documents",
+          "nextCursor",
+          "folders",
+          "path",
+          "counts",
+          "storage",
+          "trashRetentionDays"
+        ],
+        "additionalProperties": false
+      },
+      "UpdateDocumentRequest": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "folderId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "null moves the document to the workspace root."
+          }
+        }
+      },
+      "ShareActivity": {
+        "type": "object",
+        "properties": {
+          "opens": {
+            "type": "integer"
+          },
+          "downloads": {
+            "type": "integer"
+          },
+          "distinctViewers": {
+            "type": "integer",
+            "description": "Estimate: NAT merges viewers, network changes split them."
+          },
+          "firstAccessedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-09-17T10:15:00.000Z"
+          },
+          "lastAccessedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-09-17T10:15:00.000Z"
+          },
+          "blockedAttempts": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "opens",
+          "downloads",
+          "distinctViewers",
+          "firstAccessedAt",
+          "lastAccessedAt",
+          "blockedAttempts"
+        ],
+        "additionalProperties": false
+      },
+      "ShareSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-17T10:15:00.000Z"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-09-17T10:15:00.000Z"
+          },
+          "hasPassword": {
+            "type": "boolean"
+          },
+          "maxDownloads": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "downloadCount": {
+            "type": "integer"
+          },
+          "activity": {
+            "$ref": "#/components/schemas/ShareActivity"
+          }
+        },
+        "required": [
+          "id",
+          "createdBy",
+          "createdAt",
+          "expiresAt",
+          "hasPassword",
+          "maxDownloads",
+          "downloadCount",
+          "activity"
+        ],
+        "additionalProperties": false
+      },
+      "CreateFolderRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "default": null
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateFolderRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "CreateShareRequest": {
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expiresInHours": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "exclusiveMinimum": 0,
+            "maximum": 8760,
+            "description": "null = never expires; omitted = the default (create) or unchanged (edit)."
+          },
+          "password": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 6,
+            "maxLength": 128,
+            "description": "null removes the password."
+          },
+          "maxDownloads": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 1000,
+            "description": "null = unlimited; 1 = one-time link."
+          }
+        },
+        "required": [
+          "documentId"
+        ]
+      },
+      "UpdateShareRequest": {
+        "type": "object",
+        "properties": {
+          "expiresInHours": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "exclusiveMinimum": 0,
+            "maximum": 8760,
+            "description": "null = never expires; omitted = the default (create) or unchanged (edit)."
+          },
+          "password": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 6,
+            "maxLength": 128,
+            "description": "null removes the password."
+          },
+          "maxDownloads": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 1000,
+            "description": "null = unlimited; 1 = one-time link."
+          }
+        }
+      },
+      "ShareOutcome": {
+        "type": "string",
+        "enum": [
+          "resolved",
+          "downloaded",
+          "expired",
+          "revoked",
+          "document_deleted",
+          "exhausted",
+          "bad_password"
+        ]
+      },
+      "PublicShare": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "requiresPassword": {
+                "type": "boolean",
+                "enum": [
+                  true
+                ]
+              },
+              "expiresAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time",
+                "example": "2026-09-17T10:15:00.000Z"
+              }
+            },
+            "required": [
+              "requiresPassword",
+              "expiresAt"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "requiresPassword": {
+                "type": "boolean",
+                "enum": [
+                  false
+                ]
+              },
+              "passwordProtected": {
+                "type": "boolean"
+              },
+              "filename": {
+                "type": "string"
+              },
+              "mimeType": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer"
+              },
+              "expiresAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time",
+                "example": "2026-09-17T10:15:00.000Z"
+              },
+              "downloadsRemaining": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "requiresPassword",
+              "passwordProtected",
+              "filename",
+              "mimeType",
+              "size",
+              "expiresAt",
+              "downloadsRemaining"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "UnlockRequest": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "password"
+        ]
+      },
+      "NotificationType": {
+        "type": "string",
+        "enum": [
+          "share.first_open",
+          "share.new_viewer",
+          "share.forwarding_suspected",
+          "document.uploaded",
+          "member.joined",
+          "member.removed",
+          "member.role_changed",
+          "workspace.deleted"
+        ]
+      },
+      "Notification": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "$ref": "#/components/schemas/NotificationType"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "workspaceId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "resourceId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "read": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-17T10:15:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "title",
+          "body",
+          "workspaceId",
+          "resourceId",
+          "read",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "MarkReadRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "parameters": {}
+  },
+  "paths": {
+    "/api/auth/register": {
+      "post": {
+        "summary": "Create an account and its first workspace",
+        "description": "Sets the session cookie. With inviteToken, joins that workspace in the same transaction.",
+        "tags": [
+          "Auth"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  },
+                  "required": [
+                    "user"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited or locked out. See Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Sign in",
+        "description": "Sets the session cookie. Five failures in 15 minutes lock the address from anywhere (ACCOUNT_LOCKED).",
+        "tags": [
+          "Auth"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Credentials"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  },
+                  "required": [
+                    "user"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited or locked out. See Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "summary": "Sign out",
+        "tags": [
+          "Auth"
+        ],
+        "security": [],
+        "responses": {
+          "204": {
+            "description": "Success, no content"
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "summary": "Current user and their workspaces",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/password/forgot": {
+      "post": {
+        "summary": "Email a password reset link",
+        "description": "Always 202 with the same body, whether or not the address has an account.",
+        "tags": [
+          "Auth"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited or locked out. See Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/password/reset": {
+      "post": {
+        "summary": "Set a new password with a reset token",
+        "description": "Ends every session, then signs this browser in.",
+        "tags": [
+          "Auth"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    },
+                    "signedOutSessions": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "user",
+                    "signedOutSessions"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Gone: revoked, expired, used up, or already used.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited or locked out. See Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/password": {
+      "post": {
+        "summary": "Change password",
+        "description": "Requires the current password. Ends every other session.",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "signedOutSessions": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "signedOutSessions"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited or locked out. See Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/sessions": {
+      "get": {
+        "summary": "List your sessions",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Session"
+                      }
+                    }
+                  },
+                  "required": [
+                    "sessions"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Sign out every other session",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "signedOutSessions": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "signedOutSessions"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/sessions/{sessionId}": {
+      "delete": {
+        "summary": "Sign out one session",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "sessionId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success, no content"
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspaces": {
+      "get": {
+        "summary": "List your workspaces",
+        "tags": [
+          "Workspaces"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "workspaces": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "$ref": "#/components/schemas/Role"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "role"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "workspaces"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a workspace",
+        "tags": [
+          "Workspaces"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWorkspaceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "workspace": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "$ref": "#/components/schemas/Role"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "role"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "workspace"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspaces/{id}": {
+      "patch": {
+        "summary": "Rename a workspace",
+        "tags": [
+          "Workspaces"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameWorkspaceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "workspace": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "workspace"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a workspace",
+        "description": "Owner only. Access ends immediately; files are removed by the next maintenance pass.",
+        "tags": [
+          "Workspaces"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteWorkspaceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Success, no content"
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspaces/{id}/overview": {
+      "get": {
+        "summary": "Dashboard data",
+        "tags": [
+          "Workspaces"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "description": "IANA time zone for daily series; unknown zones fall back to UTC.",
+              "example": "Europe/London"
+            },
+            "required": false,
+            "name": "tz",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Overview"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspaces/{id}/storage": {
+      "get": {
+        "summary": "Storage used and quota",
+        "tags": [
+          "Workspaces"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "storage": {
+                      "$ref": "#/components/schemas/StorageUsage"
+                    }
+                  },
+                  "required": [
+                    "storage"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspaces/{id}/members": {
+      "get": {
+        "summary": "Members, and pending invitations for owners",
+        "tags": [
+          "Members"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "role": {
+                      "$ref": "#/components/schemas/Role"
+                    },
+                    "members": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Member"
+                      }
+                    },
+                    "invitations": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PendingInvitation"
+                      },
+                      "description": "Pending invitations; always empty for non-owners."
+                    }
+                  },
+                  "required": [
+                    "role",
+                    "members",
+                    "invitations"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspaces/{id}/members/{userId}": {
+      "patch": {
+        "summary": "Change a member's role",
+        "description": "Demoting to VIEWER revokes their share links. The last owner cannot be demoted.",
+        "tags": [
+          "Members"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeRoleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Success, no content"
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove a member, or leave",
+        "tags": [
+          "Members"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "userId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success, no content"
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspaces/{id}/invitations": {
+      "post": {
+        "summary": "Invite by email",
+        "tags": [
+          "Members"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "invitation": {
+                      "$ref": "#/components/schemas/PendingInvitation"
+                    },
+                    "inviteUrl": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "Only when EXPOSE_INVITE_LINKS is enabled (development)."
+                    },
+                    "emailSent": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "invitation",
+                    "emailSent"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited or locked out. See Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspaces/{id}/invitations/{invitationId}": {
+      "delete": {
+        "summary": "Cancel an invitation",
+        "tags": [
+          "Members"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "invitationId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success, no content"
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/invitations/{token}": {
+      "get": {
+        "summary": "Preview an invitation",
+        "tags": [
+          "Members"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "token",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationPreview"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Gone: revoked, expired, used up, or already used.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited or locked out. See Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/invitations/{token}/accept": {
+      "post": {
+        "summary": "Accept an invitation",
+        "tags": [
+          "Members"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "token",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "workspaceId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "workspaceName": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "workspaceId",
+                    "workspaceName"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Gone: revoked, expired, used up, or already used.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspaces/{workspaceId}/documents": {
+      "get": {
+        "summary": "List, search and page documents",
+        "tags": [
+          "Documents"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "trash"
+              ],
+              "default": "active"
+            },
+            "required": false,
+            "name": "view",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "folderId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 100,
+              "description": "Searches file names across the whole workspace (ignores folderId)."
+            },
+            "required": false,
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "shared",
+                "mine"
+              ],
+              "default": "all"
+            },
+            "required": false,
+            "name": "filter",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "date",
+                "name",
+                "size"
+              ],
+              "default": "date"
+            },
+            "required": false,
+            "name": "sort",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "description": "Defaults to asc for name, desc otherwise."
+            },
+            "required": false,
+            "name": "order",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "description": "nextCursor from the previous page."
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Upload a document",
+        "tags": [
+          "Documents"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "folderId",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "document": {
+                      "$ref": "#/components/schemas/Document"
+                    },
+                    "duplicateOf": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "filename": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "filename"
+                      ],
+                      "additionalProperties": false,
+                      "description": "A live document in the workspace with identical content."
+                    }
+                  },
+                  "required": [
+                    "document",
+                    "duplicateOf"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "File too large, or the workspace quota is full (`QUOTA_EXCEEDED`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "File type not allowed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited or locked out. See Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "At capacity; retry after Retry-After seconds.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}": {
+      "patch": {
+        "summary": "Rename or move",
+        "tags": [
+          "Documents"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDocumentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "document": {
+                      "$ref": "#/components/schemas/Document"
+                    }
+                  },
+                  "required": [
+                    "document"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Move to trash",
+        "description": "Revokes the document's share links.",
+        "tags": [
+          "Documents"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "revokedLinks": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "purgeAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2026-09-17T10:15:00.000Z"
+                    }
+                  },
+                  "required": [
+                    "revokedLinks",
+                    "purgeAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/restore": {
+      "post": {
+        "summary": "Restore from trash",
+        "tags": [
+          "Documents"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "document": {
+                      "$ref": "#/components/schemas/Document"
+                    }
+                  },
+                  "required": [
+                    "document"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/permanent": {
+      "delete": {
+        "summary": "Delete forever",
+        "tags": [
+          "Documents"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success, no content"
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/download": {
+      "get": {
+        "summary": "Download (redirect to a 60-second signed URL)",
+        "tags": [
+          "Documents"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to a short-lived signed URL.",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/preview": {
+      "get": {
+        "summary": "Inline preview (PDF and images)",
+        "tags": [
+          "Documents"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to a short-lived signed URL.",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "File type not allowed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/shares": {
+      "get": {
+        "summary": "A document's live links and their activity",
+        "tags": [
+          "Sharing"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "shares": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ShareSummary"
+                      }
+                    }
+                  },
+                  "required": [
+                    "shares"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspaces/{workspaceId}/folders": {
+      "get": {
+        "summary": "List folders",
+        "tags": [
+          "Folders"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "parentId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Folder"
+                      }
+                    },
+                    "folders": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Folder"
+                      }
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "folders"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a folder",
+        "tags": [
+          "Folders"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFolderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "folder": {
+                      "$ref": "#/components/schemas/Folder"
+                    }
+                  },
+                  "required": [
+                    "folder"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Well-formed but not allowed (e.g. moving a folder into itself).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspaces/{workspaceId}/folders/{folderId}": {
+      "patch": {
+        "summary": "Rename or move a folder",
+        "tags": [
+          "Folders"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "folderId",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFolderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "folder": {
+                      "$ref": "#/components/schemas/Folder"
+                    }
+                  },
+                  "required": [
+                    "folder"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Well-formed but not allowed (e.g. moving a folder into itself).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete an empty folder",
+        "tags": [
+          "Folders"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "folderId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success, no content"
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/shares": {
+      "post": {
+        "summary": "Create a share link",
+        "tags": [
+          "Sharing"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateShareRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "share": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "url": {
+                          "type": "string",
+                          "format": "uri",
+                          "description": "Contains the token. Returned only here, once."
+                        },
+                        "expiresAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time",
+                          "example": "2026-09-17T10:15:00.000Z"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "example": "2026-09-17T10:15:00.000Z"
+                        },
+                        "hasPassword": {
+                          "type": "boolean"
+                        },
+                        "maxDownloads": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "url",
+                        "expiresAt",
+                        "createdAt",
+                        "hasPassword",
+                        "maxDownloads"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "share"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/shares/{id}": {
+      "patch": {
+        "summary": "Edit a link's expiry, password or download limit",
+        "tags": [
+          "Sharing"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateShareRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "share": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "expiresAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "format": "date-time",
+                          "example": "2026-09-17T10:15:00.000Z"
+                        },
+                        "hasPassword": {
+                          "type": "boolean"
+                        },
+                        "maxDownloads": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "downloadCount": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "expiresAt",
+                        "hasPassword",
+                        "maxDownloads",
+                        "downloadCount"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "share"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Revoke a link",
+        "tags": [
+          "Sharing"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success, no content"
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/shares/{id}/events": {
+      "get": {
+        "summary": "A link's access history",
+        "tags": [
+          "Sharing"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "accessedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "example": "2026-09-17T10:15:00.000Z"
+                          },
+                          "outcome": {
+                            "$ref": "#/components/schemas/ShareOutcome"
+                          },
+                          "userAgent": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "viewer": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}$",
+                            "description": "Opaque marker for \"the same viewer\". Never an address."
+                          }
+                        },
+                        "required": [
+                          "accessedAt",
+                          "outcome",
+                          "userAgent",
+                          "viewer"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "events"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/shares/{token}": {
+      "get": {
+        "summary": "Resolve a link",
+        "description": "Records nothing. A locked link reveals only that a password is required.",
+        "tags": [
+          "Public sharing"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "token",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicShare"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Gone: revoked, expired, used up, or already used.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited or locked out. See Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/shares/{token}/unlock": {
+      "post": {
+        "summary": "Enter a link password",
+        "description": "Sets an HttpOnly cookie that unlocks this link for one hour.",
+        "tags": [
+          "Public sharing"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "token",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnlockRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Success, no content"
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Gone: revoked, expired, used up, or already used.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited or locked out. See Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/shares/{token}/view": {
+      "post": {
+        "summary": "Record a page view",
+        "tags": [
+          "Public sharing"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "token",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success, no content"
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Gone: revoked, expired, used up, or already used.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited or locked out. See Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/shares/{token}/download": {
+      "get": {
+        "summary": "Download (redirect to a signed URL)",
+        "tags": [
+          "Public sharing"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 200
+            },
+            "required": true,
+            "name": "token",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to a short-lived signed URL.",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Gone: revoked, expired, used up, or already used.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited or locked out. See Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspaces/{id}/audit": {
+      "get": {
+        "summary": "Audit trail (owners)",
+        "tags": [
+          "Activity"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "required": false,
+            "name": "before",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AuditEvent"
+                      }
+                    }
+                  },
+                  "required": [
+                    "events"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "summary": "Your notifications",
+        "tags": [
+          "Activity"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "unread": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "notifications": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Notification"
+                      }
+                    }
+                  },
+                  "required": [
+                    "unread",
+                    "notifications"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/openapi.json": {
+      "get": {
+        "summary": "This OpenAPI document",
+        "tags": [
+          "Operations"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/read": {
+      "post": {
+        "summary": "Mark one or all notifications read",
+        "tags": [
+          "Activity"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkReadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Success, no content"
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Liveness",
+        "tags": [
+          "Operations"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ok"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "summary": "Readiness (database reachable)",
+        "tags": [
+          "Operations"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "ready"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "At capacity; retry after Retry-After seconds.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {}
+}

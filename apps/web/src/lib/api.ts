@@ -1,3 +1,5 @@
+import type { components } from './api-schema';
+
 /**
  * Browser-side API client.
  *
@@ -82,85 +84,40 @@ export const api = {
     }),
 };
 
-export type Role = 'OWNER' | 'MEMBER' | 'VIEWER';
+/**
+ * Response types come from the API's OpenAPI document (`npm run api:types` regenerates
+ * api-schema.d.ts from apps/api/openapi.json), so a change to an API response is a compile
+ * error here rather than a surprise at runtime.
+ */
+export type Schemas = components['schemas'];
 
-export interface Workspace {
-  id: string;
-  name: string;
-  role: Role;
+export type Role = Schemas['Role'];
+export type Workspace = Schemas['WorkspaceSummary'];
+export type FolderDto = Schemas['Folder'];
+export type DocumentDto = Schemas['Document'];
+export type DocumentListResponse = Schemas['DocumentList'];
+export type ShareActivity = Schemas['ShareActivity'];
+export type ShareSummary = Schemas['ShareSummary'];
+export type ShareOutcome = Schemas['ShareOutcome'];
+export interface ShareEvent {
+  accessedAt: string;
+  outcome: ShareOutcome;
+  userAgent: string | null;
+  /** Opaque, stable marker for "the same viewer". Never an address. */
+  viewer: string;
 }
-
-export interface FolderDto {
-  id: string;
-  name: string;
-  parentId: string | null;
-  createdBy: string | null;
-  createdAt: string;
-  documentCount?: number;
-  folderCount?: number;
-}
-
-export interface DocumentListResponse {
-  role: Role;
-  documents: DocumentDto[];
-  nextCursor: string | null;
-  folders: FolderDto[];
-  path: FolderDto[];
-  counts: { all: number; shared: number; mine: number; trash: number };
-  storage: { usedBytes: number; quotaBytes: number };
-}
+export type Overview = Schemas['Overview'];
+export type AuditEvent = Schemas['AuditEvent'];
+export type NotificationDto = Schemas['Notification'];
+export type Member = Schemas['Member'];
+export type PendingInvitation = Schemas['PendingInvitation'];
+export type Session = Schemas['Session'];
+export type StorageUsage = Schemas['StorageUsage'];
 
 /** Owners and members contribute; viewers only read. Mirrors the API's policy.ts. */
 export const canContribute = (role: Role): boolean => role === 'OWNER' || role === 'MEMBER';
 export const ownsOrAdministers = (role: Role, createdBy: string | null, userId: string): boolean =>
   role === 'OWNER' || (role === 'MEMBER' && createdBy === userId);
-
-export interface DocumentDto {
-  id: string;
-  filename: string;
-  mimeType: string;
-  size: number;
-  /** Hex SHA-256 of the stored bytes; null only while an older file's checksum is backfilled. */
-  sha256: string | null;
-  uploadedBy: string;
-  uploadedByEmail?: string;
-  createdAt: string;
-  folderId: string | null;
-  deletedAt: string | null;
-  deletedByEmail: string | null;
-  /** Rollup of this document's live share links. */
-  links?: { count: number; opens: number; lastAccessedAt: string | null };
-}
-
-export interface ShareActivity {
-  /** Page views, one per visitor per 30 minutes. */
-  opens: number;
-  downloads: number;
-  /** An estimate: NAT merges viewers, network hopping splits them. Labelled as such. */
-  distinctViewers: number;
-  firstAccessedAt: string | null;
-  lastAccessedAt: string | null;
-  blockedAttempts: number;
-}
-
-export interface ShareSummary {
-  id: string;
-  createdBy: string;
-  createdAt: string;
-  expiresAt: string | null;
-  hasPassword: boolean;
-  maxDownloads: number | null;
-  downloadCount: number;
-  activity: ShareActivity;
-}
-
-export interface ShareEvent {
-  accessedAt: string;
-  outcome: 'resolved' | 'downloaded' | 'expired' | 'revoked' | 'document_deleted' | 'exhausted' | 'bad_password';
-  userAgent: string | null;
-  /** Opaque, stable marker for "the same viewer". Never an address. */
-  viewer: string;
-}
 
 /**
  * A post-sign-in destination is only followed if it is a path on this site. `//evil.com` and

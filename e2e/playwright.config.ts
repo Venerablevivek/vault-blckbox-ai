@@ -7,7 +7,7 @@ import { defineConfig, devices } from '@playwright/test';
  * the API directly could not see them.
  *
  * Run against a freshly started stack: the API's rate-limit counters live in memory, and
- * the abuse tests deliberately use them up.
+ * the abuse tests (99-*) deliberately use them up.
  */
 export default defineConfig({
   testDir: './tests',

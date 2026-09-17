@@ -1,6 +1,12 @@
 import type { FastifyInstance } from 'fastify';
-import { z } from 'zod';
 import type { Config } from '../../config';
+import {
+  DocumentParams,
+  ListDocumentsQuery,
+  UpdateDocumentBody,
+  UploadQuery,
+  WorkspaceDocumentsParams,
+} from '../../contracts/documents';
 import { Errors } from '../../lib/errors';
 import { createSlots } from '../../lib/slots';
 import { currentUser, requireSession } from '../../plugins/session';
@@ -10,8 +16,6 @@ import type { SharesService } from '../shares/shares.service';
 import type { DocumentsService } from './documents.service';
 import type { DocumentListRow, DocumentRow } from './documents.repo';
 
-const workspaceParams = z.object({ workspaceId: z.string().uuid() });
-const documentParams = z.object({ id: z.string().uuid() });
 
 function toDocumentDto(row: DocumentRow & Partial<DocumentListRow>) {
   return {
@@ -38,21 +42,6 @@ function toDocumentDto(row: DocumentRow & Partial<DocumentListRow>) {
   };
 }
 
-const listQuery = z.object({
-  view: z.enum(['active', 'trash']).default('active'),
-  folderId: z.string().uuid().optional(),
-  q: z
-    .string()
-    .max(100)
-    .transform((s) => s.trim())
-    .optional(),
-  filter: z.enum(['all', 'shared', 'mine']).default('all'),
-  sort: z.enum(['date', 'name', 'size']).default('date'),
-  order: z.enum(['asc', 'desc']).optional(),
-  cursor: z.string().max(500).optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(50),
-});
-
 export function registerDocumentRoutes(
   app: FastifyInstance,
   deps: {
@@ -72,8 +61,8 @@ export function registerDocumentRoutes(
     preHandler: requireSession,
     config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
     handler: async (request, reply) => {
-      const { workspaceId } = workspaceParams.parse(request.params);
-      const { folderId } = z.object({ folderId: z.string().uuid().optional() }).parse(request.query);
+      const { workspaceId } = WorkspaceDocumentsParams.parse(request.params);
+      const { folderId } = UploadQuery.parse(request.query);
       const user = currentUser(request);
       const membership = await workspaces.requireMember(workspaceId, user.id);
 
@@ -115,10 +104,10 @@ export function registerDocumentRoutes(
   app.get('/api/workspaces/:workspaceId/documents', {
     preHandler: requireSession,
     handler: async (request) => {
-      const { workspaceId } = workspaceParams.parse(request.params);
+      const { workspaceId } = WorkspaceDocumentsParams.parse(request.params);
       const user = currentUser(request);
       const membership = await workspaces.requireMember(workspaceId, user.id);
-      const query = listQuery.parse(request.query);
+      const query = ListDocumentsQuery.parse(request.query);
 
       const [result, storage] = await Promise.all([documents.list({
         membership,
@@ -150,7 +139,7 @@ export function registerDocumentRoutes(
   app.get('/api/documents/:id/download', {
     preHandler: requireSession,
     handler: async (request, reply) => {
-      const { id } = documentParams.parse(request.params);
+      const { id } = DocumentParams.parse(request.params);
       return reply.redirect(await documents.getDownloadUrl(id, currentUser(request).id), 302);
     },
   });
@@ -158,7 +147,7 @@ export function registerDocumentRoutes(
   app.get('/api/documents/:id/preview', {
     preHandler: requireSession,
     handler: async (request, reply) => {
-      const { id } = documentParams.parse(request.params);
+      const { id } = DocumentParams.parse(request.params);
       return reply.redirect(await documents.getPreviewUrl(id, currentUser(request).id), 302);
     },
   });
@@ -167,15 +156,9 @@ export function registerDocumentRoutes(
   app.patch('/api/documents/:id', {
     preHandler: requireSession,
     handler: async (request) => {
-      const { id } = documentParams.parse(request.params);
+      const { id } = DocumentParams.parse(request.params);
       const user = currentUser(request);
-      const changes = z
-        .object({
-          filename: z.string().min(1).max(255).optional(),
-          folderId: z.string().uuid().nullable().optional(),
-        })
-        .refine((c) => c.filename !== undefined || c.folderId !== undefined, 'Nothing to change.')
-        .parse(request.body);
+      const changes = UpdateDocumentBody.parse(request.body);
       const document = await documents.update(id, user.id, changes);
       return { document: toDocumentDto(document) };
     },
@@ -185,7 +168,7 @@ export function registerDocumentRoutes(
   app.delete('/api/documents/:id', {
     preHandler: requireSession,
     handler: async (request) => {
-      const { id } = documentParams.parse(request.params);
+      const { id } = DocumentParams.parse(request.params);
       return documents.trash(id, currentUser(request).id);
     },
   });
@@ -193,7 +176,7 @@ export function registerDocumentRoutes(
   app.post('/api/documents/:id/restore', {
     preHandler: requireSession,
     handler: async (request) => {
-      const { id } = documentParams.parse(request.params);
+      const { id } = DocumentParams.parse(request.params);
       const document = await documents.restore(id, currentUser(request).id);
       return { document: toDocumentDto(document) };
     },
@@ -203,7 +186,7 @@ export function registerDocumentRoutes(
   app.delete('/api/documents/:id/permanent', {
     preHandler: requireSession,
     handler: async (request, reply) => {
-      const { id } = documentParams.parse(request.params);
+      const { id } = DocumentParams.parse(request.params);
       await documents.purge(id, currentUser(request).id);
       return reply.status(204).send();
     },
@@ -213,7 +196,7 @@ export function registerDocumentRoutes(
   app.get('/api/documents/:id/shares', {
     preHandler: requireSession,
     handler: async (request) => {
-      const { id } = documentParams.parse(request.params);
+      const { id } = DocumentParams.parse(request.params);
       await documents.authorizeById(id, currentUser(request).id);
       const rows = await shares.listForDocument(id);
       return {

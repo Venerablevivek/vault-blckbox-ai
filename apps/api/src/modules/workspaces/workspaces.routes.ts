@@ -1,52 +1,61 @@
 import type { FastifyInstance } from 'fastify';
-import { z } from 'zod';
+import {
+  ChangeRoleBody,
+  CreateWorkspaceBody,
+  DeleteWorkspaceBody,
+  InvitationParams,
+  InviteBody,
+  InviteTokenParams,
+  MemberParams,
+  OverviewQuery,
+  RenameWorkspaceBody,
+  WorkspaceParams,
+} from '../../contracts/workspaces';
 import { currentUser, requireSession } from '../../plugins/session';
 import { requireOwner } from '../../policy';
 import type { OverviewService } from '../overview/overview.service';
 import type { WorkspacesService } from './workspaces.service';
 
-const workspaceParams = z.object({ id: z.string().uuid() });
 
 export function registerWorkspaceRoutes(
   app: FastifyInstance,
   deps: { workspaces: WorkspacesService; overview: OverviewService },
 ): void {
   const { workspaces, overview } = deps;
-  const memberParams = z.object({ id: z.string().uuid(), userId: z.string().uuid() });
 
   // Dashboard data. Any member; the activity slice inside is owner-only.
   app.get('/api/workspaces/:id/overview', { preHandler: requireSession }, async (request) => {
-    const { id } = workspaceParams.parse(request.params);
+    const { id } = WorkspaceParams.parse(request.params);
     const user = currentUser(request);
     const membership = await workspaces.requireMember(id, user.id);
-    const { tz } = z.object({ tz: z.string().max(64).optional() }).parse(request.query);
+    const { tz } = OverviewQuery.parse(request.query);
     return { role: membership.role, ...(await overview.forWorkspace(id, membership.role, tz)) };
   });
 
   app.patch('/api/workspaces/:id', { preHandler: requireSession }, async (request) => {
-    const { id } = workspaceParams.parse(request.params);
+    const { id } = WorkspaceParams.parse(request.params);
     const user = currentUser(request);
     const membership = await workspaces.requireMember(id, user.id);
     requireOwner(membership.role);
-    const { name } = z.object({ name: z.string().trim().min(1).max(120) }).parse(request.body);
+    const { name } = RenameWorkspaceBody.parse(request.body);
     await workspaces.rename({ workspaceId: id, actor: { id: user.id, role: membership.role }, name });
     return { workspace: { id, name } };
   });
 
   // Storage used (including the trash) and the workspace's quota.
   app.get('/api/workspaces/:id/storage', { preHandler: requireSession }, async (request) => {
-    const { id } = workspaceParams.parse(request.params);
+    const { id } = WorkspaceParams.parse(request.params);
     await workspaces.requireMember(id, currentUser(request).id);
     return { storage: await workspaces.storageUsage(id) };
   });
 
   // Deletes the workspace. Body: { confirmName } — the workspace's exact current name.
   app.delete('/api/workspaces/:id', { preHandler: requireSession }, async (request, reply) => {
-    const { id } = workspaceParams.parse(request.params);
+    const { id } = WorkspaceParams.parse(request.params);
     const user = currentUser(request);
     const membership = await workspaces.requireMember(id, user.id);
     requireOwner(membership.role);
-    const { confirmName } = z.object({ confirmName: z.string().max(200) }).parse(request.body);
+    const { confirmName } = DeleteWorkspaceBody.parse(request.body);
     await workspaces.deleteWorkspace({
       workspaceId: id,
       actor: { id: user.id, role: membership.role, email: user.email },
@@ -56,12 +65,12 @@ export function registerWorkspaceRoutes(
   });
 
   app.patch('/api/workspaces/:id/members/:userId', { preHandler: requireSession }, async (request, reply) => {
-    const { id, userId } = memberParams.parse(request.params);
+    const { id, userId } = MemberParams.parse(request.params);
     const user = currentUser(request);
     // Authorize before reading the body, so a non-member always sees the same 404.
     const membership = await workspaces.requireMember(id, user.id);
     requireOwner(membership.role);
-    const { role } = z.object({ role: z.enum(['OWNER', 'MEMBER', 'VIEWER']) }).parse(request.body);
+    const { role } = ChangeRoleBody.parse(request.body);
     await workspaces.changeRole({
       workspaceId: id,
       actor: { id: user.id, role: membership.role },
@@ -73,7 +82,7 @@ export function registerWorkspaceRoutes(
 
   // Owners remove anyone; anyone may remove themselves (leave).
   app.delete('/api/workspaces/:id/members/:userId', { preHandler: requireSession }, async (request, reply) => {
-    const { id, userId } = memberParams.parse(request.params);
+    const { id, userId } = MemberParams.parse(request.params);
     const user = currentUser(request);
     const membership = await workspaces.requireMember(id, user.id);
     await workspaces.removeMember({
@@ -85,9 +94,7 @@ export function registerWorkspaceRoutes(
   });
 
   app.delete('/api/workspaces/:id/invitations/:invitationId', { preHandler: requireSession }, async (request, reply) => {
-    const { id, invitationId } = z
-      .object({ id: z.string().uuid(), invitationId: z.string().uuid() })
-      .parse(request.params);
+    const { id, invitationId } = InvitationParams.parse(request.params);
     const user = currentUser(request);
     const membership = await workspaces.requireMember(id, user.id);
     await workspaces.revokeInvitation({
@@ -99,7 +106,7 @@ export function registerWorkspaceRoutes(
   });
 
   app.post('/api/workspaces', { preHandler: requireSession }, async (request, reply) => {
-    const { name } = z.object({ name: z.string().min(1).max(120) }).parse(request.body);
+    const { name } = CreateWorkspaceBody.parse(request.body);
     const user = currentUser(request);
     const workspace = await workspaces.create(user.id, name);
     return reply.status(201).send({
@@ -114,7 +121,7 @@ export function registerWorkspaceRoutes(
   });
 
   app.get('/api/workspaces/:id/members', { preHandler: requireSession }, async (request) => {
-    const { id } = workspaceParams.parse(request.params);
+    const { id } = WorkspaceParams.parse(request.params);
     const user = currentUser(request);
     // Non-members get 404 here, identical to a workspace that does not exist.
     const membership = await workspaces.requireMember(id, user.id);
@@ -146,7 +153,7 @@ export function registerWorkspaceRoutes(
     preHandler: requireSession,
     config: { rateLimit: { max: 30, timeWindow: '1 hour' } },
     handler: async (request, reply) => {
-      const { id } = workspaceParams.parse(request.params);
+      const { id } = WorkspaceParams.parse(request.params);
       const user = currentUser(request);
 
       // Authorize before validating the body. A non-member must get the same 404 whether
@@ -155,9 +162,7 @@ export function registerWorkspaceRoutes(
       const membership = await workspaces.requireMember(id, user.id);
       requireOwner(membership.role);
 
-      const body = z
-        .object({ email: z.string().email().max(255), role: z.enum(['OWNER', 'MEMBER', 'VIEWER']).default('MEMBER') })
-        .parse(request.body);
+      const body = InviteBody.parse(request.body);
 
       const result = await workspaces.invite({
         workspaceId: id,
@@ -189,13 +194,12 @@ export function registerInvitationRoutes(
   deps: { workspaces: WorkspacesService },
 ): void {
   const { workspaces } = deps;
-  const tokenParams = z.object({ token: z.string().min(10).max(200) });
 
   // Public: renders the invite landing page before the recipient has signed in.
   app.get('/api/invitations/:token', {
     config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
     handler: async (request) => {
-      const { token } = tokenParams.parse(request.params);
+      const { token } = InviteTokenParams.parse(request.params);
       return workspaces.previewInvitation(token);
     },
   });
@@ -203,7 +207,7 @@ export function registerInvitationRoutes(
   app.post('/api/invitations/:token/accept', {
     preHandler: requireSession,
     handler: async (request) => {
-      const { token } = tokenParams.parse(request.params);
+      const { token } = InviteTokenParams.parse(request.params);
       const user = currentUser(request);
       return workspaces.acceptInvitation(token, user);
     },

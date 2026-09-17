@@ -1,8 +1,15 @@
 import {
   Download,
   Eye,
+  ArchiveRestore,
+  FileX2,
   FilePen,
   FilePlus2,
+  FolderInput,
+  FolderMinus,
+  FolderPen,
+  FolderPlus,
+  Settings2,
   Link2,
   Link2Off,
   LogOut,
@@ -17,35 +24,10 @@ import {
   UserMinus,
   type LucideIcon,
 } from 'lucide-react';
+import type { AuditEvent } from '@/lib/api';
 
-export type AuditAction =
-  | 'workspace.created'
-  | 'workspace.renamed'
-  | 'document.uploaded'
-  | 'document.downloaded'
-  | 'document.previewed'
-  | 'document.renamed'
-  | 'document.deleted'
-  | 'share.created'
-  | 'share.revoked'
-  | 'share.accessed'
-  | 'share.blocked'
-  | 'member.invited'
-  | 'member.joined'
-  | 'member.removed'
-  | 'member.left'
-  | 'member.role_changed'
-  | 'invitation.revoked';
-
-export interface AuditEvent {
-  id: string;
-  actorEmail: string | null;
-  action: AuditAction;
-  resourceType: string;
-  resourceId: string | null;
-  metadata: Record<string, unknown>;
-  createdAt: string;
-}
+export type { AuditEvent };
+export type AuditAction = AuditEvent['action'];
 
 /** Icon and tint per action, so the feed is scannable without reading every line. */
 export const AUDIT_STYLE: Record<AuditAction, { icon: LucideIcon; tone: string }> = {
@@ -66,14 +48,24 @@ export const AUDIT_STYLE: Record<AuditAction, { icon: LucideIcon; tone: string }
   'member.left': { icon: LogOut, tone: 'bg-slate-100 text-ink-muted' },
   'member.role_changed': { icon: UserCog, tone: 'bg-violet-50 text-violet-600' },
   'invitation.revoked': { icon: MailX, tone: 'bg-danger-soft text-danger' },
+  'document.moved': { icon: FolderInput, tone: 'bg-slate-100 text-ink-muted' },
+  'document.trashed': { icon: Trash2, tone: 'bg-warn-soft text-warn' },
+  'document.restored': { icon: ArchiveRestore, tone: 'bg-ok-soft text-ok' },
+  'document.purged': { icon: FileX2, tone: 'bg-danger-soft text-danger' },
+  'folder.created': { icon: FolderPlus, tone: 'bg-brand-50 text-brand-600' },
+  'folder.renamed': { icon: FolderPen, tone: 'bg-slate-100 text-ink-muted' },
+  'folder.moved': { icon: FolderInput, tone: 'bg-slate-100 text-ink-muted' },
+  'folder.deleted': { icon: FolderMinus, tone: 'bg-danger-soft text-danger' },
+  'share.updated': { icon: Settings2, tone: 'bg-violet-50 text-violet-600' },
 };
 
 export function describeAuditEvent(event: AuditEvent): string {
-  const who = event.actorEmail ?? 'Someone with the link';
+  const who = event.actorEmail ?? (event.action === 'document.purged' ? 'The system' : 'Someone with the link');
   const m = event.metadata;
   const file = (m.filename as string) ?? 'a document';
   const email = (m.email as string) ?? 'someone';
-  const role = (r: unknown) => (r === 'OWNER' ? 'owner' : 'member');
+  const folder = (m.name as string) ?? 'a folder';
+  const role = (r: unknown) => (r === 'OWNER' ? 'an owner' : r === 'VIEWER' ? 'a viewer' : 'a member');
 
   switch (event.action) {
     case 'workspace.created': return `${who} created this workspace`;
@@ -91,8 +83,18 @@ export function describeAuditEvent(event: AuditEvent): string {
     case 'member.joined': return `${email} joined the workspace`;
     case 'member.removed': return `${who} removed ${email}`;
     case 'member.left': return `${email} left the workspace`;
-    case 'member.role_changed': return `${who} made ${email} ${role(m.to) === 'owner' ? 'an owner' : 'a member'}`;
+    case 'member.role_changed': return `${who} made ${email} ${role(m.to)}`;
     case 'invitation.revoked': return `${who} cancelled the invitation for ${email}`;
+    case 'document.moved': return `${who} moved ${file}`;
+    case 'document.trashed': return `${who} moved ${file} to the trash`;
+    case 'document.restored': return `${who} restored ${file} from the trash`;
+    case 'document.purged':
+      return m.reason === 'retention' ? `${file} was deleted forever after 30 days in the trash` : `${who} deleted ${file} forever`;
+    case 'folder.created': return `${who} created the folder ${folder}`;
+    case 'folder.renamed': return `${who} renamed the folder ${m.from as string} to ${m.to as string}`;
+    case 'folder.moved': return `${who} moved the folder ${folder}`;
+    case 'folder.deleted': return `${who} deleted the folder ${folder}`;
+    case 'share.updated': return `${who} changed a share link's settings`;
     default: return event.action;
   }
 }

@@ -2,20 +2,13 @@
 
 import { use, useCallback, useEffect, useState } from 'react';
 import { KeyRound, Laptop, LogOut, ShieldCheck, Smartphone } from 'lucide-react';
-import { api, ApiRequestError, formatDate, timeAgo } from '@/lib/api';
+import { api, ApiRequestError, formatDate, timeAgo, type Session } from '@/lib/api';
 import { describeUserAgent } from '@/lib/user-agent';
 import { useDialogs } from '@/components/dialog';
 import { toast } from '@/components/toast';
 import { ErrorNote, Shell, Skeleton, useSession } from '@/components/ui';
 
-interface SessionDto {
-  id: string;
-  userAgent: string | null;
-  createdAt: string;
-  lastSeenAt: string;
-  expiresAt: string;
-  current: boolean;
-}
+type SessionDto = Session;
 
 export default function AccountPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: workspaceId } = use(params);

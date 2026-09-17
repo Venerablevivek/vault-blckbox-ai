@@ -38,6 +38,8 @@ declare module 'fastify' {
   interface FastifyInstance {
     /** Housekeeping jobs. Scheduled by main.ts; tests call runOnce() directly. */
     maintenance: MaintenanceService;
+    /** Method and URL of every registered route (HEAD excluded). */
+    routeTable: ReadonlyArray<{ method: string; url: string }>;
   }
   interface FastifyRequest {
     /** Set by the session plugin. Null when the request is unauthenticated. */

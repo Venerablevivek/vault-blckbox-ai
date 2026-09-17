@@ -2,13 +2,12 @@
 
 import { use, useCallback, useEffect, useState } from 'react';
 import { Copy, Crown, Eye, Mail, Send, ShieldCheck, UserMinus, UserPlus, Users, X } from 'lucide-react';
-import { api, ApiRequestError, formatDate, type Role } from '@/lib/api';
+import { api, ApiRequestError, formatDate, type Member, type PendingInvitation, type Role } from '@/lib/api';
 import { useDialogs } from '@/components/dialog';
 import { toast } from '@/components/toast';
 import { EmptyState, ErrorNote, RoleBadge, Shell, Skeleton, useSession } from '@/components/ui';
 
-interface Member { userId: string; email: string; role: Role; joinedAt: string }
-interface Invitation { id: string; email: string; role: Role; expiresAt: string }
+type Invitation = PendingInvitation;
 
 export default function MembersPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: workspaceId } = use(params);
