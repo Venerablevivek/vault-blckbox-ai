@@ -310,18 +310,20 @@ every URL handed to a browser.
 | Cookies | `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` when `NODE_ENV=production` |
 | Session tokens | 256-bit random, **stored as SHA-256**, revoked by deleting the row |
 | Authorization | Server-side on every workspace and document action; role read from the database per request |
-| SQL | Parameterised everywhere; no string-built SQL anywhere in the codebase |
+| SQL | Parameterised everywhere; user input never reaches SQL text (the one interpolation is a compile-time constant) |
 | Upload size | Enforced by the multipart parser, so an oversize body is cut off mid-stream |
 | Upload type | Allowlist checked against sniffed magic bytes, not the declared header |
 | Share / invite tokens | 256-bit, opaque, **stored as SHA-256**, redacted from logs by pattern |
 | Bucket | Never public; no credentials reach the browser; downloads are 60-second signed URLs |
 | Enumeration | 404 for non-members; identical response body for a wrong password and an unknown account |
 | Login timing | A dummy Argon2 verify runs for unknown emails so latency does not reveal which addresses exist |
-| Rate limiting | Register, login, invitation creation, and the public share routes |
+| Rate limiting | Per client IP on register, login, invitation creation and the public share routes |
+| Client IP | `X-Forwarded-For` is believed only from the web container (`TRUSTED_PROXIES`); the web server overwrites any client-supplied value with the real socket address — see §10 |
 | Headers | `helmet`; downloads are served from the MinIO origin with `Content-Disposition: attachment` |
 
-**Can one user reach another user's files?** No. One ownership model, tenant-scoped repository
-queries, and membership resolved per request. `tests/security/cross-tenant.test.ts` asserts 404
+**Can one user reach another user's files?** No. One ownership model, membership checked explicitly
+in every handler and resolved from the database per request, and documents addressed by id authorized
+against their own workspace before anything is returned. `tests/security/cross-tenant.test.ts` asserts 404
 across every document, share, member and invitation route.
 
 **Are share links guessable?** No — 256 bits of entropy, hashed at rest, rate-limited, revocable,
@@ -352,7 +354,7 @@ in a response, and 60-second signed URLs minted per request.
 
 ## 8. Test strategy
 
-**84 tests: 13 unit, 71 integration**, against a **real PostgreSQL and a real MinIO**. Mocks would
+**91 tests: 13 unit, 78 integration**, against a **real PostgreSQL and a real MinIO**. Mocks would
 pass while production broke — a fake S3 happily "deletes" an object a real bucket keeps, and a fake
 database does not enforce the composite primary key that is what actually prevents duplicate
 membership. The cost is that `npm test` needs Docker; that trade is deliberate.
@@ -369,6 +371,9 @@ The suite is aimed at the five things whose failure would be an incident:
 | **Management** | A workspace can never lose its last owner — including when two owners demote each other concurrently; removal cuts access on the same session's next request while the documents stay; members cannot remove others or promote themselves; cancelled invitations stop resolving; rename never changes the storage key; preview is inline for PDF and refused (415) for sniffable text types |
 | **Audit & notifications** | The document lifecycle is recorded; the trail survives the document being hard-deleted; anonymous access has a null actor; owner-only (outsider 404, member 403); the first open notifies the creator, a refreshing viewer does not re-notify, a third network triggers a forwarding warning; uploaders are not notified of their own upload; one user cannot mark another's notifications read |
 | **Access visibility** | Opens and downloads are counted; distinct networks are counted separately; attempts on a revoked or deleted link are recorded as such; **the raw IP never reaches the database**; history is not readable by another workspace |
+
+Client IP resolution has its own suite (`tests/security/client-ip.test.ts`): a spoofed
+`X-Forwarded-For` is ignored from an untrusted sender and believed only from the configured proxy.
 
 Expiry is tested by moving an injected clock, never by sleeping. Not tested: the rate limiter (it is
 not registered under `NODE_ENV=test`, because every request in the suite comes from one address),
@@ -515,6 +520,44 @@ what has not. Anything security- or product-shaped was settled in writing first.
 
 ### What went wrong, and how it was caught
 
+#### Found in a pre-submission review
+
+Before submitting, I went back over the finished system as a reviewer would: re-reading the brief's
+three security questions and then **testing each claim against the running stack**, not the code.
+That review found two defects in shipped, passing, "done" features. Both are fixed; both are worth
+reading because the reason the tests missed them is the lesson.
+
+<table>
+<tr><th width="18%"></th><th width="41%">1 · Rate limits bypassable by a forged header</th><th width="41%">2 · Share-link viewer counts wrong in real use</th></tr>
+<tr><td><b>What was wrong</b></td>
+<td>The API trusted <code>X-Forwarded-For</code> from <i>any</i> sender (<code>trustProxy: true</code>), and its port is reachable directly. A client could claim a different IP on every request.</td>
+<td>The public share page is rendered by the Next.js server, and the view was recorded during that render — where the API sees the <b>web container's</b> address, not the visitor's.</td></tr>
+<tr><td><b>Impact</b></td>
+<td>Per-IP limits on login, register, invitations and public share links never tripped, so password guessing was unthrottled. Viewer counts and the "may have been forwarded" warning could be faked.</td>
+<td>Three different people showed as <b>one</b> viewer, so "someone else opened your link" and the forwarding warning never fired in a browser. Every refresh and every Slack/LinkedIn link preview also counted as an open.</td></tr>
+<tr><td><b>How it was found</b></td>
+<td>25 wrong-password logins from one address were blocked after 20. The same 25 with a made-up <code>X-Forwarded-For</code> on each were <b>never</b> blocked.</td>
+<td>Opened the real share page as three clients: <code>distinct viewers: 1</code>. Downloads through the proxy counted correctly (3), which pinned the fault to the server render.</td></tr>
+<tr><td><b>Why the tests missed it</b></td>
+<td>The rate limiter is switched off under <code>NODE_ENV=test</code> (every test request shares one address), so no test exercised it at all.</td>
+<td>The tests call the API directly with a chosen <code>X-Forwarded-For</code>. They proved the counting logic, but never went through the web server the way a browser does.</td></tr>
+<tr><td><b>A second, hidden cause</b></td>
+<td colspan="2">Fixing the API alone would not have been enough. Next.js only <i>adds</i> <code>X-Forwarded-For</code> when the header is absent (<code>??=</code> in its server), so a client-supplied value passes through the web tier to the API untouched. Found by reading Next's source before settling on a fix.</td></tr>
+<tr><td><b>Fix</b></td>
+<td>The API trusts the header only from a configured list (<code>TRUSTED_PROXIES</code>); Compose pins the web container to <code>10.203.14.10</code> and trusts only that. A small custom web server (<code>apps/web/server.mjs</code>) overwrites any client-supplied forwarding header with the real socket address before Next.js sees the request.</td>
+<td>The server render records nothing. The page sends <code>POST /api/shares/:token/view</code> from the recipient's browser, so it carries their real address and is never sent by bots that don't run JavaScript. Repeat views within 30 minutes count once; crawler user agents are ignored; views and downloads are counted separately.</td></tr>
+<tr><td><b>Verified by</b></td>
+<td>Re-running the attack: now blocked after 20, both directly and through the web origin. <code>tests/security/client-ip.test.ts</code> covers trusted vs untrusted senders.</td>
+<td>Three containers on distinct addresses, plus refreshes, a bot and a spoofing client: 4 opens, 1 download, 4 viewers, and the new-viewer and forwarding notifications fired. The same traffic previously gave 1 viewer. New tests cover render-not-counted, refresh de-duplication and bots.</td></tr>
+</table>
+
+**What I take from it.** Both bugs lived in the gap between the API and the web tier — exactly where
+an API-level test suite can't see. The tests were green and the features "done"; only exercising the
+system the way an attacker and a real recipient would exposed them. The gap this points to is an
+end-to-end test through the web server, listed in §11.
+
+#### During the build
+
 - **Rate limiting throttled the test suite.** The first full run failed with five `429`s — every
   request in the suite comes from the same address, so `10 registrations/hour` fired immediately.
   Caught by running the tests. Fixed by not registering the limiter under `NODE_ENV=test`, and by
@@ -552,6 +595,10 @@ what has not. Anything security- or product-shaped was settled in writing first.
 
 ## 11. Trade-offs and future improvements
 
+- **No end-to-end test through the web server.** Both defects in §10's pre-submission review sat
+  between the API and the web tier, where API-level tests can't see. A browser test that opens a
+  share page from distinct addresses, and one that brute-forces login through port 3000, would have
+  caught them.
 - **No VIEWER role.** A read-only contractor has to be trusted with upload rights. The first thing I
   would add — the schema needs one enum value and the policy file three lines.
 - **No trash or restore.** Deletion removes the object right after the soft delete, so a mistaken
