@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API · typecheck, build, tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - name: Start Postgres and MinIO
+        working-directory: .
+        run: docker compose up -d --wait postgres minio
+      # Unit, integration and security tests against real Postgres and MinIO.
+      - run: npm test
+      - name: Dependency audit (production)
+        run: npm audit --omit=dev --audit-level=high
+
+  web:
+    name: Web · typecheck, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - name: Dependency audit (production)
+        run: npm audit --omit=dev --audit-level=high
+
+  e2e:
+    name: End-to-end · full stack in the browser
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [api, web]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - name: Build and start the stack
+        run: |
+          docker compose up -d --build --wait
+          for i in $(seq 1 60); do curl -sf http://localhost:3000/login -o /dev/null && exit 0; sleep 2; done
+          echo "web did not become ready" && exit 1
+      - name: Install Playwright
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Run end-to-end tests
+        working-directory: e2e
+        run: npx playwright test
+      - name: Container logs
+        if: failure()
+        run: docker compose logs --no-color --tail 300
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          retention-days: 7

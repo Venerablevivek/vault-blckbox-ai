@@ -14,6 +14,8 @@ export default {
   // Standalone output traces only the files the server needs, which keeps the image small.
   // The container runs server.mjs (a custom server) against that trimmed output.
   output: 'standalone',
+  // Don't advertise the framework in an X-Powered-By header.
+  poweredByHeader: false,
   async rewrites() {
     return [{ source: '/api/:path*', destination: `${apiTarget}/api/:path*` }];
   },
