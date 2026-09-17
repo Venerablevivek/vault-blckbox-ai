@@ -203,11 +203,11 @@ export const documentsRepo = {
          JOIN users u ON u.id = d.uploaded_by
          LEFT JOIN users du ON du.id = d.deleted_by
          LEFT JOIN LATERAL (
-           SELECT COUNT(DISTINCT sh.id) AS link_count,
-                  COUNT(e.id) FILTER (WHERE e.outcome = 'resolved') AS opens,
-                  MAX(e.accessed_at) FILTER (WHERE e.outcome IN ('resolved','downloaded')) AS last_accessed_at
+           -- Read from the links' counters: the cost no longer grows with how often links are used.
+           SELECT COUNT(*) AS link_count,
+                  SUM(sh.open_count) AS opens,
+                  MAX(sh.last_accessed_at) AS last_accessed_at
              FROM shares sh
-             LEFT JOIN share_access_events e ON e.share_id = sh.id
             WHERE sh.document_id = d.id AND sh.revoked_at IS NULL
          ) l ON true
         WHERE ${where.join(' AND ')}

@@ -73,9 +73,8 @@ export function createOverviewService(deps: { pool: Pool; clock: Clock; audit: A
              (SELECT COUNT(*) FROM shares s JOIN documents d ON d.id = s.document_id
                 WHERE d.workspace_id = $1 AND d.deleted_at IS NULL AND s.revoked_at IS NULL
                   AND (s.expires_at IS NULL OR s.expires_at > $2)) AS live_links,
-             (SELECT COUNT(*) FROM share_access_events e
-                JOIN shares s ON s.id = e.share_id JOIN documents d ON d.id = s.document_id
-                WHERE d.workspace_id = $1 AND e.outcome = 'resolved') AS opens,
+             (SELECT COALESCE(SUM(s.open_count), 0) FROM shares s JOIN documents d ON d.id = s.document_id
+                WHERE d.workspace_id = $1) AS opens,
              (SELECT COUNT(*) FROM invitations
                 WHERE workspace_id = $1 AND accepted_at IS NULL AND expires_at > $2) AS pending_invites,
              (SELECT storage_used_bytes FROM workspaces WHERE id = $1) AS storage_used,
@@ -119,6 +118,9 @@ export function createOverviewService(deps: { pool: Pool; clock: Clock; audit: A
                  JOIN shares s ON s.id = e.share_id
                  JOIN documents doc ON doc.id = s.document_id
                 WHERE doc.workspace_id = $1 AND e.outcome = 'resolved'
+                  -- Bounds the scan to the chart's window (a superset, for any time zone), so only
+                  -- the current and previous month's partitions are read.
+                  AND e.accessed_at >= $2::timestamptz - interval '${SERIES_DAYS + 1} days'
              ) e ON (e.accessed_at AT TIME ZONE $3)::date = days.day
             GROUP BY days.day ORDER BY days.day`,
           [workspaceId, now, tz],
@@ -131,17 +133,14 @@ export function createOverviewService(deps: { pool: Pool; clock: Clock; audit: A
           viewers: string;
           last_at: Date | null;
         }>(
-          `SELECT d.id, d.filename, d.mime_type,
-                  COUNT(e.id) FILTER (WHERE e.outcome = 'resolved') AS opens,
-                  COUNT(DISTINCT e.ip_hash) AS viewers,
-                  MAX(e.accessed_at) AS last_at
+          `SELECT d.id, d.filename, d.mime_type, t.opens, t.last_at,
+                  (SELECT COUNT(DISTINCT v.ip_hash) FROM share_viewers v JOIN shares s2 ON s2.id = v.share_id
+                    WHERE s2.document_id = d.id) AS viewers
              FROM documents d
-             JOIN shares s ON s.document_id = d.id
-             JOIN share_access_events e ON e.share_id = s.id AND e.outcome IN ('resolved','downloaded')
-            WHERE d.workspace_id = $1 AND d.deleted_at IS NULL
-            GROUP BY d.id
-            HAVING COUNT(e.id) FILTER (WHERE e.outcome = 'resolved') > 0
-            ORDER BY COUNT(e.id) FILTER (WHERE e.outcome = 'resolved') DESC
+             JOIN LATERAL (SELECT SUM(open_count) AS opens, MAX(last_accessed_at) AS last_at
+                             FROM shares WHERE document_id = d.id) t ON true
+            WHERE d.workspace_id = $1 AND d.deleted_at IS NULL AND t.opens > 0
+            ORDER BY t.opens DESC, d.id
             LIMIT 5`,
           [workspaceId],
         ),

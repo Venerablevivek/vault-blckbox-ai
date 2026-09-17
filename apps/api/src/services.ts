@@ -81,7 +81,13 @@ export function createServices(deps: {
   });
   const overview = createOverviewService({ pool, clock, audit });
   const folders = createFoldersService({ pool, audit });
-  const maintenance = createMaintenanceService({ pool, clock, logger, documents });
+  const maintenance = createMaintenanceService({
+    pool,
+    clock,
+    logger,
+    documents,
+    shareEventRetentionMonths: config.SHARE_EVENT_RETENTION_MONTHS,
+  });
 
   return { jobs, audit, notifications, auth, workspaces, documents, shares, overview, folders, maintenance };
 }

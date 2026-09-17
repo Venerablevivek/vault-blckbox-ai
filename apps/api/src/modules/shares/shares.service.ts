@@ -1,6 +1,7 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import type { Pool } from 'pg';
 import type { Logger } from 'pino';
+import { withTransaction } from '../../db/tx';
 import { Errors } from '../../lib/errors';
 import { generateToken, hashIp, hashToken } from '../../lib/tokens';
 import { Permissions, requireContributor } from '../../policy';
@@ -91,6 +92,57 @@ export function createSharesService(opts: SharesServiceOptions) {
     return expected.length === actual.length && timingSafeEqual(expected, actual);
   }
 
+  /** Months whose event partition this process has already made sure exists. */
+  const ensuredMonths = new Set<string>();
+
+  /**
+   * Writes one access in a single transaction: the event row, the link's counters and, for a
+   * successful access, the viewer record. Returns null when a page view is a repeat within the
+   * de-duplication window (nothing is written), otherwise whether the viewer is new and the
+   * link's distinct viewer count.
+   */
+  async function writeAccess(
+    shareId: string,
+    ipHash: Buffer,
+    userAgent: string | null,
+    outcome: AccessOutcome,
+  ): Promise<{ newViewer: boolean; viewers: number } | null> {
+    const at = clock.now();
+    const month = at.toISOString().slice(0, 7);
+    if (!ensuredMonths.has(month)) {
+      await sharesRepo.ensureEventPartition(pool, at);
+      ensuredMonths.add(month);
+    }
+
+    return withTransaction(pool, async (tx) => {
+      let result: { newViewer: boolean; viewers: number } = { newViewer: false, viewers: 0 };
+      if (outcome === 'resolved' || outcome === 'downloaded') {
+        const viewer =
+          outcome === 'resolved'
+            ? await sharesRepo.upsertViewerForView(tx, shareId, ipHash, at, new Date(at.getTime() - VIEW_DEDUPE_MS))
+            : await sharesRepo.upsertViewerForDownload(tx, shareId, ipHash, at);
+        if (!viewer) return null;
+        const viewers = await sharesRepo.countSuccess(tx, shareId, {
+          view: outcome === 'resolved',
+          newViewer: viewer.newViewer,
+          at,
+        });
+        result = { newViewer: viewer.newViewer, viewers };
+      } else {
+        await sharesRepo.countBlocked(tx, shareId);
+      }
+      await sharesRepo.insertEvent(tx, {
+        id: randomUUID(),
+        shareId,
+        ipHash,
+        userAgent: userAgent?.slice(0, 500) ?? null,
+        outcome,
+        at,
+      });
+      return result;
+    });
+  }
+
   /** Writes one access event, then decides whether the link's creator should hear about it. */
   function record(
     shareId: string,
@@ -105,22 +157,9 @@ export function createSharesService(opts: SharesServiceOptions) {
 
     void (async () => {
       const successful = outcome === 'resolved' || outcome === 'downloaded';
-
-      if (outcome === 'resolved') {
-        const since = new Date(clock.now().getTime() - VIEW_DEDUPE_MS);
-        if (await sharesRepo.hasRecentView(pool, shareId, ipHash, since)) return;
-      }
-
-      const seenBefore = successful && context ? await sharesRepo.hasSeenViewer(pool, shareId, ipHash) : true;
-
-      await sharesRepo.recordAccess(pool, {
-        id: randomUUID(),
-        shareId,
-        ipHash,
-        userAgent: visitor.userAgent?.slice(0, 500) ?? null,
-        outcome,
-        at: clock.now(),
-      });
+      const written = await writeAccess(shareId, ipHash, visitor.userAgent, outcome);
+      if (!written) return; // a refresh within the de-duplication window
+      const seenBefore = !written.newViewer;
 
       if (!context) return;
 
@@ -141,7 +180,7 @@ export function createSharesService(opts: SharesServiceOptions) {
       const creatorRole = await workspacesRepo.findMembership(pool, context.workspaceId, context.createdBy);
       if (!creatorRole) return;
 
-      const viewers = await sharesRepo.distinctViewerCount(pool, shareId);
+      const viewers = written.viewers;
       const first = viewers <= 1;
       notifications.notify({
         userId: context.createdBy,
@@ -417,14 +456,7 @@ export function createSharesService(opts: SharesServiceOptions) {
 
       if (!(await verifyPassword(share.password_hash, password))) {
         // Awaited, not fire-and-forget: the lockout count depends on this row existing.
-        await sharesRepo.recordAccess(pool, {
-          id: randomUUID(),
-          shareId: share.share_id,
-          ipHash: hashIp(visitor.ip, opts.ipHashPepper),
-          userAgent: visitor.userAgent?.slice(0, 500) ?? null,
-          outcome: 'bad_password',
-          at: clock.now(),
-        });
+        await writeAccess(share.share_id, hashIp(visitor.ip, opts.ipHashPepper), visitor.userAgent, 'bad_password');
         throw Errors.credentialRequired('WRONG_PASSWORD', 'That password is not correct.');
       }
 

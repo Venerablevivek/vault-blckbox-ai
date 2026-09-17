@@ -899,7 +899,10 @@
             }
           },
           "counts": {
-            "type": "object",
+            "type": [
+              "object",
+              "null"
+            ],
             "properties": {
               "all": {
                 "type": "integer"
@@ -920,7 +923,8 @@
               "mine",
               "trash"
             ],
-            "additionalProperties": false
+            "additionalProperties": false,
+            "description": "Tab counts for the whole workspace; null on pages after the first."
           },
           "storage": {
             "$ref": "#/components/schemas/StorageUsage"

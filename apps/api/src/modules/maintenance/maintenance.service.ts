@@ -1,5 +1,6 @@
 import type { Pool } from 'pg';
 import { jobsRepo } from '../../jobs/jobs.repo';
+import { sharesRepo } from '../shares/shares.repo';
 import type { Logger } from 'pino';
 import type { Clock } from '../../types';
 import type { DocumentsService } from '../documents/documents.service';
@@ -15,6 +16,8 @@ export const RETENTION = {
   anyNotificationsDays: 90,
   /** Expired invitations are kept a week past expiry so "this invitation expired" still resolves. */
   expiredInvitationsDays: 7,
+  /** Months of share-event partitions created ahead of time. */
+  eventPartitionsAhead: 3,
   /** Completed jobs are only useful for recent debugging. */
   finishedJobsDays: 7,
   /** Failed (dead-letter) jobs are kept longer, for someone to look into. */
@@ -29,8 +32,9 @@ export function createMaintenanceService(deps: {
   clock: Clock;
   logger: Logger;
   documents: DocumentsService;
+  shareEventRetentionMonths: number;
 }) {
-  const { pool, clock, logger, documents } = deps;
+  const { pool, clock, logger, documents, shareEventRetentionMonths } = deps;
   const daysAgo = (days: number) => new Date(clock.now().getTime() - days * 86_400_000);
 
   return {
@@ -58,6 +62,7 @@ export function createMaintenanceService(deps: {
           checksumsBackfilled: 0,
           workspacesPurged: 0,
           finishedJobs: 0,
+          droppedEventPartitions: [] as string[],
         };
 
         const step = async (name: string, fn: () => Promise<void>) => {
@@ -103,6 +108,14 @@ export function createMaintenanceService(deps: {
         await step('deleted_workspaces', async () => {
           const r = await documents.purgeDeletedWorkspaces();
           result.workspacesPurged = r.workspaces;
+        });
+        await step('share_event_partitions', async () => {
+          result.droppedEventPartitions = await sharesRepo.maintainEventPartitions(
+            client,
+            clock.now(),
+            RETENTION.eventPartitionsAhead,
+            shareEventRetentionMonths,
+          );
         });
         await step('jobs', async () => {
           result.finishedJobs = await jobsRepo.deleteFinished(

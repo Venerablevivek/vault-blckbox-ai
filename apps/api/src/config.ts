@@ -83,6 +83,12 @@ const schema = z.object({
   SMTP_URL: z.preprocess((v) => (v === '' ? undefined : v), z.string().url().optional()),
   MAIL_FROM: z.string().min(3).default('Vault <no-reply@vault.local>'),
 
+  /**
+   * Months of share-link access history kept. Whole monthly partitions older than this are
+   * dropped; counters on the links (opens, viewers, downloads) are unaffected.
+   */
+  SHARE_EVENT_RETENTION_MONTHS: z.coerce.number().int().min(1).max(120).default(13),
+
   /** How long a password reset link works. */
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(60),
 

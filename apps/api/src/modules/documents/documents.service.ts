@@ -280,7 +280,9 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
 
       const showFolders = input.view === 'active' && !searching && input.filter === 'all' && !input.cursor;
       const folders = showFolders ? await foldersRepo.listChildren(pool, workspaceId, input.folderId) : [];
-      const counts = await documentsRepo.counts(pool, workspaceId, input.userId);
+      // Tab counts cover the whole workspace, so they are computed once, for the first page; the
+      // client keeps them while it scrolls through later pages.
+      const counts = input.cursor ? null : await documentsRepo.counts(pool, workspaceId, input.userId);
 
       return { documents: page, nextCursor, folders, path, counts };
     },

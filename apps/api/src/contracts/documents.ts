@@ -72,7 +72,9 @@ export const DocumentListResponse = obj({
   nextCursor: z.string().nullable(),
   folders: z.array(Folder),
   path: z.array(Folder),
-  counts: obj({ all: z.number().int(), shared: z.number().int(), mine: z.number().int(), trash: z.number().int() }),
+  counts: obj({ all: z.number().int(), shared: z.number().int(), mine: z.number().int(), trash: z.number().int() })
+    .nullable()
+    .openapi({ description: 'Tab counts for the whole workspace; null on pages after the first.' }),
   storage: StorageUsage,
   trashRetentionDays: z.number().int(),
 }).openapi('DocumentList');

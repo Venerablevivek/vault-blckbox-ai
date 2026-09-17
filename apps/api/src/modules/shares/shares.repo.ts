@@ -152,10 +152,15 @@ export const sharesRepo = {
   },
 
   /**
-   * Records one access. Fire-and-forget at the call site: a failure to write telemetry must
-   * never stop someone downloading a document they are entitled to.
+   * Makes sure the monthly partition for `at` exists. Idempotent; the service calls it once per
+   * month per process before writing an event, and the maintenance pass keeps months ahead ready.
    */
-  async recordAccess(
+  async ensureEventPartition(db: Db, at: Date): Promise<void> {
+    await db.query('SELECT ensure_share_event_partitions($1, 1)', [at]);
+  },
+
+  /** Appends one row to the (partitioned) access history. */
+  async insertEvent(
     db: Db,
     event: { id: string; shareId: string; ipHash: Buffer; userAgent: string | null; outcome: AccessOutcome; at: Date },
   ): Promise<void> {
@@ -167,76 +172,116 @@ export const sharesRepo = {
   },
 
   /**
-   * Activity rollup for a set of links, in one query rather than N. "Distinct viewers" counts
-   * distinct hashed addresses, which is an estimate and is labelled as one in the UI.
+   * Records that a viewer opened the link, unless the same viewer already did within the
+   * de-duplication window. One atomic upsert: two tabs refreshing at once still count once.
+   * Returns null when de-duplicated, otherwise whether this viewer is new to the link.
    */
+  async upsertViewerForView(
+    db: Db,
+    shareId: string,
+    ipHash: Buffer,
+    now: Date,
+    dedupeSince: Date,
+  ): Promise<{ newViewer: boolean } | null> {
+    const { rows } = await db.query<{ new_viewer: boolean }>(
+      `INSERT INTO share_viewers (share_id, ip_hash, first_seen_at, last_viewed_at)
+       VALUES ($1, $2, $3, $3)
+       ON CONFLICT (share_id, ip_hash) DO UPDATE SET last_viewed_at = EXCLUDED.last_viewed_at
+         WHERE share_viewers.last_viewed_at IS NULL OR share_viewers.last_viewed_at <= $4
+       RETURNING (xmax = 0) AS new_viewer`,
+      [shareId, ipHash, now, dedupeSince],
+    );
+    return rows[0] ? { newViewer: rows[0].new_viewer } : null;
+  },
+
+  /** Records a downloading viewer. Downloads are never de-duplicated. */
+  async upsertViewerForDownload(db: Db, shareId: string, ipHash: Buffer, now: Date): Promise<{ newViewer: boolean }> {
+    const { rows } = await db.query<{ new_viewer: boolean }>(
+      `INSERT INTO share_viewers (share_id, ip_hash, first_seen_at)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (share_id, ip_hash) DO UPDATE SET first_seen_at = share_viewers.first_seen_at
+       RETURNING (xmax = 0) AS new_viewer`,
+      [shareId, ipHash, now],
+    );
+    return { newViewer: rows[0]!.new_viewer };
+  },
+
+  /**
+   * Updates the link's counters for a successful access and returns its distinct viewer count.
+   * The download itself was already counted by claimDownload.
+   */
+  async countSuccess(db: Db, shareId: string, input: { view: boolean; newViewer: boolean; at: Date }): Promise<number> {
+    const { rows } = await db.query<{ viewer_count: number }>(
+      `UPDATE shares SET
+         open_count        = open_count + $2,
+         viewer_count      = viewer_count + $3,
+         first_accessed_at = COALESCE(first_accessed_at, $4),
+         last_accessed_at  = GREATEST(COALESCE(last_accessed_at, $4), $4)
+       WHERE id = $1
+       RETURNING viewer_count`,
+      [shareId, input.view ? 1 : 0, input.newViewer ? 1 : 0, input.at],
+    );
+    return rows[0]?.viewer_count ?? 0;
+  },
+
+  async countBlocked(db: Db, shareId: string): Promise<void> {
+    await db.query('UPDATE shares SET blocked_count = blocked_count + 1 WHERE id = $1', [shareId]);
+  },
+
+  /** Activity for a set of links, straight from their counters. */
   async activityFor(db: Db, shareIds: string[]): Promise<Map<string, ShareActivity>> {
     if (shareIds.length === 0) return new Map();
     const { rows } = await db.query<{
-      share_id: string;
-      opens: string;
-      downloads: string;
-      viewers: string;
-      first_at: Date | null;
-      last_at: Date | null;
-      blocked: string;
+      id: string;
+      open_count: string;
+      download_count: number;
+      viewer_count: number;
+      first_accessed_at: Date | null;
+      last_accessed_at: Date | null;
+      blocked_count: string;
     }>(
-      `SELECT share_id,
-              COUNT(*)                FILTER (WHERE outcome = 'resolved') AS opens,
-              COUNT(*)                FILTER (WHERE outcome = 'downloaded') AS downloads,
-              COUNT(DISTINCT ip_hash) FILTER (WHERE outcome IN ('resolved','downloaded')) AS viewers,
-              MIN(accessed_at)        FILTER (WHERE outcome IN ('resolved','downloaded')) AS first_at,
-              MAX(accessed_at)        FILTER (WHERE outcome IN ('resolved','downloaded')) AS last_at,
-              COUNT(*)                FILTER (WHERE outcome NOT IN ('resolved','downloaded')) AS blocked
-         FROM share_access_events
-        WHERE share_id = ANY($1::uuid[])
-        GROUP BY share_id`,
+      `SELECT id, open_count, download_count, viewer_count, first_accessed_at, last_accessed_at, blocked_count
+         FROM shares WHERE id = ANY($1::uuid[])`,
       [shareIds],
     );
     return new Map(
       rows.map((r) => [
-        r.share_id,
+        r.id,
         {
-          opens: Number(r.opens),
-          downloads: Number(r.downloads),
-          distinctViewers: Number(r.viewers),
-          firstAccessedAt: r.first_at,
-          lastAccessedAt: r.last_at,
-          blockedAttempts: Number(r.blocked),
+          opens: Number(r.open_count),
+          downloads: Number(r.download_count),
+          distinctViewers: Number(r.viewer_count),
+          firstAccessedAt: r.first_accessed_at,
+          lastAccessedAt: r.last_accessed_at,
+          blockedAttempts: Number(r.blocked_count),
         },
       ]),
     );
   },
 
-  /** Has this viewer opened this link before? Decides whether the sender hears about it. */
-  async hasSeenViewer(db: Db, shareId: string, ipHash: Buffer): Promise<boolean> {
-    const { rowCount } = await db.query(
-      `SELECT 1 FROM share_access_events
-        WHERE share_id = $1 AND ip_hash = $2 AND outcome IN ('resolved','downloaded')
-        LIMIT 1`,
-      [shareId, ipHash],
+  /**
+   * Keeps event partitions ready for the next months and drops partitions entirely older than
+   * `retentionMonths`. Returns the names of dropped partitions.
+   */
+  async maintainEventPartitions(db: Db, now: Date, monthsAhead: number, retentionMonths: number): Promise<string[]> {
+    await db.query('SELECT ensure_share_event_partitions($1, $2)', [now, monthsAhead + 1]);
+    const cutoff = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - retentionMonths, 1));
+    const cutoffName = `share_access_events_${cutoff.getUTCFullYear()}_${String(cutoff.getUTCMonth() + 1).padStart(2, '0')}`;
+    const { rows } = await db.query<{ name: string }>(
+      `SELECT c.relname AS name
+         FROM pg_inherits i
+         JOIN pg_class c ON c.oid = i.inhrelid
+         JOIN pg_class p ON p.oid = i.inhparent
+        WHERE p.relname = 'share_access_events' AND c.relname ~ '^share_access_events_[0-9]{4}_[0-9]{2}$'
+          AND c.relname < $1
+        ORDER BY c.relname`,
+      [cutoffName],
     );
-    return (rowCount ?? 0) > 0;
-  },
-
-  /** Has this visitor viewed the link since `since`? Backs the refresh de-duplication. */
-  async hasRecentView(db: Db, shareId: string, ipHash: Buffer, since: Date): Promise<boolean> {
-    const { rowCount } = await db.query(
-      `SELECT 1 FROM share_access_events
-        WHERE share_id = $1 AND ip_hash = $2 AND outcome = 'resolved' AND accessed_at > $3
-        LIMIT 1`,
-      [shareId, ipHash, since],
-    );
-    return (rowCount ?? 0) > 0;
-  },
-
-  async distinctViewerCount(db: Db, shareId: string): Promise<number> {
-    const { rows } = await db.query<{ count: string }>(
-      `SELECT COUNT(DISTINCT ip_hash) AS count FROM share_access_events
-        WHERE share_id = $1 AND outcome IN ('resolved','downloaded')`,
-      [shareId],
-    );
-    return Number(rows[0]?.count ?? 0);
+    for (const { name } of rows) {
+      // The name comes from pg_class and matched the strict pattern above; quote it anyway.
+      await db.query(`DROP TABLE ${'"' + name.replace(/"/g, '""') + '"'}`);
+    }
+    return rows.map((r) => r.name);
   },
 
   async listEvents(db: Db, shareId: string, limit = 20) {
