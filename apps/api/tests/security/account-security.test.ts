@@ -300,7 +300,6 @@ describe('account security', () => {
         role: 'VIEWER',
       });
       expect(invite.statusCode).toBe(201);
-      expect(invite.json().emailSent).toBe(true);
 
       const message = await h.mailer.waitFor((m) => m.to === 'bob@example.com');
       expect(message.text).toContain(invite.json().inviteUrl);
@@ -309,14 +308,41 @@ describe('account security', () => {
       expect(message.html).toContain('&lt;img src=x onerror=alert(1)&gt;');
     });
 
-    it('still creates the invitation when the email fails, and says so', async () => {
+    it('retries the email when the mail server fails, without losing it', async () => {
       h.mailer.failNext = true;
       const invite = await call('POST', `/api/workspaces/${alice.workspaceId}/invitations`, alice.cookie, {
         email: 'bob@example.com',
       });
       expect(invite.statusCode).toBe(201);
-      expect(invite.json().emailSent).toBe(false);
-      expect(await h.query('SELECT 1 FROM invitations WHERE email = $1', ['bob@example.com'])).toHaveLength(1);
+
+      // The first attempt fails and is rescheduled with backoff, not dropped.
+      for (let i = 0; i < 40; i++) {
+        const [job] = await h.query<{ status: string; attempts: number }>(
+          `SELECT status, attempts FROM jobs WHERE queue = 'email.send'`,
+        );
+        if (job?.attempts === 1 && job.status === 'queued') break;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      const [failedOnce] = await h.query<{ status: string; attempts: number; last_error: string }>(
+        `SELECT status, attempts, last_error FROM jobs WHERE queue = 'email.send'`,
+      );
+      expect(failedOnce).toMatchObject({ status: 'queued', attempts: 1, last_error: 'simulated SMTP failure' });
+      expect(h.mailer.sent).toHaveLength(0);
+
+      h.clock.advanceHours(1 / 60);
+      await h.mailer.waitFor((m) => m.to === 'bob@example.com');
+      const [done] = await h.query<{ status: string }>(`SELECT status FROM jobs WHERE queue = 'email.send'`);
+      expect(done!.status).toBe('done');
+    });
+
+    it('never sends an email for an invitation that was not saved', async () => {
+      const invalid = await call('POST', `/api/workspaces/${alice.workspaceId}/invitations`, alice.cookie, {
+        email: 'alice@example.com',
+      });
+      expect(invalid.statusCode).toBe(409);
+      await h.runJobs();
+      expect(h.mailer.sent).toHaveLength(0);
+      expect(await h.query('SELECT 1 FROM jobs')).toHaveLength(0);
     });
   });
 });

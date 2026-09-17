@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
 import type { Logger } from 'pino';
+import type { Db } from '../../db/pool';
+import type { JobPayloads, JobQueue } from '../../jobs/queue';
 import type { Clock } from '../../types';
 import { notificationsRepo, type NotificationType } from './notifications.repo';
 
@@ -13,8 +15,8 @@ export interface NotifyInput {
   resourceId?: string | null;
 }
 
-export function createNotificationsService(deps: { pool: Pool; clock: Clock; logger: Logger }) {
-  const { pool, clock, logger } = deps;
+export function createNotificationsService(deps: { pool: Pool; clock: Clock; logger: Logger; jobs: JobQueue }) {
+  const { pool, clock, logger, jobs } = deps;
 
   function row(input: NotifyInput) {
     return {
@@ -43,20 +45,43 @@ export function createNotificationsService(deps: { pool: Pool; clock: Clock; log
       });
     },
 
-    /** Notifies every member of a workspace except the person who caused the event. */
-    notifyWorkspace(
+    /**
+     * Notifies every member of a workspace except the person who caused the event. The fan-out
+     * (one row per member, which can be thousands) runs as a job, enqueued with `db`: pass the
+     * transaction of the event so the notification exists exactly when the event does.
+     */
+    async notifyWorkspace(
+      db: Db,
       workspaceId: string,
       exceptUserId: string,
       input: Omit<NotifyInput, 'userId' | 'workspaceId'>,
-    ): void {
-      void (async () => {
-        const recipients = await notificationsRepo.recipientsFor(pool, workspaceId, exceptUserId);
-        for (const userId of recipients) {
-          await notificationsRepo.insert(pool, row({ ...input, userId, workspaceId }));
-        }
-      })().catch((error: unknown) => {
-        logger.warn({ err: error, type: input.type }, 'failed to fan out notification');
+    ): Promise<void> {
+      await jobs.enqueue(db, 'notifications.fanout', {
+        workspaceId,
+        exceptUserId,
+        type: input.type,
+        title: input.title,
+        body: input.body ?? null,
+        resourceId: input.resourceId ?? null,
       });
+    },
+
+    /** Job handler for notifications.fanout. Recipients are resolved when the job runs. */
+    async fanOut(payload: JobPayloads['notifications.fanout']): Promise<void> {
+      const recipients = await notificationsRepo.recipientsFor(pool, payload.workspaceId, payload.exceptUserId);
+      for (const userId of recipients) {
+        await notificationsRepo.insert(
+          pool,
+          row({
+            userId,
+            workspaceId: payload.workspaceId,
+            type: payload.type as NotificationType,
+            title: payload.title,
+            body: payload.body,
+            resourceId: payload.resourceId,
+          }),
+        );
+      }
     },
 
     async list(userId: string, limit = 30) {

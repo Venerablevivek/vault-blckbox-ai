@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.eslint.json",
     "lint": "eslint .",
     "openapi": "tsx src/openapi/write.ts"
   },

@@ -2,7 +2,15 @@
 
 import { use, useCallback, useEffect, useState } from 'react';
 import { Copy, Crown, Eye, Mail, Send, ShieldCheck, UserMinus, UserPlus, Users, X } from 'lucide-react';
-import { api, ApiRequestError, formatDate, type Member, type PendingInvitation, type Role } from '@/lib/api';
+import {
+  api,
+  ApiRequestError,
+  formatDate,
+  type Member,
+  type PendingInvitation,
+  type Role,
+  type Schemas,
+} from '@/lib/api';
 import { useDialogs } from '@/components/dialog';
 import { toast } from '@/components/toast';
 import { EmptyState, ErrorNote, RoleBadge, Shell, Skeleton, useSession } from '@/components/ui';
@@ -24,7 +32,6 @@ export default function MembersPage({ params }: { params: Promise<{ id: string }
   const [inviteRole, setInviteRole] = useState<Role>('MEMBER');
   const [inviteBusy, setInviteBusy] = useState(false);
   const [lastInviteUrl, setLastInviteUrl] = useState<string | null>(null);
-  const [lastInviteEmailed, setLastInviteEmailed] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -55,21 +62,13 @@ export default function MembersPage({ params }: { params: Promise<{ id: string }
     setInviteBusy(true);
     setLastInviteUrl(null);
     try {
-      const result = await api.post<{ inviteUrl?: string; emailSent: boolean }>(
-        `/api/workspaces/${workspaceId}/invitations`,
-        {
-          email: inviteEmail,
-          role: inviteRole,
-        },
-      );
-      toast(
-        result.emailSent
-          ? `Invitation emailed to ${inviteEmail}`
-          : `Invitation created, but the email to ${inviteEmail} could not be sent. Copy the link below instead.`,
-        result.emailSent ? 'success' : 'error',
-      );
+      const result = await api.post<Schemas['InvitationCreated']>(`/api/workspaces/${workspaceId}/invitations`, {
+        email: inviteEmail,
+        role: inviteRole,
+      });
+      // The email is sent by the background worker, which retries if the mail server is down.
+      toast(`Invitation sent to ${inviteEmail}`, 'success');
       setInviteEmail('');
-      setLastInviteEmailed(result.emailSent);
       // Returned only when the server exposes invite links (development), so it can be copied.
       if (result.inviteUrl) setLastInviteUrl(result.inviteUrl);
       await load();
@@ -292,9 +291,7 @@ export default function MembersPage({ params }: { params: Promise<{ id: string }
               {lastInviteUrl ? (
                 <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50/60 p-3">
                   <p className="text-xs font-medium text-brand-900">
-                    {lastInviteEmailed
-                      ? 'Emailed. You can also share the link directly:'
-                      : 'The email wasn’t sent. Share this link instead:'}
+                    Invitation email on its way. You can also share the link directly:
                   </p>
                   <p className="mt-2 break-all rounded-lg border border-brand-200 bg-white px-2.5 py-2 font-mono text-[11px]">
                     {lastInviteUrl}

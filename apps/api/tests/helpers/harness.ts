@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { Client } from 'pg';
+import { Client, type Pool } from 'pg';
 import { pino } from 'pino';
 import type { FastifyInstance } from 'fastify';
 import { createPool } from '../../src/db/pool';
@@ -69,6 +69,10 @@ export interface Harness {
   config: Config;
   /** Every email the app sent during the current test. */
   mailer: MemoryMailer;
+  /** The application's own pool, for tests that need a transaction. */
+  pool: Pool;
+  /** Runs every ready background job now (emails, notification fan-out, purges). */
+  runJobs(): Promise<number>;
   truncate(): Promise<void>;
   close(): Promise<void>;
   /** Reads a raw value straight from the database, bypassing the API. */
@@ -79,6 +83,8 @@ export interface Harness {
 export async function createHarness(options?: {
   storage?: FileStorage;
   env?: Record<string, string>;
+  /** Set false to run jobs only through runJobs(), for tests of the queue itself. */
+  worker?: boolean;
 }): Promise<Harness> {
   const databaseUrl = await ensureTestDatabase();
   const bucket = `test-${Date.now()}-${Math.floor(Math.random() * 10_000)}`;
@@ -117,6 +123,10 @@ export async function createHarness(options?: {
   const mailer = new MemoryMailer();
   const app = await buildApp({ config, pool, storage, logger, clock, mailer });
   await app.ready();
+  // A real worker runs alongside the tests, exactly as in production. Tests that need a job's
+  // effect at a precise moment call runJobs() instead of waiting for it.
+  const stopWorker =
+    options?.worker === false ? async () => undefined : app.services.jobs.start(app.jobHandlers, { pollMs: 25 });
 
   return {
     app,
@@ -124,6 +134,8 @@ export async function createHarness(options?: {
     clock,
     config,
     mailer,
+    pool,
+    runJobs: () => app.services.jobs.runReady(app.jobHandlers, 1000),
     async truncate() {
       // Audit, notification and share-access writes are fire-and-forget by design, so the
       // previous test's writes can still be landing when the next test truncates. TRUNCATE
@@ -134,7 +146,7 @@ export async function createHarness(options?: {
           await pool.query(
             `TRUNCATE notifications, audit_events, share_access_events, invitations, shares,
                       documents, folders, login_failures, password_resets, workspace_members,
-                      workspaces, sessions, users CASCADE`,
+                      workspaces, sessions, users, jobs CASCADE`,
           );
           // Each test starts at the same moment, so a test that moved time cannot leak it.
           clock.reset();
@@ -147,6 +159,7 @@ export async function createHarness(options?: {
       }
     },
     async close() {
+      await stopWorker();
       await app.close();
       await pool.end();
     },

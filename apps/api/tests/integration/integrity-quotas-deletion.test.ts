@@ -11,7 +11,9 @@ describe('integrity, quotas and workspace deletion', () => {
   let alice: User;
 
   beforeAll(async () => {
-    h = await createHarness();
+    // Jobs run only when a test calls runJobs(), so "the moment of deletion" can be observed
+    // before the purge job removes the workspace.
+    h = await createHarness({ worker: false });
   });
   afterAll(async () => h.close());
 
@@ -218,7 +220,20 @@ describe('integrity, quotas and workspace deletion', () => {
       expect(aliceNotes.some((n) => n.type === 'workspace.deleted')).toBe(false);
     });
 
-    it('removes the files and rows on the next maintenance pass', async () => {
+    it('removes the files and rows in a background job straight away', async () => {
+      await call('DELETE', `/api/documents/${documentId}`, alice.cookie);
+      await uploadDocument(h.app, alice.cookie, alice.workspaceId, 'live.pdf', pdf('still live'));
+      await call('DELETE', `/api/workspaces/${alice.workspaceId}`, alice.cookie, { confirmName: 'Acme Legal' });
+      expect(await h.objectExists(storageKey)).toBe(true);
+
+      expect(await h.runJobs()).toBeGreaterThanOrEqual(1);
+      expect(await h.objectExists(storageKey)).toBe(false);
+      expect(await h.query('SELECT 1 FROM workspaces WHERE id = $1', [alice.workspaceId])).toHaveLength(0);
+      expect(await h.query('SELECT 1 FROM documents WHERE workspace_id = $1', [alice.workspaceId])).toHaveLength(0);
+      expect(await h.query('SELECT 1 FROM workspaces WHERE id = $1', [bob.workspaceId])).toHaveLength(1);
+    });
+
+    it('is finished by the maintenance pass if the job never ran', async () => {
       await call('DELETE', `/api/documents/${documentId}`, alice.cookie);
       await uploadDocument(h.app, alice.cookie, alice.workspaceId, 'live.pdf', pdf('still live'));
       await call('POST', `/api/workspaces/${alice.workspaceId}/folders`, alice.cookie, { name: 'Parent' });

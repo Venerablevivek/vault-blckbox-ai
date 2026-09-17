@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import type { z } from 'zod';
+import type { NotificationsResponse } from '../../src/contracts/activity';
 import { createHarness, registerUser, uploadDocument, type Harness } from '../helpers/harness';
 
 /** Audit and notification writes are fire-and-forget; give them a tick to land. */
@@ -33,7 +35,7 @@ describe('audit trail and notifications', () => {
       url: '/api/notifications',
       headers: { cookie },
     });
-    return response.json();
+    return response.json<z.infer<typeof NotificationsResponse>>();
   }
 
   // ---- audit ---------------------------------------------------------------
@@ -247,7 +249,7 @@ describe('audit trail and notifications', () => {
 
     const before = await inbox(alice.cookie);
     expect(before.unread).toBe(1);
-    const notificationId = before.notifications[0]!.id as string;
+    const notificationId = before.notifications[0]!.id;
 
     // Bob tries to mark Alice's notification read: user_id is in the WHERE clause, so
     // this is a silent no-op rather than a cross-user write.

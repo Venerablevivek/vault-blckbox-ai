@@ -1,8 +1,10 @@
 import type { Pool } from 'pg';
 import type { Logger } from 'pino';
 import type { Config } from './config';
+import type { JobHandlers } from './jobs/queue';
 import type { Mailer } from './mail/mailer';
 import type { MaintenanceService } from './modules/maintenance/maintenance.service';
+import type { Services } from './services';
 import type { FileStorage } from './storage/file-storage';
 
 /** Injected so expiry logic can be tested by moving time rather than sleeping. */
@@ -38,6 +40,8 @@ declare module 'fastify' {
   interface FastifyInstance {
     /** Housekeeping jobs. Scheduled by main.ts; tests call runOnce() directly. */
     maintenance: MaintenanceService;
+    services: Services;
+    jobHandlers: JobHandlers;
     /** Method and URL of every registered route (HEAD excluded). */
     routeTable: ReadonlyArray<{ method: string; url: string }>;
   }

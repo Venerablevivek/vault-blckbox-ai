@@ -294,10 +294,8 @@ describe('trash, folders, search and maintenance', () => {
     it('purges trash past retention, removing the object, and leaves recent trash alone', async () => {
       const old = await upload('old.pdf');
       await call('DELETE', `/api/documents/${old}`, alice.cookie);
-      const [{ storage_key: oldKey }] = await h.query<{ storage_key: string }>(
-        'SELECT storage_key FROM documents WHERE id = $1',
-        [old],
-      );
+      const [oldRow] = await h.query<{ storage_key: string }>('SELECT storage_key FROM documents WHERE id = $1', [old]);
+      const oldKey = oldRow!.storage_key;
 
       h.clock.advanceHours(24 * (h.config.TRASH_RETENTION_DAYS + 1));
       // Moving time past retention also expired Alice's session; sign in again.

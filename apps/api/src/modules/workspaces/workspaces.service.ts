@@ -10,7 +10,7 @@ import { normalizeEmail } from '../auth/auth.service';
 import { authRepo } from '../auth/auth.repo';
 import type { AuditService } from '../audit/audit.service';
 import type { NotificationsService } from '../notifications/notifications.service';
-import type { Mailer } from '../../mail/mailer';
+import type { JobQueue } from '../../jobs/queue';
 import { invitationEmail } from '../../mail/templates';
 import { sharesRepo } from '../shares/shares.repo';
 import { invitationsRepo } from './invitations.repo';
@@ -24,12 +24,12 @@ export interface WorkspacesServiceOptions {
   exposeInviteLinks: boolean;
   audit: AuditService;
   notifications: NotificationsService;
-  mailer: Mailer;
+  jobs: JobQueue;
   logger: Logger;
 }
 
 export function createWorkspacesService(opts: WorkspacesServiceOptions) {
-  const { pool, clock, audit, notifications, mailer, logger } = opts;
+  const { pool, clock, audit, notifications, jobs, logger } = opts;
 
   return {
     /**
@@ -118,36 +118,38 @@ export function createWorkspacesService(opts: WorkspacesServiceOptions) {
       const token = generateToken('inv');
       const expiresAt = new Date(clock.now().getTime() + opts.inviteTtlHours * 3_600_000);
 
-      const invitation = await invitationsRepo.upsertPending(pool, {
-        id: randomUUID(),
-        workspaceId: input.workspaceId,
-        email,
-        tokenHash: hashToken(token),
-        role: input.role,
-        expiresAt,
-        createdBy: input.actor.id,
-      });
-
-      await audit.record({
-        workspaceId: input.workspaceId,
-        actorUserId: input.actor.id,
-        action: 'member.invited',
-        resourceType: 'invitation',
-        resourceId: invitation.id,
-        metadata: { email, role: input.role },
-      });
-
       const url = `${opts.webUrl}/invite/${token}`;
+      const [workspace, inviterEmail] = await Promise.all([
+        workspacesRepo.findById(pool, input.workspaceId),
+        workspacesRepo.findUserEmail(pool, input.actor.id),
+      ]);
 
-      // The invitation exists whether or not the email goes out; the owner can still copy the
-      // link (when EXPOSE_INVITE_LINKS is on) or re-invite, so a mail failure is reported, not thrown.
-      let emailSent = false;
-      try {
-        const [workspace, inviterEmail] = await Promise.all([
-          workspacesRepo.findById(pool, input.workspaceId),
-          workspacesRepo.findUserEmail(pool, input.actor.id),
-        ]);
-        await mailer.send(
+      // Invitation, audit entry and email job commit together. The email is retried if the mail
+      // server is down; it can never go out for an invitation that failed to save.
+      const invitation = await withTransaction(pool, async (tx) => {
+        const row = await invitationsRepo.upsertPending(tx, {
+          id: randomUUID(),
+          workspaceId: input.workspaceId,
+          email,
+          tokenHash: hashToken(token),
+          role: input.role,
+          expiresAt,
+          createdBy: input.actor.id,
+        });
+        await audit.record(
+          {
+            workspaceId: input.workspaceId,
+            actorUserId: input.actor.id,
+            action: 'member.invited',
+            resourceType: 'invitation',
+            resourceId: row.id,
+            metadata: { email, role: input.role },
+          },
+          tx,
+        );
+        await jobs.enqueue(
+          tx,
+          'email.send',
           invitationEmail({
             to: email,
             workspaceName: workspace?.name ?? 'a workspace',
@@ -157,16 +159,13 @@ export function createWorkspacesService(opts: WorkspacesServiceOptions) {
             expiresAt,
           }),
         );
-        emailSent = true;
-      } catch (error) {
-        logger.error({ err: error, invitationId: invitation.id }, 'failed to send invitation email');
-      }
+        return row;
+      });
 
       return {
         invitation,
         // The plaintext token exists only here and in the email; the database holds a hash of it.
         url: opts.exposeInviteLinks ? url : undefined,
-        emailSent,
       };
     },
 
@@ -345,7 +344,10 @@ export function createWorkspacesService(opts: WorkspacesServiceOptions) {
 
       const formerMembers = await withTransaction(pool, async (tx) => {
         await workspacesRepo.lockForUpdate(tx, input.workspaceId);
-        return workspacesRepo.markDeleted(tx, input.workspaceId, input.actor.id, clock.now());
+        const members = await workspacesRepo.markDeleted(tx, input.workspaceId, input.actor.id, clock.now());
+        // Files are removed by a job right away; the maintenance pass is only the fallback.
+        await jobs.enqueue(tx, 'workspace.purge', { workspaceId: input.workspaceId }, { dedupeKey: input.workspaceId });
+        return members;
       });
 
       // Not tied to the workspace (workspace_id null), because the workspace is about to disappear.
@@ -423,10 +425,13 @@ export function createWorkspacesService(opts: WorkspacesServiceOptions) {
 
         const workspace = await workspacesRepo.findById(tx, accepted.workspace_id);
 
-        notifications.notifyWorkspace(accepted.workspace_id, user.id, {
+        await notifications.notifyWorkspace(tx, accepted.workspace_id, user.id, {
           type: 'member.joined',
           title: `${user.email} joined ${workspace?.name ?? 'the workspace'}`,
-          body: 'They can now upload, download and share documents here.',
+          body:
+            accepted.role === 'VIEWER'
+              ? 'They can view and download documents here.'
+              : 'They can now upload, download and share documents here.',
           resourceId: user.id,
         });
 

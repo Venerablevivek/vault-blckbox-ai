@@ -40,13 +40,10 @@ export const MembersResponse = obj({
 
 export const InvitationCreatedResponse = obj({
   invitation: PendingInvitation,
-  inviteUrl: z
-    .string()
-    .url()
-    .optional()
-    .openapi({ description: 'Only when EXPOSE_INVITE_LINKS is enabled (development).' }),
-  emailSent: z.boolean(),
-});
+  inviteUrl: z.string().url().optional().openapi({
+    description: 'Only when EXPOSE_INVITE_LINKS is enabled (development). The email is sent by the worker.',
+  }),
+}).openapi('InvitationCreated');
 export const InvitationPreviewResponse = obj({
   workspaceName: z.string(),
   email: z.string(),

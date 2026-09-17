@@ -128,6 +128,13 @@ export const workspacesRepo = {
     await db.query('DELETE FROM workspaces WHERE id = $1 AND deleted_at IS NOT NULL', [workspaceId]);
   },
 
+  async isMarkedDeleted(db: Db, workspaceId: string): Promise<boolean> {
+    const { rowCount } = await db.query('SELECT 1 FROM workspaces WHERE id = $1 AND deleted_at IS NOT NULL', [
+      workspaceId,
+    ]);
+    return (rowCount ?? 0) > 0;
+  },
+
   async deletedWorkspaces(db: Db, limit: number): Promise<Array<{ id: string }>> {
     const { rows } = await db.query<{ id: string }>(
       'SELECT id FROM workspaces WHERE deleted_at IS NOT NULL ORDER BY deleted_at LIMIT $1',

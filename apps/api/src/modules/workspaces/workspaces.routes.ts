@@ -175,10 +175,7 @@ export function registerWorkspaceRoutes(
 
       // The link carries a bearer token, so it is never logged. It is emailed, and returned
       // here only when EXPOSE_INVITE_LINKS is on (development), so the owner can copy it.
-      request.log.info(
-        { workspaceId: id, invitationId: result.invitation.id, emailSent: result.emailSent },
-        'invitation created',
-      );
+      request.log.info({ workspaceId: id, invitationId: result.invitation.id }, 'invitation created; email queued');
 
       return reply.status(201).send({
         invitation: {
@@ -188,7 +185,6 @@ export function registerWorkspaceRoutes(
           expiresAt: result.invitation.expires_at,
         },
         inviteUrl: result.url,
-        emailSent: result.emailSent,
       });
     },
   });

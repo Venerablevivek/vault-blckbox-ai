@@ -128,6 +128,11 @@ export const documentsRepo = {
     return rows;
   },
 
+  async findAnyById(db: Db, id: string): Promise<DocumentRow | null> {
+    const { rows } = await db.query<DocumentRow>('SELECT * FROM documents WHERE id = $1', [id]);
+    return rows[0] ?? null;
+  },
+
   async deleteRow(db: Db, id: string): Promise<void> {
     await db.query('DELETE FROM documents WHERE id = $1', [id]);
   },

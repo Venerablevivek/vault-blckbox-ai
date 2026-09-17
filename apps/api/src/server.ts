@@ -5,24 +5,17 @@ import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 import { registerErrorHandler } from './plugins/errors';
 import { registerSession } from './plugins/session';
-import { createAuthService } from './modules/auth/auth.service';
 import { registerAuthRoutes } from './modules/auth/auth.routes';
-import { createWorkspacesService } from './modules/workspaces/workspaces.service';
 import { registerInvitationRoutes, registerWorkspaceRoutes } from './modules/workspaces/workspaces.routes';
-import { createDocumentsService } from './modules/documents/documents.service';
 import { registerDocumentRoutes } from './modules/documents/documents.routes';
-import { createSharesService } from './modules/shares/shares.service';
 import { registerShareRoutes } from './modules/shares/shares.routes';
-import { createAuditService } from './modules/audit/audit.service';
 import { registerAuditRoutes } from './modules/audit/audit.routes';
-import { createNotificationsService } from './modules/notifications/notifications.service';
 import { registerNotificationRoutes } from './modules/notifications/notifications.routes';
-import { createOverviewService } from './modules/overview/overview.service';
-import { createFoldersService } from './modules/folders/folders.service';
 import { registerFolderRoutes } from './modules/folders/folders.routes';
-import { createMaintenanceService } from './modules/maintenance/maintenance.service';
 import { LogMailer, SmtpMailer } from './mail/mailer';
 import { buildOpenApiDocument } from './openapi/document';
+import { createJobHandlers } from './jobs/handlers';
+import { createServices } from './services';
 import { systemClock, type AppDeps } from './types';
 
 /**
@@ -85,63 +78,13 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
   registerErrorHandler(app);
 
-  // Cross-cutting services, built first because the feature modules depend on them.
-  const audit = createAuditService({ pool, clock, logger });
-  const notifications = createNotificationsService({ pool, clock, logger });
-
-  const auth = createAuthService({
-    pool,
-    clock,
-    sessionTtlDays: config.SESSION_TTL_DAYS,
-    audit,
-    lockoutAttempts: config.LOGIN_LOCKOUT_ATTEMPTS,
-    lockoutMinutes: config.LOGIN_LOCKOUT_MINUTES,
-    mailer,
-    logger,
-    webUrl: config.WEB_URL,
-    passwordResetTtlMinutes: config.PASSWORD_RESET_TTL_MINUTES,
-  });
-  const workspaces = createWorkspacesService({
-    pool,
-    clock,
-    inviteTtlHours: config.INVITE_TTL_HOURS,
-    webUrl: config.WEB_URL,
-    exposeInviteLinks: config.EXPOSE_INVITE_LINKS,
-    audit,
-    notifications,
-    mailer,
-    logger,
-  });
-  const documents = createDocumentsService({
-    pool,
-    storage,
-    clock,
-    logger,
-    maxUploadBytes: config.MAX_UPLOAD_BYTES,
-    signedUrlTtlSeconds: config.SIGNED_URL_TTL_SECONDS,
-    trashRetentionDays: config.TRASH_RETENTION_DAYS,
-    audit,
-    notifications,
-  });
-  const shares = createSharesService({
-    pool,
-    storage,
-    clock,
-    logger,
-    ipHashPepper: config.IP_HASH_PEPPER,
-    grantSecret: config.SHARE_GRANT_SECRET,
-    webUrl: config.WEB_URL,
-    defaultTtlHours: config.SHARE_DEFAULT_TTL_HOURS,
-    signedUrlTtlSeconds: config.SIGNED_URL_TTL_SECONDS,
-    audit,
-    notifications,
-  });
-
-  const overview = createOverviewService({ pool, clock, audit });
-  const folders = createFoldersService({ pool, audit });
-  const maintenance = createMaintenanceService({ pool, clock, logger, documents });
-  // Exposed for main.ts (scheduling) and tests (running a pass on demand).
+  const services = createServices({ config, pool, storage, logger, clock });
+  const { auth, workspaces, documents, shares, overview, folders, maintenance, audit, notifications, jobs } = services;
+  // Exposed for tests: running a maintenance pass and background jobs on demand.
   app.decorate('maintenance', maintenance);
+  app.decorate('services', services);
+  app.decorate('jobHandlers', createJobHandlers(services, mailer));
+  void jobs;
 
   registerSession(app, config, auth);
 

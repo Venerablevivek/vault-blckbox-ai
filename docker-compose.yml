@@ -1,3 +1,34 @@
+x-api-environment: &api-environment
+  NODE_ENV: ${NODE_ENV:-development}
+  API_PORT: 4000
+  WEB_URL: ${WEB_URL:-http://localhost:3000}
+  DATABASE_URL: postgres://${POSTGRES_USER:-filesharing}:${POSTGRES_PASSWORD:-filesharing}@postgres:5432/${POSTGRES_DB:-filesharing}
+  SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-fs_session}
+  SESSION_TTL_DAYS: ${SESSION_TTL_DAYS:-7}
+  SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+  S3_ENDPOINT: http://minio:9000
+  S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9000}
+  S3_BUCKET: ${S3_BUCKET:-documents}
+  S3_REGION: ${S3_REGION:-us-east-1}
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
+  MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-26214400}
+  SHARE_DEFAULT_TTL_HOURS: ${SHARE_DEFAULT_TTL_HOURS:-168}
+  INVITE_TTL_HOURS: ${INVITE_TTL_HOURS:-168}
+  SIGNED_URL_TTL_SECONDS: ${SIGNED_URL_TTL_SECONDS:-60}
+  IP_HASH_PEPPER: ${IP_HASH_PEPPER:-dev-only-pepper-change-me}
+  SHARE_GRANT_SECRET: ${SHARE_GRANT_SECRET:-dev-only-share-grant-secret-change-me}
+  MAX_CONCURRENT_UPLOADS: ${MAX_CONCURRENT_UPLOADS:-4}
+  TRASH_RETENTION_DAYS: ${TRASH_RETENTION_DAYS:-30}
+  LOGIN_LOCKOUT_ATTEMPTS: ${LOGIN_LOCKOUT_ATTEMPTS:-5}
+  LOGIN_LOCKOUT_MINUTES: ${LOGIN_LOCKOUT_MINUTES:-15}
+  MAINTENANCE_INTERVAL_MINUTES: ${MAINTENANCE_INTERVAL_MINUTES:-60}
+  SMTP_URL: ${SMTP_URL:-smtp://mailpit:1025}
+  MAIL_FROM: ${MAIL_FROM:-Vault <no-reply@vault.local>}
+  PASSWORD_RESET_TTL_MINUTES: ${PASSWORD_RESET_TTL_MINUTES:-60}
+  EXPOSE_INVITE_LINKS: ${EXPOSE_INVITE_LINKS:-true}
+  SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -52,35 +83,7 @@ services:
     build:
       context: ./apps/api
     environment:
-      NODE_ENV: ${NODE_ENV:-development}
-      API_PORT: 4000
-      WEB_URL: ${WEB_URL:-http://localhost:3000}
-      DATABASE_URL: postgres://${POSTGRES_USER:-filesharing}:${POSTGRES_PASSWORD:-filesharing}@postgres:5432/${POSTGRES_DB:-filesharing}
-      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-fs_session}
-      SESSION_TTL_DAYS: ${SESSION_TTL_DAYS:-7}
-      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
-      S3_ENDPOINT: http://minio:9000
-      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-http://localhost:9000}
-      S3_BUCKET: ${S3_BUCKET:-documents}
-      S3_REGION: ${S3_REGION:-us-east-1}
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
-      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-26214400}
-      SHARE_DEFAULT_TTL_HOURS: ${SHARE_DEFAULT_TTL_HOURS:-168}
-      INVITE_TTL_HOURS: ${INVITE_TTL_HOURS:-168}
-      SIGNED_URL_TTL_SECONDS: ${SIGNED_URL_TTL_SECONDS:-60}
-      IP_HASH_PEPPER: ${IP_HASH_PEPPER:-dev-only-pepper-change-me}
-      SHARE_GRANT_SECRET: ${SHARE_GRANT_SECRET:-dev-only-share-grant-secret-change-me}
-      MAX_CONCURRENT_UPLOADS: ${MAX_CONCURRENT_UPLOADS:-4}
-      TRASH_RETENTION_DAYS: ${TRASH_RETENTION_DAYS:-30}
-      LOGIN_LOCKOUT_ATTEMPTS: ${LOGIN_LOCKOUT_ATTEMPTS:-5}
-      LOGIN_LOCKOUT_MINUTES: ${LOGIN_LOCKOUT_MINUTES:-15}
-      MAINTENANCE_INTERVAL_MINUTES: ${MAINTENANCE_INTERVAL_MINUTES:-60}
-      SMTP_URL: ${SMTP_URL:-smtp://mailpit:1025}
-      MAIL_FROM: ${MAIL_FROM:-Vault <no-reply@vault.local>}
-      PASSWORD_RESET_TTL_MINUTES: ${PASSWORD_RESET_TTL_MINUTES:-60}
-      EXPOSE_INVITE_LINKS: ${EXPOSE_INVITE_LINKS:-true}
-      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+      <<: *api-environment
       # Only the web container may set X-Forwarded-For. Its address is pinned below.
       TRUSTED_PROXIES: 10.203.14.10
     ports:
@@ -102,6 +105,23 @@ services:
       timeout: 5s
       retries: 10
       start_period: 15s
+
+  # Background jobs: email, notification fan-out, checksums, workspace purges and scheduled
+  # maintenance. Same image as the API. Scale with `docker compose up --scale worker=3`.
+  worker:
+    build:
+      context: ./apps/api
+    command: ['node', 'dist/worker.js']
+    environment:
+      <<: *api-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    restart: unless-stopped
 
   web:
     build:

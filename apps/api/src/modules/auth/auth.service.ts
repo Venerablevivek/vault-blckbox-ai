@@ -10,7 +10,7 @@ import type { Clock, SessionUser } from '../../types';
 import { workspacesRepo } from '../workspaces/workspaces.repo';
 import { invitationsRepo } from '../workspaces/invitations.repo';
 import type { AuditService } from '../audit/audit.service';
-import type { Mailer } from '../../mail/mailer';
+import type { JobQueue } from '../../jobs/queue';
 import { passwordChangedEmail, passwordResetEmail } from '../../mail/templates';
 import { authRepo } from './auth.repo';
 import { burnVerifyTime, hashPassword, verifyPassword } from './password';
@@ -22,7 +22,7 @@ export interface AuthServiceOptions {
   audit: AuditService;
   lockoutAttempts: number;
   lockoutMinutes: number;
-  mailer: Mailer;
+  jobs: JobQueue;
   logger: Logger;
   webUrl: string;
   passwordResetTtlMinutes: number;
@@ -60,7 +60,7 @@ export function createAuthService({
   audit,
   lockoutAttempts,
   lockoutMinutes,
-  mailer,
+  jobs,
   logger,
   webUrl,
   passwordResetTtlMinutes,
@@ -103,17 +103,6 @@ export function createAuthService({
         'Too many failed sign-in attempts for this account. Try again later.',
         (unlockAt - clock.now().getTime()) / 1000,
       );
-    }
-  }
-
-  /** Email is a notice, not part of the transaction: a mail outage must not undo a password change. */
-  async function sendSafely(message: Parameters<Mailer['send']>[0], context: string): Promise<boolean> {
-    try {
-      await mailer.send(message);
-      return true;
-    } catch (error) {
-      logger.error({ err: error, context }, 'failed to send email');
-      return false;
     }
   }
 
@@ -269,24 +258,28 @@ export function createAuthService({
       }
 
       const token = generateToken('pwr');
-      await authRepo.insertPasswordReset(pool, {
-        id: randomUUID(),
-        userId: user.id,
-        tokenHash: hashToken(token),
-        expiresAt: new Date(now.getTime() + passwordResetTtlMinutes * 60_000),
-        now,
+      // The token and its email commit together. The email is a durable job, retried with backoff
+      // if the mail server is down, and there is never an email for a token that wasn't stored.
+      await withTransaction(pool, async (tx) => {
+        await authRepo.insertPasswordReset(tx, {
+          id: randomUUID(),
+          userId: user.id,
+          tokenHash: hashToken(token),
+          expiresAt: new Date(now.getTime() + passwordResetTtlMinutes * 60_000),
+          now,
+        });
+        // The token travels in the URL fragment, which browsers never send to a server: it stays
+        // out of access logs, proxies and Referer headers.
+        await jobs.enqueue(
+          tx,
+          'email.send',
+          passwordResetEmail({
+            to: user.email,
+            url: `${webUrl}/reset-password#token=${token}`,
+            ttlMinutes: passwordResetTtlMinutes,
+          }),
+        );
       });
-
-      // The token travels in the URL fragment, which browsers never send to a server: it stays
-      // out of access logs, proxies and Referer headers.
-      await sendSafely(
-        passwordResetEmail({
-          to: user.email,
-          url: `${webUrl}/reset-password#token=${token}`,
-          ttlMinutes: passwordResetTtlMinutes,
-        }),
-        'password-reset',
-      );
     },
 
     /**
@@ -320,10 +313,9 @@ export function createAuthService({
         // Whoever was guessing this password no longer matters: it has changed.
         await authRepo.clearLoginFailures(tx, loginKey(user.email));
         const session = await issueSession(tx, user.id, input.userAgent);
+        await jobs.enqueue(tx, 'email.send', passwordChangedEmail({ to: user.email, webUrl, via: 'reset' }));
         return { user: { id: user.id, email: user.email }, session, signedOut };
       });
-
-      await sendSafely(passwordChangedEmail({ to: result.user.email, webUrl, via: 'reset' }), 'password-changed');
       return result;
     },
 
@@ -358,10 +350,9 @@ export function createAuthService({
         await authRepo.updatePassword(tx, user.id, passwordHash, now);
         await authRepo.invalidatePasswordResets(tx, user.id, now);
         await authRepo.clearLoginFailures(tx, loginKey(email));
+        await jobs.enqueue(tx, 'email.send', passwordChangedEmail({ to: user.email, webUrl, via: 'settings' }));
         return authRepo.deleteOtherSessions(tx, user.id, input.sessionId);
       });
-
-      await sendSafely(passwordChangedEmail({ to: user.email, webUrl, via: 'settings' }), 'password-changed');
       return { signedOutSessions };
     },
 

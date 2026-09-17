@@ -657,6 +657,23 @@
           "role"
         ]
       },
+      "InvitationCreated": {
+        "type": "object",
+        "properties": {
+          "invitation": {
+            "$ref": "#/components/schemas/PendingInvitation"
+          },
+          "inviteUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "Only when EXPOSE_INVITE_LINKS is enabled (development). The email is sent by the worker."
+          }
+        },
+        "required": [
+          "invitation"
+        ],
+        "additionalProperties": false
+      },
       "InviteRequest": {
         "type": "object",
         "properties": {
@@ -2626,25 +2643,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "invitation": {
-                      "$ref": "#/components/schemas/PendingInvitation"
-                    },
-                    "inviteUrl": {
-                      "type": "string",
-                      "format": "uri",
-                      "description": "Only when EXPOSE_INVITE_LINKS is enabled (development)."
-                    },
-                    "emailSent": {
-                      "type": "boolean"
-                    }
-                  },
-                  "required": [
-                    "invitation",
-                    "emailSent"
-                  ],
-                  "additionalProperties": false
+                  "$ref": "#/components/schemas/InvitationCreated"
                 }
               }
             }

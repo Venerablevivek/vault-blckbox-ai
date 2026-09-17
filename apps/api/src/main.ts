@@ -19,14 +19,7 @@ async function main(): Promise<void> {
   const logger = pino(buildLoggerOptions(config.NODE_ENV));
 
   const pool = createPool(config.DATABASE_URL);
-  const storage = new S3Storage({
-    endpoint: config.S3_ENDPOINT,
-    publicEndpoint: config.S3_PUBLIC_ENDPOINT,
-    region: config.S3_REGION,
-    bucket: config.S3_BUCKET,
-    accessKeyId: config.S3_ACCESS_KEY,
-    secretAccessKey: config.S3_SECRET_KEY,
-  });
+  const storage = S3Storage.fromConfig(config);
 
   await runMigrations(pool, path.resolve(__dirname, '../migrations'), logger);
   await storage.ensureBucket();
@@ -39,14 +32,13 @@ async function main(): Promise<void> {
   const app = await buildApp({ config, pool, storage, logger });
   await app.listen({ port: config.API_PORT, host: '0.0.0.0' });
 
-  // Housekeeping: expired sessions and invitations, old notifications, and trash past its
-  // retention. Guarded by an advisory lock, so several API instances never run it together.
-  const stopMaintenance = app.maintenance.schedule(config.MAINTENANCE_INTERVAL_MINUTES);
+  // Background work (email, notifications, purges, scheduled maintenance) runs in the worker
+  // process (src/worker.ts), not here, so request handling never waits on it.
   logger.info({ port: config.API_PORT }, 'api listening');
 
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'shutting down');
-    stopMaintenance();
+    // Stops accepting connections and waits for in-flight requests to finish.
     await app.close();
     await pool.end();
     process.exit(0);

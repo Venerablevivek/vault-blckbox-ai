@@ -8,6 +8,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl as presign } from '@aws-sdk/s3-request-presigner';
 import type { Readable } from 'node:stream';
+import type { Config } from '../config';
 import type { FileStorage, SignedUrlOptions } from './file-storage';
 
 export interface S3StorageOptions {
@@ -29,6 +30,17 @@ export interface S3StorageOptions {
  * start, while server-side operations keep using the internal one.
  */
 export class S3Storage implements FileStorage {
+  static fromConfig(config: Config): S3Storage {
+    return new S3Storage({
+      endpoint: config.S3_ENDPOINT,
+      publicEndpoint: config.S3_PUBLIC_ENDPOINT,
+      region: config.S3_REGION,
+      bucket: config.S3_BUCKET,
+      accessKeyId: config.S3_ACCESS_KEY,
+      secretAccessKey: config.S3_SECRET_KEY,
+    });
+  }
+
   private readonly internal: S3Client;
   private readonly signer: S3Client;
   private readonly bucket: string;

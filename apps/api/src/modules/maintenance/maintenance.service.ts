@@ -1,4 +1,5 @@
 import type { Pool } from 'pg';
+import { jobsRepo } from '../../jobs/jobs.repo';
 import type { Logger } from 'pino';
 import type { Clock } from '../../types';
 import type { DocumentsService } from '../documents/documents.service';
@@ -14,6 +15,10 @@ export const RETENTION = {
   anyNotificationsDays: 90,
   /** Expired invitations are kept a week past expiry so "this invitation expired" still resolves. */
   expiredInvitationsDays: 7,
+  /** Completed jobs are only useful for recent debugging. */
+  finishedJobsDays: 7,
+  /** Failed (dead-letter) jobs are kept longer, for someone to look into. */
+  failedJobsDays: 30,
 };
 
 /** Only one API instance runs cleanup at a time, even if several are deployed. */
@@ -52,6 +57,7 @@ export function createMaintenanceService(deps: {
           trashFailed: 0,
           checksumsBackfilled: 0,
           workspacesPurged: 0,
+          finishedJobs: 0,
         };
 
         const step = async (name: string, fn: () => Promise<void>) => {
@@ -98,6 +104,13 @@ export function createMaintenanceService(deps: {
           const r = await documents.purgeDeletedWorkspaces();
           result.workspacesPurged = r.workspaces;
         });
+        await step('jobs', async () => {
+          result.finishedJobs = await jobsRepo.deleteFinished(
+            client,
+            daysAgo(RETENTION.finishedJobsDays),
+            daysAgo(RETENTION.failedJobsDays),
+          );
+        });
         await step('checksums', async () => {
           const r = await documents.backfillChecksums();
           result.checksumsBackfilled = r.updated;
@@ -109,21 +122,6 @@ export function createMaintenanceService(deps: {
         await client.query('SELECT pg_advisory_unlock($1)', [MAINTENANCE_LOCK_KEY]).catch(() => undefined);
         client.release();
       }
-    },
-
-    /** Runs a pass every `minutes`, starting shortly after boot. Returns a stop function. */
-    schedule(minutes: number): () => void {
-      if (minutes <= 0) return () => undefined;
-      const run = () =>
-        void this.runOnce().catch((error: unknown) => logger.error({ err: error }, 'maintenance pass failed'));
-      const first = setTimeout(run, 30_000);
-      const timer = setInterval(run, minutes * 60_000);
-      first.unref();
-      timer.unref();
-      return () => {
-        clearTimeout(first);
-        clearInterval(timer);
-      };
     },
   };
 }

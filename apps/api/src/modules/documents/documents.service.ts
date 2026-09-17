@@ -94,6 +94,40 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
     });
   }
 
+  /**
+   * Computes a document's SHA-256 by streaming its object back from storage, so memory stays
+   * flat however large the file is. A no-op for a document that is gone or already has one.
+   */
+  async function computeChecksum(documentId: string): Promise<void> {
+    const row = await documentsRepo.findAnyById(pool, documentId);
+    if (!row || row.sha256) return;
+    const hash = createHash('sha256');
+    for await (const chunk of await storage.download(row.storage_key)) hash.update(chunk as Buffer);
+    await documentsRepo.setChecksum(pool, row.id, hash.digest());
+  }
+
+  /**
+   * Finishes deleting a workspace: objects first, then their rows, a batch at a time; the
+   * workspace row goes last, cascading folders, audit trail and notifications. If storage fails
+   * part-way the error propagates, the remaining rows still point at their objects, and a retry
+   * continues where this stopped. Only acts on a workspace already marked deleted.
+   */
+  async function purgeWorkspace(workspaceId: string, batchSize = 200): Promise<number> {
+    if (!(await workspacesRepo.isMarkedDeleted(pool, workspaceId))) return 0;
+    let objects = 0;
+    for (;;) {
+      const rows = await documentsRepo.anyInWorkspace(pool, workspaceId, batchSize);
+      if (rows.length === 0) break;
+      for (const row of rows) {
+        await storage.delete(row.storage_key);
+        await documentsRepo.deleteRow(pool, row.id);
+        objects += 1;
+      }
+    }
+    await workspacesRepo.deleteRow(pool, workspaceId);
+    return objects;
+  }
+
   /** A destination folder must exist in the document's own workspace. */
   async function requireFolderInWorkspace(workspaceId: string, folderId: string | null): Promise<void> {
     if (folderId === null) return;
@@ -184,14 +218,13 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
             },
             tx,
           );
+          await notifications.notifyWorkspace(tx, workspaceId, input.userId, {
+            type: 'document.uploaded',
+            title: `${filename} was added`,
+            body: `${input.userEmail} uploaded a new document to this workspace.`,
+            resourceId: row.id,
+          });
           return row;
-        });
-
-        notifications.notifyWorkspace(workspaceId, input.userId, {
-          type: 'document.uploaded',
-          title: `${filename} was added`,
-          body: `${input.userEmail} uploaded a new document to this workspace.`,
-          resourceId: document.id,
         });
 
         // Identical content is allowed (people keep copies on purpose), but worth pointing out.
@@ -425,9 +458,7 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
       let failed = 0;
       for (const row of rows) {
         try {
-          const hash = createHash('sha256');
-          for await (const chunk of await storage.download(row.storage_key)) hash.update(chunk as Buffer);
-          await documentsRepo.setChecksum(pool, row.id, hash.digest());
+          await computeChecksum(row.id);
           updated += 1;
         } catch (error) {
           failed += 1;
@@ -443,21 +474,12 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
      * storage fails part-way, the remaining documents are still recorded and the next run
      * continues where this one stopped.
      */
-    async purgeDeletedWorkspaces(maxWorkspaces = 5, batchSize = 200): Promise<{ workspaces: number; objects: number }> {
+    async purgeDeletedWorkspaces(maxWorkspaces = 5): Promise<{ workspaces: number; objects: number }> {
       let workspacesPurged = 0;
       let objects = 0;
       for (const { id } of await workspacesRepo.deletedWorkspaces(pool, maxWorkspaces)) {
         try {
-          for (;;) {
-            const rows = await documentsRepo.anyInWorkspace(pool, id, batchSize);
-            if (rows.length === 0) break;
-            for (const row of rows) {
-              await storage.delete(row.storage_key);
-              await documentsRepo.deleteRow(pool, row.id);
-              objects += 1;
-            }
-          }
-          await workspacesRepo.deleteRow(pool, id);
+          objects += await purgeWorkspace(id);
           workspacesPurged += 1;
         } catch (error) {
           logger.error({ err: error, workspaceId: id }, 'failed to purge deleted workspace; will retry next run');
@@ -465,6 +487,9 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
       }
       return { workspaces: workspacesPurged, objects };
     },
+
+    computeChecksum,
+    purgeWorkspace,
 
     async storageUsage(workspaceId: string) {
       return workspacesRepo.storageUsage(pool, workspaceId);
