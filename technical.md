@@ -333,6 +333,12 @@ MAX_UPLOAD_BYTES=26214400          # 25 MB
 SHARE_DEFAULT_TTL_HOURS=168
 INVITE_TTL_HOURS=168
 SIGNED_URL_TTL_SECONDS=60
+# added later
+TRUSTED_PROXIES  IP_HASH_PEPPER  SHARE_GRANT_SECRET
+MAX_CONCURRENT_UPLOADS=4  TRASH_RETENTION_DAYS=30
+LOGIN_LOCKOUT_ATTEMPTS=5  LOGIN_LOCKOUT_MINUTES=15  MAINTENANCE_INTERVAL_MINUTES=60
+# web container
+API_INTERNAL_URL  STORAGE_PUBLIC_ORIGIN (for the CSP)  ENABLE_HSTS
 ```
 
 ---
@@ -346,7 +352,10 @@ SIGNED_URL_TTL_SECONDS=60
 | `postgres` | `postgres:16-alpine` | 5432 | named volume; `pg_isready` healthcheck |
 | `minio` | `minio/minio` | 9000 / 9001 | named volume; `/minio/health/live` healthcheck |
 | `api` | build `apps/api` | 4000 | `depends_on: {postgres: healthy, minio: healthy}`; entrypoint runs migrations → `ensureBucket()` → seed (dev) → listen |
-| `web` | build `apps/web` | 3000 | Next.js standalone build; rewrites `/api/*` → `api:4000` |
+| `web` | build `apps/web` | 3000 | Next.js standalone output run by `server.mjs` (security headers, real client address, 404/410 for dead share links); rewrites `/api/*` → `api:4000`; fixed address `10.203.14.10`, the only proxy the API trusts |
+
+Both application images run as the unprivileged `node` user, and the API runtime stage carries no
+compilers (native modules are built in an earlier stage).
 
 Seed data (dev only, idempotent): two demo users, a shared workspace, a couple of documents, a live
 share link and a pending invitation — so a reviewer sees a working app immediately. Demo credentials
@@ -376,8 +385,11 @@ search infrastructure · a component library or theming system. (In-app notifica
 added on explicit request, overriding the blueprint's exclusion — see README §9.)
 **Not introduced:** microservices · Redis · Kafka · Elasticsearch · Kubernetes · any ORM.
 
-Also out of scope: workspace deletion, trash/restore, folders, quotas, and password-protected share links.
-Member management, rename, preview, notifications and the audit trail were added later on request (README §9).
+Also out of scope: workspace deletion and quotas.
+Added later on explicit request: member management, rename, preview, notifications, the audit trail,
+the dashboard, trash/restore, folders, server-side search and pagination, password-protected and
+download-limited links, the VIEWER role, login lockout, a maintenance job, web security headers,
+end-to-end tests and CI (README §3, §7, §8).
 
 ---
 
@@ -389,10 +401,10 @@ Member management, rename, preview, notifications and the audit trail were added
 | 002 | Raw `pg` with parameterized SQL, no ORM |
 | 003 | Ordered `.sql` migrations with a small runner |
 | 004 | Every document belongs to a workspace; register auto-creates one |
-| 005 | OWNER and MEMBER only |
+| 005 | OWNER and MEMBER only (VIEWER added later on request) |
 | 006 | Share links are DB rows with hashed tokens, never long-lived signed URLs |
 | 007 | Bytes stream through the API; object written before the row, with cleanup on failure |
-| 008 | Soft-delete the row, then delete the object |
+| 008 | Soft-delete the row, then delete the object (now after a 30-day trash window) |
 | 009 | Next.js as UI only, with a rewrite proxy to the API |
 | 010 | 404 for non-members, 403 for insufficient role, 410 for dead share links |
 

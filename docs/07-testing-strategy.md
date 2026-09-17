@@ -26,12 +26,19 @@ These five are the backbone of the suite. Everything else is secondary.
 
 ```
   13 × unit            token entropy, MIME sniffing, the permission matrix — no I/O
-  59 × integration     Fastify app.inject() against a real Postgres and a real MinIO
+  77 × integration     Fastify app.inject() against a real Postgres and a real MinIO
+  53 × security        cross-tenant, shares, client IP, protected links, lockout, offboarding, Viewer
                        (the same containers `docker compose up` starts, separate database)
+   7 × end-to-end      Playwright + Chromium against the whole stack through port 3000
 ```
 
-No E2E browser tests. The blueprint's scope is tight, the UI is thin, and an integration suite that
-exercises the real API through the real database catches the bugs that matter here.
+The original plan had no end-to-end browser tests, on the reasoning that an integration suite
+through the real database catches the bugs that matter. **That was wrong.** Both defects found in the
+pre-submission review (a forged `X-Forwarded-For` bypassing rate limits, and share views counted from
+the web server's address) lived between the browser, the web server and the API — exactly where
+`app.inject()` cannot see. The end-to-end suite in `e2e/` now pins both, along with the owner journey,
+protected links, security headers and dialog focus handling. CI (`.github/workflows/ci.yml`) runs
+every suite on each push.
 
 **Real Postgres, real MinIO.** A mocked S3 will happily "delete" an object a real bucket keeps, and a
 mocked database won't enforce the composite primary key that *is* the duplicate-membership guard —
@@ -137,7 +144,8 @@ loud and immediate. "Some tests" means chosen tests, and the choosing is the sig
 `npm test` runs everything (Docker required: `docker compose up -d postgres minio` first).
 `npm run test:unit` is container-free and finishes in about two seconds.
 
-**One thing deliberately not covered:** the rate limiter is not registered under `NODE_ENV=test`,
-because every request in the suite comes from the same address and the limiter would throttle the
-tests rather than the attack it exists to stop. The limits themselves are therefore unverified by
-automated tests — stated here rather than left to be discovered.
+The rate limiter is not registered under `NODE_ENV=test`, because every request in the API suite
+comes from the same address and the limiter would throttle the tests rather than the attack it exists
+to stop. The per-address login limit is instead verified end-to-end (`e2e/tests/04-abuse-limits.spec.ts`),
+through the web server, with a forged address on every request. Those tests use the limit up, so the
+end-to-end suite expects a freshly started API.

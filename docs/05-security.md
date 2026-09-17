@@ -88,10 +88,14 @@ workspace, not the uploader, not the object key, not other documents.
 | Session fixation | A fresh row on every login; no client-supplied session id is ever honoured |
 | CSRF | `SameSite=Lax` + JSON-only content type on mutations (forces a preflight) + same-origin via the Next.js rewrite |
 | XSS via uploaded content | Downloads are served from the **MinIO origin, never the app origin**, always `Content-Disposition: attachment` with `X-Content-Type-Options: nosniff`. SVG is excluded from the allowlist |
-| Headers | `@fastify/helmet` — CSP, `frame-ancestors 'none'`, HSTS in production |
+| Headers | API: `@fastify/helmet`. Web (`apps/web/server.mjs`, on every page, asset and proxied call): CSP with `frame-ancestors 'none'`, `object-src 'none'`, same-origin scripts and connections; `X-Frame-Options: DENY`; `nosniff`; `Referrer-Policy: no-referrer`; `Permissions-Policy`; COOP; HSTS when `ENABLE_HSTS=true`. No `X-Powered-By` |
 | Input validation | Zod on every param, query and body; unknown keys stripped |
 | Enumeration | 404 for non-members; login and invite responses don't reveal whether an email has an account |
-| Rate limiting | `@fastify/rate-limit` on register, login, share resolve and invitation creation |
+| Rate limiting | `@fastify/rate-limit` on register, login, invitations, uploads and every public share route; client address from `X-Forwarded-For` only when sent by the web container |
+| Account lockout | 5 failures in 15 minutes lock the email from any address; unknown emails lock identically |
+| Protected links | Argon2id password; 10 wrong tries in 15 minutes lock the link; HMAC-signed per-link unlock cookie, invalidated by a password change; atomic download limit |
+| Offboarding | Removal or demotion to Viewer revokes that person's links in the workspace; notifications filtered by current membership |
+| Upload memory | At most 4 uploads buffered at once (503 `UPLOADS_BUSY` before reading the body), so memory is bounded |
 | Filename handling | Stored as data, rendered escaped by React, emitted only in `Content-Disposition` with RFC 5987 encoding |
 | Visitor privacy | Share-link access is recorded as `sha256(pepper ‖ ip)` — never the raw address. Countable, not identifying. The public page discloses that access is visible to the sender |
 | Secrets | Zod-validated at boot, fail-fast. `.env.example` ships dev-only values with a loud "change these" |
@@ -105,6 +109,12 @@ workspace, not the uploader, not the object key, not other documents.
 | Privilege escalation | MEMBER calling an OWNER route → `requireOwner()`; role read from the DB per request |
 | Invite forwarding | The invite is bound to an email; the accepting account's address must match |
 | Share-link brute force | 256-bit tokens + rate limit |
+| Link password guessing | Per-link lockout after 10 failures, independent of the guesser's address |
+| Distributed password spraying on one account | Per-account lockout, independent of address |
+| Leaked link after someone leaves | Their links are revoked when they are removed or demoted |
+| Clickjacking | `frame-ancestors 'none'` and `X-Frame-Options: DENY` on the web app |
+| Token leak via Referer | `Referrer-Policy: no-referrer` |
+| Memory exhaustion via parallel uploads | Concurrency slots + per-client upload rate limit |
 | Storage DoS | 25 MB multipart limit aborts the stream; MIME allowlist |
 | Orphaned object | Upload writes the object then the row, and deletes the object if the row fails |
 | Dangling row | Delete writes the row then the bytes — never the reverse |
@@ -127,9 +137,9 @@ Stated plainly, because a take-home that claims to be secure everywhere isn't be
    attacks; the token is the correct belt-and-braces addition and is deliberately omitted.
 5. **No row-level security in Postgres.** Authorization is application-level through one guard path.
    RLS would be genuine defence-in-depth and is the first hardening step with more time.
-6. **No background cleanup of orphaned objects.** If the object delete after a soft delete fails, the
-   key is logged at `error` level for manual cleanup. A reaper job is out of scope; saying so is
-   better than pretending it exists.
+6. **Cleanup is hourly, not immediate.** The maintenance job purges expired trash (retrying failed
+   object deletions on the next run) and removes stale sessions, login failures, notifications and
+   invitations. Access and audit events are never purged.
 7. **The audit trail is append-only by convention, not enforcement.** The application never updates
    or deletes `audit_events`, but the database role could. Revoking `UPDATE`/`DELETE` for the app role,
    or hash-chaining entries, would make it tamper-evident.
@@ -137,3 +147,6 @@ Stated plainly, because a take-home that claims to be secure everywhere isn't be
    make the five-minute setup worse for no evaluation benefit.
 9. **No account deletion / GDPR erasure flow.**
 10. **Single-node assumptions.** Rate limiting is in-process; multi-replica would need shared state.
+    Account and link lockouts are in Postgres and already work across instances.
+11. **The CSP allows inline scripts**, because Next.js's bootstrap scripts are inline; a nonce would
+    force every page to render dynamically.

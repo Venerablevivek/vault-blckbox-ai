@@ -1,5 +1,9 @@
 # 08 — Implementation Plan
 
+> **Historical.** This is the plan written before the build, kept as a record of the sequencing. The
+> scope later grew on request (see [`00-index.md`](00-index.md#added-after-the-first-build)); the
+> README describes the system as built.
+
 Sequenced so the riskiest, most-graded thing is proven first, and every milestone leaves the repo in
 a demoable state.
 

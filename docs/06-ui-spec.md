@@ -5,14 +5,15 @@
 The blueprint's constraint is explicit: *"Functional UI and correct authorization matter more than
 polish"*, and *"do not build… a complex design system."*
 
-What shipped honours the second clause and goes a little past the first: there is a site header, a
-footer, a small colour palette and a set of local components — but **no component library, no design
-system, no theming layer, and no dark mode**. Roughly a dozen `@layer components` classes in one CSS
-file and a handful of `.tsx` components. Polish is not graded, so it was bought cheaply and late,
-after the authorization work was finished and tested.
+The first version was a plain table and a members list. The interface was later redesigned on
+request (sidebar, dashboard, icons, colour), but it still has **no component library, no design
+system and no theming layer**: a small Tailwind palette, a set of `@layer components` classes in one
+CSS file, local `.tsx` components and `lucide-react` icons.
 
 The UI calls the API through a **Next.js rewrite** (`/api/*` → `api:4000`), so everything is
-same-origin: the session cookie just works and there is no CORS configuration to get wrong.
+same-origin: the session cookie just works and there is no CORS configuration to get wrong. In the
+container the app runs through `server.mjs`, which adds the security headers and sets the real
+status code on the public share page.
 
 ---
 
@@ -23,77 +24,100 @@ same-origin: the session cookie just works and there is no CORS configuration to
 | `/login` | public | Email + password. Demo credentials shown in development |
 | `/register` | public | `?invite=<token>` pre-fills and locks the email |
 | `/` | session | Redirects to the first workspace |
-| `/workspaces/[id]` | member | **Document list** — the main screen. Upload, download, delete |
-| `/workspaces/[id]/members` | member | Members list; invite form for OWNER |
+| `/workspaces/[id]` | member | **Overview** — totals, 14-day charts (in the browser's time zone), storage by type, most-viewed links, recent activity (owners) |
+| `/workspaces/[id]/documents` | member | **Documents** — the main screen. `?folder=<id>` opens a folder |
+| `/workspaces/[id]/members` | member | Members and roles; invitations and role changes for owners |
+| `/workspaces/[id]/activity` | owner | The audit trail, grouped by day |
+| `/workspaces/[id]/settings` | member | Rename the workspace (owner); leave it |
 | `/invite/[token]` | public | Invite landing → sign in or create account, then accept |
 | `/s/[token]` | **public** | The recipient's page. No app chrome, no login prompt |
-
-`/s/[token]` is a server component that fetches the share metadata and renders a 410 state directly —
-the recipient never sees a loading spinner or a flash of the app shell.
 
 ---
 
 ## Screens
 
-### Document list — `/workspaces/[id]`
-A header with the workspace name, a workspace switcher, the caller's role, and an **Upload** button.
-Below it, a plain table: filename, size, type, uploaded by, date, and per-row **Download** and
-**Delete**.
+### Documents — `/workspaces/[id]/documents`
+Tabs **All · Shared · Mine · Trash**, each with a count. A search box (press `/`) searches file names
+across the whole workspace, a sort menu (newest, oldest, name, size) and a list/grid toggle. Folders
+appear above the files, with a breadcrumb path. The list loads 50 at a time and fetches more as you
+scroll; all filtering, sorting and paging happen on the server.
 
-Upload is a file input plus a drop zone over the table. Progress comes from
-`XMLHttpRequest.upload.onprogress` — `fetch` has no upload progress, and a 25 MB file on a slow
-connection needs a bar rather than a frozen button. A rejected file (too large, wrong type) shows the
-server's message inline, next to the input, not as a toast that disappears.
+Per document: preview (PDFs and images), **Share**, and a menu with download, rename, move to folder
+and move to trash. Upload is a button, a drop zone over the list, or several files at once, with
+progress from `XMLHttpRequest.upload.onprogress` — `fetch` has no upload progress. A rejected file
+shows the server's message.
+
+**Trash** shows who deleted each file, when, and the date it will be removed for good, with
+**Restore** and (owners only) **Delete forever**. Switching tabs clears the old rows immediately, and a
+response that arrives after a newer request is ignored, so rows from one view are never drawn in
+another.
+
+### Share panel
+Lists live links with their expiry, a **Password** badge and `n of m downloads`, plus opens, downloads,
+estimated viewers, blocked attempts and a forwarding warning. **Edit** changes expiry, password and
+download limit on a live link. **New link** offers expiry, a download limit (including one-time) and
+an optional password. The full URL is shown once, at creation, with a Copy button.
 
 ### Members — `/workspaces/[id]/members`
-Email, role and join date. For an OWNER, an invite form (email + role) below it.
-
-After inviting, **the generated invite URL is displayed with a Copy button**, because the blueprint's
-decision is to expose the link in development rather than integrate an email provider. The page says
-so explicitly — *"In development, invitations are shown here instead of being emailed"* — so a
-reviewer isn't left wondering where the email went.
+Email, role and join date. Owners can invite (Owner, Member or Viewer), change roles, remove people
+and cancel invitations; a short legend explains the three roles. After inviting, the invitation URL
+is shown with a Copy button, because no email provider is integrated.
 
 ### Public share page — `/s/[token]`
-The only thing an outsider ever sees. A single centred card: filename, size, type, a Download button,
-and when the link expires.
+A single centred card: file name, size, type, a Download button, expiry and downloads left, and the
+notice that the sender can see when the link is opened.
 
-Dead link (revoked, expired, or the document was deleted): the same card, muted, reading *"This link
-is no longer available — ask the sender for a new one."* Deliberately not a 404 page, because the
-recipient should know the link was genuine.
+- **Password-protected:** a password form, and nothing about the file — not even its name — until it
+  is unlocked. Wrong passwords show an inline error; too many lock the link.
+- **Dead link** (revoked, expired, document trashed, downloads used up): the same card, muted, saying
+  which. The page is served with **410** (or **404** for an unknown token), so crawlers and link
+  checkers see the truth, while the recipient still learns the link was genuine.
+
+---
+
+## Dialogs
+
+Every confirmation and text entry — rename, new folder, move to trash, delete forever, revoke link,
+new workspace, leave, remove member — uses one in-app dialog system (`components/dialog.tsx`), never
+the browser's `prompt()` or `confirm()`, which can't be styled, can't explain consequences and are
+blocked in some embedded browsers. Each dialog:
+
+- renders in a portal with `role="dialog"`, `aria-modal`, and a labelled title and description;
+- moves focus inside on open, **traps Tab and Shift+Tab**, and closes on Escape or the backdrop;
+- makes the rest of the page `inert`, and supports stacking (a confirm on top of the share panel);
+- returns focus to the control that opened it.
+
+Destructive confirmations name the file and use a red button. The end-to-end suite fails if any native
+dialog opens, and checks the focus trap and focus return.
 
 ---
 
 ## Permissions in the interface
 
-`GET /api/auth/me` returns each workspace with the caller's role, and `GET /api/workspaces/:id/members`
-confirms it. The UI uses that to render:
+The list response includes the caller's role, and the UI renders from it:
 
-- The **Invite** form appears only for an OWNER.
-- **Delete** is enabled only on documents the caller uploaded, unless they are the OWNER.
-- The caller's role is visible next to the workspace name at all times.
+- **Viewer:** no Upload, New folder, Share, rename, move or trash controls, and an empty folder
+  doesn't invite them to upload.
+- **Member:** rename, move and trash only on their own documents and folders; others' show the action
+  disabled with a reason.
+- **Owner:** everything, plus Delete forever, member management and the Activity page.
 
-The client mirrors the rules; it never owns them. Every guarded action is still checked server-side,
-and a test calls a MEMBER-forbidden endpoint directly to prove the button is not the security
-boundary.
+The client mirrors the rules; it never owns them. Every guarded action is checked on the server, and
+tests call the forbidden endpoints directly to prove the button is not the security boundary.
 
 ---
 
 ## States
 
-Every data view handles four: **loading** (a simple skeleton row, so layout doesn't jump), **empty**
-(one sentence plus the primary action — *"No documents yet"* with the Upload button), **error**
-(inline, with the server's message when it's actionable, and a retry), and **forbidden** (explains
-the role requirement and offers a way back).
-
-Delete asks for confirmation and names the file. Everything else is immediate.
+Every data view handles **loading** (skeleton rows, so layout doesn't jump), **empty** (one sentence
+plus the primary action), **error** (inline, with the server's message and a retry) and **forbidden**.
+Notifications poll every 20 seconds while the tab is visible, stop while it is hidden, and refresh as
+soon as it becomes visible again.
 
 ---
 
 ## Styling
 
-Tailwind utilities, system font stack, white background, neutral greys, one blue for primary actions,
-red for destructive confirmation. Semantic HTML: real `<table>`, real `<button>`, real `<label for>`.
-Visible focus rings everywhere. Layout stacks to one column on narrow screens.
-
-That is the whole visual specification, and it's short on purpose — the blueprint says not to build a
-design system, and time spent here is time not spent on authorization.
+Tailwind utilities, the system font stack, a light theme with an indigo brand colour and red
+for destructive actions. Semantic HTML: real `<button>`, real `<label for>`, landmarks and tab roles.
+Visible focus rings everywhere. A sidebar that becomes a drawer on narrow screens.

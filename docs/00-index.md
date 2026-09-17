@@ -18,8 +18,8 @@ These documents hold the reasoning behind it, including the alternatives conside
 | [`03-data-model.md`](03-data-model.md) | The six specified tables as DDL, indexes, transactions, lifecycles |
 | [`04-api-spec.md`](04-api-spec.md) | The specified routes, verbatim, plus status-code semantics |
 | [`05-security.md`](05-security.md) | The blueprint's nine controls; the rubric's three questions; **what's knowingly left out** |
-| [`06-ui-spec.md`](06-ui-spec.md) | Next.js routes, screens, permission rendering. Short on purpose |
-| [`07-testing-strategy.md`](07-testing-strategy.md) | The five test areas the blueprint names, in detail |
+| [`06-ui-spec.md`](06-ui-spec.md) | Next.js routes, screens, dialogs, permission rendering |
+| [`07-testing-strategy.md`](07-testing-strategy.md) | The five test areas the blueprint names, the later suites, and the end-to-end tests |
 | [`08-implementation-plan.md`](08-implementation-plan.md) | Milestones, ordering rationale, cut list, definition of done |
 | [`09-product-improvement.md`](09-product-improvement.md) | Open Space: share-link access visibility — **built** |
 | [`10-agent-workflow.md`](10-agent-workflow.md) | How the coding agent is directed, and where it's expected to go wrong |
@@ -32,11 +32,12 @@ These documents hold the reasoning behind it, including the alternatives conside
 - **Migrations** are ordered `.sql` files run by a small runner at API startup. No ORM.
 - **Every document belongs to a workspace**, and registration auto-creates one — so there is exactly
   one authorization path.
-- **Two roles, OWNER and MEMBER**, and a permission matrix that fits in eight rows.
+- **Two roles, OWNER and MEMBER**, and a permission matrix that fits in eight rows. (A read-only
+  VIEWER was added later on request.)
 - **Share links are database rows** holding `sha256` of a 256-bit token — read-only, optionally
   expiring, revocable, no account needed. Never a long-lived signed URL.
 - **Bytes stream through the API**: object written first, row second, object deleted if the row fails.
-  Deletion goes the other way — row first, then bytes.
+  Deletion goes the other way — row first, then bytes (now after a 30-day trash window).
 - **The bucket is never public** — no read policy is ever applied, so it stays at MinIO's private default
   (not actively re-verified at boot). Downloads are 60-second signed URLs.
 - **25 MB cap** and a MIME allowlist checked against sniffed magic bytes, not the client's header.
@@ -46,10 +47,20 @@ These documents hold the reasoning behind it, including the alternatives conside
 - **An owner-only audit trail and in-app notifications** ("your link was opened"), the latter added on
   request as a recorded override of the blueprint.
 - **What's knowingly missing is written down** — no tamper-evident audit, no virus scanning, no email
-  verification, no RLS, no CSRF token, no VIEWER role.
+  verification, no RLS, no CSRF token.
 
 ## Out of scope, by instruction
 
 OAuth · SSO · MFA · billing · comments · document collaboration · versioning · notifications ·
 search infrastructure · a complex design system. And no microservices, Redis, Kafka, Elasticsearch,
 Kubernetes, or ORM.
+
+## Added after the first build
+
+On explicit request, and recorded as overrides of the blueprint rather than drift: member management,
+rename, preview, notifications, the audit trail, the dashboard, **trash and restore (30 days)**,
+**folders**, **server-side search and keyset pagination**, **password-protected and download-limited
+links with editable expiry**, the **VIEWER role**, per-account **login lockout**, upload concurrency
+limits, a **maintenance job**, web **security headers**, in-app **dialogs** replacing browser
+`prompt`/`confirm`, **Playwright end-to-end tests** and **CI**. Where a document below describes the
+original design, the README describes what the code does now.

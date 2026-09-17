@@ -117,6 +117,11 @@ at a missing object is a 500 on every download. If the object delete fails, it i
 at `error` level for manual cleanup — a background reaper is out of scope for a weekend, and saying
 so is better than pretending.
 
+> **Superseded.** Deletion now moves the document to a trash: the row is soft-deleted and its links
+> revoked in one transaction, and the bytes are kept for 30 days so it can be restored. An hourly
+> maintenance job purges expired trash (object first, then row, so a failure is retried next run).
+> Restoring does not revive the revoked links.
+
 ### G9 — Session lifetime
 
 **Decision.** Opaque 256-bit token, `sha256` at rest, `HttpOnly` + `SameSite=Lax` + `Secure` in
@@ -157,3 +162,18 @@ deletion, folders, quotas, and password-protected share links.
    long-lived signed URLs.
 4. **Upload writes the object, then the row, and cleans up the object if the row fails.** Deletion
    goes the other way: row first, then bytes.
+
+---
+
+## Later decisions (Added later, on explicit request, as recorded overrides of the blueprint)
+
+| Decision | Choice and reason |
+| --- | --- |
+| **VIEWER role** | Read, preview and download only. A read-only contractor no longer has to be trusted with upload and share rights. Owners and members keep the original rules |
+| **Offboarding** | Removing a member, or demoting them to Viewer, revokes every share link they created in that workspace, in the same transaction. Notifications are filtered by current membership, so a person who left stops seeing names of documents they can no longer open |
+| **Trash** | 30-day retention; uploader or owner restores; only an owner deletes forever. Restore does not revive links: a link killed by a deletion stays dead |
+| **Folders** | Adjacency list, max depth 8, names unique per parent ignoring case, only empty folders can be deleted — never a recursive delete |
+| **Search and paging** | Server-side filename search over the whole workspace (trigram index) and keyset cursors, so pages never skip or repeat rows as documents change |
+| **Protected links** | Optional password (Argon2id, 10 wrong tries per 15 min locks the link, one-hour unlock cookie per link that dies when the password changes) and download limit (claimed atomically; bots can't use it). The file name is hidden until unlock. Expiry, password and limit are editable on a live link |
+| **Login lockout** | 5 failures in 15 minutes lock an email address from every address, including unknown emails, so lockout can't be used to discover accounts |
+| **Housekeeping** | Hourly, single-instance via advisory lock: expired sessions, old login failures, old notifications, long-expired invitations and expired trash. Access and audit events are kept |

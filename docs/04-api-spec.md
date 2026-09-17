@@ -150,7 +150,14 @@ identity.
 | Duplicate membership, already-accepted invite | 409 |
 | File over 25 MB | 413 |
 | MIME type not allowed | 415 |
-| Rate limited | 429 |
+| Rate limited (`RATE_LIMITED`), account locked (`ACCOUNT_LOCKED`), link locked (`LINK_LOCKED`) | 429 |
+| Link needs a password (`PASSWORD_REQUIRED`) or it was wrong (`WRONG_PASSWORD`) | 401 |
+| Download limit used up | 410 |
+| Viewer attempting a write | 403 |
+| Folder name taken (`FOLDER_NAME_TAKEN`), folder not empty (`FOLDER_NOT_EMPTY`) | 409 |
+| Folder moved into itself (`FOLDER_CYCLE`) or too deep (`FOLDER_TOO_DEEP`) | 422 |
+| Tampered pagination cursor (`INVALID_CURSOR`) | 400 |
+| Too many uploads in progress (`UPLOADS_BUSY`, with `Retry-After`) | 503 |
 
 ## Conventions
 
@@ -160,3 +167,22 @@ identity.
 - Responses never include `password_hash`, `token_hash`, or `storage_key`.
 - The web app reaches the API through a Next.js rewrite, so everything is same-origin and there is no
   CORS configuration to get wrong.
+
+---
+
+## Later routes (Added later, on explicit request, as recorded overrides of the blueprint)
+
+| Method | Route | Auth | Notes |
+| --- | --- | --- | --- |
+| GET | `/api/workspaces/:id/documents` | member | Query: `view=active\|trash`, `folderId`, `q` (searches the whole workspace), `filter=all\|shared\|mine`, `sort=date\|name\|size`, `order`, `cursor`, `limit` ≤ 100. Returns `{ role, documents, nextCursor, folders, path, counts, trashRetentionDays }` |
+| POST | `/api/workspaces/:id/documents?folderId=` | member or owner | Upload into a folder. 60 per minute per client; at most 4 in progress (503 beyond) |
+| PATCH | `/api/documents/:id` | uploader or owner | `{ filename?, folderId? }` — rename and/or move (`null` = root) |
+| DELETE | `/api/documents/:id` | uploader or owner | Move to trash; revokes its links. Returns `{ revokedLinks, purgeAt }` |
+| POST | `/api/documents/:id/restore` | uploader or owner | Links stay revoked |
+| DELETE | `/api/documents/:id/permanent` | owner | Trashed documents only; 204 |
+| GET / POST | `/api/workspaces/:id/folders` | member / member or owner | `{ name, parentId? }` |
+| PATCH / DELETE | `/api/workspaces/:id/folders/:folderId` | creator or owner | `{ name?, parentId? }`; delete only when empty |
+| POST | `/api/shares` | member or owner | `{ documentId, expiresInHours?, password? (6–128), maxDownloads? (1–1000) }` |
+| PATCH | `/api/shares/:id` | creator or owner | `{ expiresInHours?, password? \| null, maxDownloads? \| null }` |
+| POST | `/api/shares/:token/unlock` | public | `{ password }` → sets a per-link HttpOnly cookie for one hour. 10 per 15 minutes |
+| GET | `/api/workspaces/:id/overview?tz=` | member | Daily series grouped in the given IANA time zone (unknown → UTC) |

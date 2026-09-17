@@ -253,6 +253,27 @@ UPDATE invitations SET accepted_at = now()
 RETURNING workspace_id, email, role;
 ```
 
-Every one is parameterized: user input never reaches SQL text. The one interpolation into a query
-string anywhere in the codebase is a compile-time constant — the file-type `CASE` expression in
-`overview.service.ts`. This is checked by review; there is no lint rule enforcing it.
+Every one is parameterized: user input never reaches SQL text. The only interpolations into a query
+string are fixed fragments: the file-type `CASE` expression in `overview.service.ts`, and the sort
+expressions in `documents.repo.ts`, chosen from a whitelist (`SORT_SQL`) by an enum-validated key.
+This is checked by review; there is no lint rule enforcing it.
+
+---
+
+## Later migrations (Added later, on explicit request, as recorded overrides of the blueprint)
+
+| Migration | Change |
+| --- | --- |
+| `009_viewer_role.sql` | `VIEWER` added to the role enum |
+| `010_folders.sql` | `folders (id, workspace_id, parent_id, name, created_by, created_at)`; unique `(workspace_id, COALESCE(parent_id, sentinel), lower(name))`; `documents.folder_id` → `folders(id)` |
+| `011_trash.sql` | `documents.deleted_by`; index `(workspace_id, deleted_at DESC) WHERE deleted_at IS NOT NULL` |
+| `012_protected_links.sql` | `shares.password_hash`, `max_downloads`, `download_count`; access outcomes gain `exhausted` and `bad_password` |
+| `013_login_failures.sql` | `login_failures (email_hash, failed_at)` — no foreign key, so unknown emails are counted identically |
+| `014_document_search.sql` | `pg_trgm`; trigram GIN index on `documents.filename`; `(workspace_id, lower(filename), id)` and `(workspace_id, size, id)` for sorted keyset paging |
+
+```sql
+-- One-time and limited links: the last download can be claimed exactly once.
+UPDATE shares SET download_count = download_count + 1
+ WHERE id = $1 AND (max_downloads IS NULL OR download_count < max_downloads)
+RETURNING download_count;
+```
