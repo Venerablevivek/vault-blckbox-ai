@@ -44,6 +44,16 @@ const schema = z.object({
   WEB_URL: z.string().url().default('http://localhost:3000'),
 
   DATABASE_URL: z.string().min(1),
+  /**
+   * A direct (not transaction-pooled) connection, for LISTEN, advisory locks, migrations and
+   * maintenance. Set it when DATABASE_URL points at PgBouncer in transaction mode.
+   */
+  DATABASE_DIRECT_URL: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(1).optional()),
+  /** A read replica for lag-tolerant reads (dashboard, audit trail). Defaults to DATABASE_URL. */
+  DATABASE_READ_URL: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(1).optional()),
+  DB_POOL_MAX: z.coerce.number().int().min(1).max(200).default(10),
+  /** Per-statement limit for request queries, in milliseconds. 0 disables it. */
+  DB_STATEMENT_TIMEOUT_MS: z.coerce.number().int().min(0).default(15_000),
 
   SESSION_COOKIE_NAME: z.string().min(1).default('fs_session'),
   SESSION_TTL_DAYS: z.coerce.number().int().positive().default(7),

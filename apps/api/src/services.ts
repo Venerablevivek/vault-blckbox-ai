@@ -23,16 +23,21 @@ import type { Clock } from './types';
 export function createServices(deps: {
   config: Config;
   pool: Pool;
+  /** See createDatabase: sessions for LISTEN and locks, and a replica for lag-tolerant reads. */
+  directPool?: Pool;
+  readPool?: Pool;
   storage: FileStorage;
   multipartStorage: (FileStorage & MultipartStorage) | null;
   logger: Logger;
   clock: Clock;
 }) {
   const { config, pool, storage, multipartStorage, logger, clock } = deps;
+  const directPool = deps.directPool ?? pool;
+  const readPool = deps.readPool ?? pool;
 
   // Cross-cutting services first: the feature modules depend on them.
-  const jobs = createJobQueue({ pool, clock, logger });
-  const audit = createAuditService({ pool, clock, logger });
+  const jobs = createJobQueue({ pool, listenPool: directPool, clock, logger });
+  const audit = createAuditService({ pool, readPool, clock, logger });
   const notifications = createNotificationsService({ pool, clock, logger, jobs });
 
   const auth = createAuthService({
@@ -82,7 +87,8 @@ export function createServices(deps: {
     audit,
     notifications,
   });
-  const overview = createOverviewService({ pool, clock, audit });
+  // The dashboard is all aggregate reads: fine to serve from a replica.
+  const overview = createOverviewService({ pool: readPool, clock, audit });
   const folders = createFoldersService({ pool, audit });
   const uploads = multipartStorage
     ? createUploadsService({
@@ -99,7 +105,8 @@ export function createServices(deps: {
       })
     : null;
   const maintenance = createMaintenanceService({
-    pool,
+    // Holds a session advisory lock for the whole pass, and may run long.
+    pool: directPool,
     clock,
     logger,
     documents,
@@ -107,7 +114,20 @@ export function createServices(deps: {
     shareEventRetentionMonths: config.SHARE_EVENT_RETENTION_MONTHS,
   });
 
-  return { jobs, audit, notifications, auth, workspaces, documents, shares, overview, folders, uploads, maintenance };
+  return {
+    jobs,
+    audit,
+    notifications,
+    auth,
+    workspaces,
+    documents,
+    shares,
+    overview,
+    folders,
+    uploads,
+    maintenance,
+    pools: { pool, directPool, readPool },
+  };
 }
 
 export type Services = ReturnType<typeof createServices>;

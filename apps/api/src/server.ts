@@ -90,6 +90,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const services = createServices({
     config,
     pool,
+    directPool: deps.directPool,
+    readPool: deps.readPool,
     storage,
     multipartStorage: deps.multipartStorage ?? null,
     logger,
@@ -134,7 +136,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     config,
     notifications,
     auth,
-    hub: createNotificationStreamHub({ pool, logger }),
+    hub: createNotificationStreamHub({ pool: services.pools.directPool, logger }),
   });
 
   return app;

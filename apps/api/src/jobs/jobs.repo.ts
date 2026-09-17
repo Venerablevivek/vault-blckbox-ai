@@ -22,14 +22,19 @@ export const jobsRepo = {
       runAt: Date;
       dedupeKey: string | null;
       maxAttempts: number;
+      /** Skip if any job with this dedupe key exists, including finished ones. */
+      once: boolean;
       now: Date;
     },
   ): Promise<boolean> {
+    // The partial unique index makes concurrent inserts of an unfinished key safe; `once`
+    // additionally skips keys that already finished (kept for the finished-job retention period).
     const { rowCount } = await db.query(
       `INSERT INTO jobs (id, queue, payload, run_at, dedupe_key, max_attempts, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       SELECT $1, $2, $3, $4, $5, $6, $7
+        WHERE NOT ($8 AND EXISTS (SELECT 1 FROM jobs WHERE queue = $2 AND dedupe_key = $5))
        ON CONFLICT (queue, dedupe_key) WHERE dedupe_key IS NOT NULL AND status IN ('queued', 'running') DO NOTHING`,
-      [job.id, job.queue, JSON.stringify(job.payload), job.runAt, job.dedupeKey, job.maxAttempts, job.now],
+      [job.id, job.queue, JSON.stringify(job.payload), job.runAt, job.dedupeKey, job.maxAttempts, job.now, job.once],
     );
     return (rowCount ?? 0) > 0;
   },

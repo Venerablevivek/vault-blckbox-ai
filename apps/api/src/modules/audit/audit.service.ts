@@ -14,8 +14,10 @@ export interface AuditEntry {
   metadata?: Record<string, unknown>;
 }
 
-export function createAuditService(deps: { pool: Pool; clock: Clock; logger: Logger }) {
+export function createAuditService(deps: { pool: Pool; readPool?: Pool; clock: Clock; logger: Logger }) {
   const { pool, clock, logger } = deps;
+  // Reading the trail tolerates replication lag; writing it never goes to a replica.
+  const readPool = deps.readPool ?? pool;
 
   function toRow(entry: AuditEntry) {
     return {
@@ -57,7 +59,7 @@ export function createAuditService(deps: { pool: Pool; clock: Clock; logger: Log
     },
 
     async list(workspaceId: string, options: { limit?: number; before?: Date } = {}) {
-      const rows = await auditRepo.listForWorkspace(pool, workspaceId, {
+      const rows = await auditRepo.listForWorkspace(readPool, workspaceId, {
         limit: Math.min(options.limit ?? 50, 200),
         before: options.before,
       });

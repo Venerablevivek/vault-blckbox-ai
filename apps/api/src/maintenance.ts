@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { loadConfig } from './config';
-import { createPool } from './db/pool';
+import { createDatabase } from './db/pool';
 import { runMigrations } from './db/migrate';
 import { buildLoggerOptions, pino } from './lib/logger';
 import { createServices } from './services';
@@ -14,14 +14,24 @@ import { systemClock } from './types';
 async function main(): Promise<void> {
   const config = loadConfig();
   const logger = pino(buildLoggerOptions(config.NODE_ENV));
-  const pool = createPool(config.DATABASE_URL);
-  await runMigrations(pool, path.resolve(__dirname, '../migrations'), logger);
+  const db = createDatabase(config, 'vault-maintenance');
+  const { pool } = db;
+  await runMigrations(db.directPool, path.resolve(__dirname, '../migrations'), logger);
 
   const storage = S3Storage.fromConfig(config);
-  const services = createServices({ config, pool, storage, multipartStorage: storage, logger, clock: systemClock });
+  const services = createServices({
+    config,
+    pool,
+    directPool: db.directPool,
+    readPool: db.readPool,
+    storage,
+    multipartStorage: storage,
+    logger,
+    clock: systemClock,
+  });
   const result = await services.maintenance.runOnce();
   console.log(JSON.stringify(result ?? { skipped: 'another instance is running maintenance' }));
-  await pool.end();
+  await db.end();
 }
 
 main().catch((error: unknown) => {

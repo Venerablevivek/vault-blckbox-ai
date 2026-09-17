@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { firstWorkspaceId, openDocuments, PASSWORD, registerViaApi, uniqueEmail, uploadText } from './helpers';
+import { firstWorkspaceId, openDocuments, registerViaApi, uniqueEmail, uploadText } from './helpers';
 
 test('the bell updates within seconds when a teammate uploads, without polling or reloading', async ({
   page,
@@ -14,10 +14,7 @@ test('the bell updates within seconds when a teammate uploads, without polling o
   const inviteToken = ((await invite.json()) as { inviteUrl: string }).inviteUrl.split('/invite/')[1]!;
 
   // Bob joins by registering with the invitation, in the page's own context.
-  const joined = await page.request.post('/api/auth/register', {
-    data: { email: bobEmail, password: PASSWORD, inviteToken },
-  });
-  expect(joined.status()).toBe(201);
+  await registerViaApi(page.request, bobEmail, inviteToken);
 
   const streams: string[] = [];
   page.on('request', (request) => {

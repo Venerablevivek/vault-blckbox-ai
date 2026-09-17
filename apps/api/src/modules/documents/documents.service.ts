@@ -3,7 +3,7 @@ import { Readable } from 'node:stream';
 import type { Pool } from 'pg';
 import type { Logger } from 'pino';
 import { withTransaction } from '../../db/tx';
-import { Errors } from '../../lib/errors';
+import { AppError, Errors } from '../../lib/errors';
 import { assertAllowedType } from '../../lib/mime';
 import { stripControlCharacters } from '../../lib/text';
 import { Permissions, requireContributor } from '../../policy';
@@ -55,6 +55,12 @@ export function decodeCursor(cursor: string): { value: string; id: string } {
   }
 }
 
+/** S3 reports a missing object as NoSuchKey on GET, and a bare 404 on HEAD. */
+export function isMissingObject(error: unknown): boolean {
+  const e = error as { name?: string; Code?: string; $metadata?: { httpStatusCode?: number } };
+  return e?.name === 'NoSuchKey' || e?.Code === 'NoSuchKey' || e?.$metadata?.httpStatusCode === 404;
+}
+
 export function cleanFilename(name: string): string {
   const clean = stripControlCharacters(name).trim();
   if (!clean) throw Errors.badRequest('INVALID_NAME', 'A document needs a name.');
@@ -102,8 +108,37 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
     const row = await documentsRepo.findAnyById(pool, documentId);
     if (!row || row.sha256) return;
     const hash = createHash('sha256');
-    for await (const chunk of await storage.download(row.storage_key)) hash.update(chunk as Buffer);
+    try {
+      for await (const chunk of await storage.download(row.storage_key)) hash.update(chunk as Buffer);
+    } catch (error) {
+      if (!isMissingObject(error) || !row.deleted_at) throw error;
+      // A trashed document whose bytes are already gone can never be restored. Before the trash
+      // existed, deleting removed the object straight away, and those rows became "trashed" when
+      // the trash was introduced. Finish deleting them rather than retrying forever.
+      await deleteTrashedRow(row.id);
+      audit.recordAsync({
+        workspaceId: row.workspace_id,
+        actorUserId: null,
+        action: 'document.purged',
+        resourceType: 'document',
+        resourceId: row.id,
+        metadata: { filename: row.filename, reason: 'object_missing' },
+      });
+      logger.warn({ documentId: row.id }, 'removed a trashed document whose object no longer exists');
+      return;
+    }
     await documentsRepo.setChecksum(pool, row.id, hash.digest());
+  }
+
+  /** Whether storage still has an object: fetches it and discards the stream straight away. */
+  async function objectExists(key: string): Promise<boolean> {
+    try {
+      (await storage.download(key)).destroy();
+      return true;
+    } catch (error) {
+      if (isMissingObject(error)) return false;
+      throw error;
+    }
   }
 
   /**
@@ -412,6 +447,13 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
       const { document, role } = await authorizeTrashedById(documentId, userId);
       if (!Permissions.canModifyDocument(role, document.uploaded_by, userId)) {
         throw Errors.forbidden('Only the uploader or a workspace owner can restore this document.');
+      }
+      if (!(await objectExists(document.storage_key))) {
+        throw new AppError(
+          410,
+          'DOCUMENT_FILE_MISSING',
+          "This document's file no longer exists, so it can't be restored.",
+        );
       }
       const restored = await documentsRepo.restore(pool, documentId);
       if (!restored) throw Errors.notFound('Document');

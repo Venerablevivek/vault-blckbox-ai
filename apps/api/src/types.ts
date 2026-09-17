@@ -22,6 +22,10 @@ export interface AppDeps {
   /** Enables direct uploads. main.ts passes the S3 store; tests can swap `storage` independently. */
   multipartStorage?: FileStorage & MultipartStorage;
   logger: Logger;
+  /** A session-capable pool (LISTEN, advisory locks). Defaults to `pool`. */
+  directPool?: Pool;
+  /** A read-replica pool for lag-tolerant reads. Defaults to `pool`. */
+  readPool?: Pool;
   /** Defaults to SMTP when SMTP_URL is set, otherwise a logging fallback. */
   mailer?: Mailer;
   clock?: Clock;

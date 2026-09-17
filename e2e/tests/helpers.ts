@@ -29,13 +29,14 @@ export async function openDocuments(page: Page, workspaceId: string): Promise<vo
 }
 
 /** Registers through the API (sets the session cookie on this request context). */
-export async function registerViaApi(request: APIRequestContext, email: string): Promise<void> {
-  let response = await request.post('/api/auth/register', { data: { email, password: PASSWORD } });
+export async function registerViaApi(request: APIRequestContext, email: string, inviteToken?: string): Promise<void> {
+  const data = { email, password: PASSWORD, ...(inviteToken ? { inviteToken } : {}) };
+  let response = await request.post('/api/auth/register', { data });
   // The suite registers more accounts than the 10-per-hour limit allows one address. Registration
   // isn't what these tests are about, so clear the counters and retry (see global-setup.ts).
   if (response.status() === 429 && process.env.E2E_RESET_RATE_LIMITS !== 'false') {
     resetRateLimits();
-    response = await request.post('/api/auth/register', { data: { email, password: PASSWORD } });
+    response = await request.post('/api/auth/register', { data });
   }
   expect(response.status(), await response.text()).toBe(201);
 }

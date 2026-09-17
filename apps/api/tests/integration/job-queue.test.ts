@@ -43,6 +43,20 @@ describe('job queue', () => {
     expect(await jobs().enqueue(pool(), 'maintenance.run', {}, { dedupeKey: 'hour-1' })).toBe(true);
   });
 
+  it('with once, never re-runs a key that already finished', async () => {
+    let runs = 0;
+    const handlers: Partial<JobHandlers> = { 'maintenance.run': async () => void (runs += 1) };
+    // A worker tries to schedule the same hourly slot every minute.
+    for (let minute = 0; minute < 5; minute++) {
+      await jobs().enqueue(pool(), 'maintenance.run', {}, { dedupeKey: 'every-60m:100', once: true });
+      await jobs().runReady(handlers);
+    }
+    expect(runs).toBe(1);
+    await jobs().enqueue(pool(), 'maintenance.run', {}, { dedupeKey: 'every-60m:101', once: true });
+    await jobs().runReady(handlers);
+    expect(runs).toBe(2);
+  });
+
   it('never gives the same job to two workers', async () => {
     for (let i = 0; i < 30; i++) await jobs().enqueue(pool(), 'email.send', email(`user${i}@example.com`));
     const seen: string[] = [];

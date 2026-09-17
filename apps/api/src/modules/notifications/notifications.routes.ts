@@ -43,9 +43,20 @@ export function registerNotificationRoutes(
     }
     const token = request.cookies[config.SESSION_COOKIE_NAME]!;
 
+    // Subscribe before sending anything. The client syncs its inbox when it receives `ready`; a
+    // notification created between that sync and a later subscription would be missed. (It was,
+    // behind PgBouncer, where opening the listening connection takes longer.) Subscribing first
+    // also means a database failure here is an ordinary error response, not a broken stream.
+    let ended = false;
+    let res: ServerResponse | null = null;
+    const unsubscribe = await hub.subscribe(user.id, () => {
+      if (!ended) res?.write('event: notification\ndata: {}\n\n');
+    });
+
     reply.hijack();
-    const res = reply.raw;
-    res.writeHead(200, {
+    res = reply.raw;
+    const stream = res;
+    stream.writeHead(200, {
       'Content-Type': 'text/event-stream; charset=utf-8',
       // no-transform: compression middleware must not buffer the stream.
       'Cache-Control': 'no-cache, no-transform',
@@ -53,34 +64,29 @@ export function registerNotificationRoutes(
       'X-Accel-Buffering': 'no',
       'X-Content-Type-Options': 'nosniff',
     });
-    open.add(res);
+    open.add(stream);
 
-    let ended = false;
-    let unsubscribe = () => undefined as void;
     const end = () => {
       if (ended) return;
       ended = true;
       clearInterval(heartbeat);
       unsubscribe();
-      open.delete(res);
-      res.end();
+      open.delete(stream);
+      stream.end();
     };
 
     // Reconnect after 5 seconds if the connection drops; start by telling the client to sync.
-    res.write('retry: 5000\n\nevent: ready\ndata: {}\n\n');
+    stream.write('retry: 5000\n\nevent: ready\ndata: {}\n\n');
     const heartbeat = setInterval(() => {
       void auth
         .resolveSession(token)
         .then((session) => {
           if (!session || session.user.id !== user.id) return end();
-          res.write(': keep-alive\n\n');
+          stream.write(': keep-alive\n\n');
         })
         .catch(() => end());
     }, config.NOTIFICATION_STREAM_HEARTBEAT_SECONDS * 1000);
 
-    unsubscribe = await hub.subscribe(user.id, () => {
-      if (!ended) res.write('event: notification\ndata: {}\n\n');
-    });
     request.raw.on('close', end);
     if (request.raw.destroyed) end();
   });

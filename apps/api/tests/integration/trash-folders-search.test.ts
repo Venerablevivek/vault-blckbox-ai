@@ -65,6 +65,28 @@ describe('trash, folders, search and maintenance', () => {
   // ---------------------------------------------------------------- trash
 
   describe('trash and restore', () => {
+    it("won't restore a document whose file is gone, and the maintenance pass clears it out", async () => {
+      const id = await upload('lost.pdf');
+      await call('DELETE', `/api/documents/${id}`, alice.cookie);
+      // As deleting did before the trash existed: the object is removed, the row stays.
+      const [row] = await h.query<{ storage_key: string }>('SELECT storage_key FROM documents WHERE id = $1', [id]);
+      await h.storage.delete(row!.storage_key);
+      await h.query('UPDATE documents SET sha256 = NULL WHERE id = $1', [id]);
+
+      const restore = await call('POST', `/api/documents/${id}/restore`, alice.cookie);
+      expect(restore.statusCode).toBe(410);
+      expect(restore.json().error.code).toBe('DOCUMENT_FILE_MISSING');
+
+      const result = await h.app.maintenance.runOnce();
+      expect(result!.checksumsBackfilled).toBe(1);
+      expect(await h.query('SELECT 1 FROM documents WHERE id = $1', [id])).toHaveLength(0);
+      const [usage] = await h.query<{ used: string }>(
+        'SELECT storage_used_bytes AS used FROM workspaces WHERE id = $1',
+        [alice.workspaceId],
+      );
+      expect(Number(usage!.used)).toBe(0);
+    });
+
     it('moves a document to the trash, revokes its links, and restores it without them', async () => {
       const id = await upload('contract.pdf');
       const share = await call('POST', '/api/shares', alice.cookie, { documentId: id });

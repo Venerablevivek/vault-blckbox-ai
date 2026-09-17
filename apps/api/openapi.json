@@ -3703,6 +3703,16 @@
                 }
               }
             }
+          },
+          "410": {
+            "description": "Gone: revoked, expired, used up, or already used.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }

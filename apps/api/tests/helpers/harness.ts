@@ -2,7 +2,7 @@ import path from 'node:path';
 import { Client, type Pool } from 'pg';
 import { pino } from 'pino';
 import type { FastifyInstance } from 'fastify';
-import { createPool } from '../../src/db/pool';
+import { createDatabase, createPool } from '../../src/db/pool';
 import { runMigrations } from '../../src/db/migrate';
 import { buildApp } from '../../src/server';
 import { S3Storage } from '../../src/storage/s3-storage';
@@ -109,9 +109,15 @@ export async function createHarness(options?: {
     ...options?.env,
   });
 
-  const pool = createPool(databaseUrl);
+  // Pools are built exactly as in production, so env overrides (a read replica URL, a statement
+  // timeout) take effect in tests too. Migrations use a plain pool: a test may point the direct
+  // or read URL somewhere unreachable on purpose.
+  const db = createDatabase(config, 'vault-test');
+  const { pool } = db;
   const logger = pino({ level: 'silent' });
-  await runMigrations(pool, path.resolve(__dirname, '../../migrations'), logger);
+  const migrationPool = createPool(databaseUrl, { max: 2 });
+  await runMigrations(migrationPool, path.resolve(__dirname, '../../migrations'), logger);
+  await migrationPool.end();
 
   const realStorage = new S3Storage({
     endpoint: config.S3_ENDPOINT,
@@ -126,7 +132,17 @@ export async function createHarness(options?: {
   const storage = options?.storage ?? realStorage;
   const clock = new TestClock();
   const mailer = new MemoryMailer();
-  const app = await buildApp({ config, pool, storage, multipartStorage: realStorage, logger, clock, mailer });
+  const app = await buildApp({
+    config,
+    pool,
+    directPool: db.directPool,
+    readPool: db.readPool,
+    storage,
+    multipartStorage: realStorage,
+    logger,
+    clock,
+    mailer,
+  });
   await app.ready();
   // A real worker runs alongside the tests, exactly as in production. Tests that need a job's
   // effect at a precise moment call runJobs() instead of waiting for it.
@@ -179,7 +195,7 @@ export async function createHarness(options?: {
     async close() {
       await stopWorker();
       await app.close();
-      await pool.end();
+      await db.end();
     },
     async query<T extends Record<string, unknown>>(sql: string, params: unknown[] = []) {
       const { rows } = await pool.query(sql, params);

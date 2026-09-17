@@ -28,6 +28,11 @@ export interface EnqueueOptions {
   runAt?: Date;
   /** Jobs sharing a dedupe key in a queue collapse into one while unfinished. */
   dedupeKey?: string;
+  /**
+   * With a dedupe key: enqueue only if no job with that key exists at all, finished or not. For
+   * scheduled work keyed by its time slot, so a slot that already ran isn't run again.
+   */
+  once?: boolean;
   maxAttempts?: number;
 }
 
@@ -43,8 +48,10 @@ export function retryDelayMs(attempt: number, random = Math.random): number {
   return Math.round(base * (0.8 + random() * 0.4));
 }
 
-export function createJobQueue(deps: { pool: Pool; clock: Clock; logger: Logger }) {
+export function createJobQueue(deps: { pool: Pool; listenPool?: Pool; clock: Clock; logger: Logger }) {
   const { pool, clock, logger } = deps;
+  // LISTEN needs a session of its own, which a transaction-pooling proxy can't give.
+  const listenPool = deps.listenPool ?? pool;
 
   const queue = {
     /**
@@ -65,6 +72,7 @@ export function createJobQueue(deps: { pool: Pool; clock: Clock; logger: Logger 
         runAt: options.runAt ?? now,
         dedupeKey: options.dedupeKey ?? null,
         maxAttempts: options.maxAttempts ?? 5,
+        once: options.once === true && options.dedupeKey !== undefined,
         now,
       });
       // Delivered on commit, so a worker waiting on LISTEN wakes as soon as the job is visible.
@@ -133,7 +141,7 @@ export function createJobQueue(deps: { pool: Pool; clock: Clock; logger: Logger 
 
       void (async () => {
         try {
-          listener = await pool.connect();
+          listener = await listenPool.connect();
           listener.on('notification', () => wake?.());
           await listener.query(`LISTEN ${NOTIFY_CHANNEL}`);
         } catch (error) {

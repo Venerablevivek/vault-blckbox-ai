@@ -342,7 +342,7 @@ export const operations: Operation[] = [
     auth: S,
     params: documents.DocumentParams,
     success: [200, documents.DocumentResponse],
-    errors: [401, 403, 404],
+    errors: [401, 403, 404, 410],
   },
   {
     method: 'delete',

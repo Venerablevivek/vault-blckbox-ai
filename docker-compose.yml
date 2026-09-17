@@ -2,7 +2,14 @@ x-api-environment: &api-environment
   NODE_ENV: ${NODE_ENV:-development}
   API_PORT: 4000
   WEB_URL: ${WEB_URL:-http://localhost:3000}
-  DATABASE_URL: postgres://${POSTGRES_USER:-filesharing}:${POSTGRES_PASSWORD:-filesharing}@postgres:5432/${POSTGRES_DB:-filesharing}
+  # COMPOSE_* names, not DATABASE_URL, so a DATABASE_URL in .env meant for running outside Docker
+  # (localhost) never leaks into the containers.
+  DATABASE_URL: ${COMPOSE_DATABASE_URL:-postgres://${POSTGRES_USER:-filesharing}:${POSTGRES_PASSWORD:-filesharing}@postgres:5432/${POSTGRES_DB:-filesharing}}
+  # Set both when DATABASE_URL goes through PgBouncer (see the pgbouncer service below).
+  DATABASE_DIRECT_URL: ${COMPOSE_DATABASE_DIRECT_URL:-}
+  DATABASE_READ_URL: ${COMPOSE_DATABASE_READ_URL:-}
+  DB_POOL_MAX: ${DB_POOL_MAX:-10}
+  DB_STATEMENT_TIMEOUT_MS: ${DB_STATEMENT_TIMEOUT_MS:-15000}
   SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-fs_session}
   SESSION_TTL_DAYS: ${SESSION_TTL_DAYS:-7}
   SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
@@ -23,6 +30,12 @@ x-api-environment: &api-environment
   LOGIN_LOCKOUT_ATTEMPTS: ${LOGIN_LOCKOUT_ATTEMPTS:-5}
   LOGIN_LOCKOUT_MINUTES: ${LOGIN_LOCKOUT_MINUTES:-15}
   MAINTENANCE_INTERVAL_MINUTES: ${MAINTENANCE_INTERVAL_MINUTES:-60}
+  MAX_DIRECT_UPLOAD_BYTES: ${MAX_DIRECT_UPLOAD_BYTES:-5368709120}
+  UPLOAD_SESSION_TTL_HOURS: ${UPLOAD_SESSION_TTL_HOURS:-24}
+  UPLOAD_PART_URL_TTL_SECONDS: ${UPLOAD_PART_URL_TTL_SECONDS:-3600}
+  SHARE_EVENT_RETENTION_MONTHS: ${SHARE_EVENT_RETENTION_MONTHS:-13}
+  RATE_LIMIT_STORE: ${RATE_LIMIT_STORE:-postgres}
+  NOTIFICATION_STREAM_HEARTBEAT_SECONDS: ${NOTIFICATION_STREAM_HEARTBEAT_SECONDS:-15}
   SMTP_URL: ${SMTP_URL:-smtp://mailpit:1025}
   MAIL_FROM: ${MAIL_FROM:-Vault <no-reply@vault.local>}
   PASSWORD_RESET_TTL_MINUTES: ${PASSWORD_RESET_TTL_MINUTES:-60}
@@ -107,6 +120,31 @@ services:
       timeout: 5s
       retries: 10
       start_period: 15s
+
+  # Optional connection pooler for many API/worker replicas. Off by default; to use it:
+  #   COMPOSE_DATABASE_URL=postgres://filesharing:filesharing@pgbouncer:5432/filesharing \
+  #   COMPOSE_DATABASE_DIRECT_URL=postgres://filesharing:filesharing@postgres:5432/filesharing \
+  #   docker compose --profile pgbouncer up -d
+  # Transaction pooling can't carry sessions, so LISTEN, advisory locks and migrations use
+  # DATABASE_DIRECT_URL. Statement timeouts are enforced here, since PgBouncer drops the
+  # per-connection statement_timeout the API would otherwise set.
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.25.2-p0
+    profiles: ['pgbouncer']
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-filesharing}:${POSTGRES_PASSWORD:-filesharing}@postgres:5432/${POSTGRES_DB:-filesharing}
+      AUTH_TYPE: scram-sha-256
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 2000
+      DEFAULT_POOL_SIZE: 20
+      QUERY_TIMEOUT: 15
+      IDLE_TRANSACTION_TIMEOUT: 30
+      IGNORE_STARTUP_PARAMETERS: extra_float_digits,statement_timeout,idle_in_transaction_session_timeout
+    ports:
+      - '6432:5432' # inside the Compose network it is pgbouncer:5432
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   # Background jobs: email, notification fan-out, checksums, workspace purges and scheduled
   # maintenance. Same image as the API. Scale with `docker compose up --scale worker=3`.

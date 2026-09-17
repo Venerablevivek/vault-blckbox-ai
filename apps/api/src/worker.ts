@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { loadConfig } from './config';
-import { createPool } from './db/pool';
+import { createDatabase } from './db/pool';
 import { runMigrations } from './db/migrate';
 import { createJobHandlers } from './jobs/handlers';
 import { buildLoggerOptions, pino } from './lib/logger';
@@ -18,16 +18,27 @@ import { systemClock } from './types';
 async function main(): Promise<void> {
   const config = loadConfig();
   const logger = pino(buildLoggerOptions(config.NODE_ENV)).child({ process: 'worker' });
-  const pool = createPool(config.DATABASE_URL);
-  await runMigrations(pool, path.resolve(__dirname, '../migrations'), logger);
+  const db = createDatabase(config, 'vault-worker');
+  const { pool } = db;
+  await runMigrations(db.directPool, path.resolve(__dirname, '../migrations'), logger);
 
   const storage = S3Storage.fromConfig(config);
   const mailer = config.SMTP_URL ? new SmtpMailer(config.SMTP_URL, config.MAIL_FROM) : new LogMailer(logger);
-  const services = createServices({ config, pool, storage, multipartStorage: storage, logger, clock: systemClock });
+  const services = createServices({
+    config,
+    pool,
+    directPool: db.directPool,
+    readPool: db.readPool,
+    storage,
+    multipartStorage: storage,
+    logger,
+    clock: systemClock,
+  });
   const stopJobs = services.jobs.start(createJobHandlers(services, mailer));
 
   // Maintenance runs once per interval across all workers: the dedupe key is the interval
-  // bucket, so every worker may try to enqueue it and only one job exists.
+  // slot and `once` skips a slot that already has a job, running or finished. (Without `once`
+  // a finished slot freed its key, and maintenance ran every minute.)
   const stopSchedule = scheduleEvery(60_000, async () => {
     const minutes = config.MAINTENANCE_INTERVAL_MINUTES;
     if (minutes <= 0) return;
@@ -36,7 +47,7 @@ async function main(): Promise<void> {
       pool,
       'maintenance.run',
       {},
-      { dedupeKey: `every-${minutes}m:${bucket}`, maxAttempts: 1 },
+      { dedupeKey: `every-${minutes}m:${bucket}`, once: true, maxAttempts: 1 },
     );
   });
 
@@ -46,7 +57,7 @@ async function main(): Promise<void> {
     logger.info({ signal }, 'worker shutting down; finishing the current job');
     stopSchedule();
     await stopJobs();
-    await pool.end();
+    await db.end();
     process.exit(0);
   };
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
