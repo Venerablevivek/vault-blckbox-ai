@@ -315,6 +315,25 @@ export const sharesRepo = {
     return rows;
   },
 
+  /** All of a link's access events, newest first, in keyset pages: for exports of any size. */
+  async eventsPage(db: Db, shareId: string, after: { at: Date; id: string } | null, limit: number) {
+    const { rows } = await db.query<{
+      id: string;
+      accessed_at: Date;
+      outcome: AccessOutcome;
+      user_agent: string | null;
+      ip_hash: Buffer;
+      viewer_email: string | null;
+    }>(
+      `SELECT id, accessed_at, outcome, user_agent, ip_hash, viewer_email FROM share_access_events
+        WHERE share_id = $1 AND ($2::timestamptz IS NULL OR (accessed_at, id) < ($2, $3::uuid))
+        ORDER BY accessed_at DESC, id DESC
+        LIMIT $4`,
+      [shareId, after?.at ?? null, after?.id ?? null, limit],
+    );
+    return rows;
+  },
+
   async findById(db: Db, id: string): Promise<(ShareRow & { workspace_id: string }) | null> {
     const { rows } = await db.query<ShareRow & { workspace_id: string }>(
       `SELECT ${SHARE_COLUMNS}, d.workspace_id

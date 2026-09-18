@@ -364,6 +364,7 @@ describe('API contract', () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
     ok('GET', '/api/documents/:id/shares', await send('GET', `/api/documents/${documentId}/shares`, owner));
     ok('GET', '/api/shares/:id/events', await send('GET', `/api/shares/${shareId}/events`, owner));
+    ok('GET', '/api/shares/:id/events/export', await send('GET', `/api/shares/${shareId}/events/export`, owner));
     ok('DELETE', '/api/shares/:id', await send('DELETE', `/api/shares/${shareId}`, owner));
 
     ok(
@@ -377,6 +378,11 @@ describe('API contract', () => {
       await send('GET', `/api/workspaces/${workspaceId}/overview?tz=Europe/London`, owner),
     );
     ok('GET', '/api/workspaces/:id/audit', await send('GET', `/api/workspaces/${workspaceId}/audit`, owner));
+    ok(
+      'GET',
+      '/api/workspaces/:id/audit/export',
+      await send('GET', `/api/workspaces/${workspaceId}/audit/export?category=document`, owner),
+    );
     ok(
       'GET',
       '/api/workspaces/:id/audit/verify',

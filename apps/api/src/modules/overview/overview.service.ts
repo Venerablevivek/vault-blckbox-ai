@@ -153,7 +153,9 @@ export function createOverviewService(deps: { pool: Pool; clock: Clock; audit: A
             ORDER BY d.created_at DESC LIMIT 5`,
             [workspaceId],
           ),
-          role === 'OWNER' ? audit.list(workspaceId, userId, { limit: 8 }) : Promise.resolve(null),
+          role === 'OWNER'
+            ? audit.list(workspaceId, userId, { limit: 8 }).then((page) => page.events)
+            : Promise.resolve(null),
         ]),
       );
 

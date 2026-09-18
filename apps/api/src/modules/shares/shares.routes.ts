@@ -1,4 +1,6 @@
+import { Readable } from 'node:stream';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { CSV_BOM, csvRow } from '../../lib/csv';
 import type { Config } from '../../config';
 import {
   CreateShareBody,
@@ -87,6 +89,30 @@ export function registerShareRoutes(app: FastifyInstance, deps: { config: Config
     handler: async (request) => {
       const { id } = ShareIdParams.parse(request.params);
       return { events: await shares.listEvents(id, currentUser(request).id) };
+    },
+  });
+
+  // A link's full access history as CSV. The first event is read before the headers go out, so
+  // a link the caller can't see is a proper 404 rather than a broken download.
+  app.get('/api/shares/:id/events/export', {
+    preHandler: requireSession,
+    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+    handler: async (request, reply) => {
+      const { id } = ShareIdParams.parse(request.params);
+      const events = shares.exportEvents(id, currentUser(request).id);
+      const first = await events.next();
+      async function* lines() {
+        yield CSV_BOM + csvRow(['time_utc', 'outcome', 'viewer', 'email', 'user_agent']);
+        for (let item = first; !item.done; item = await events.next()) {
+          const e = item.value;
+          yield csvRow([e.accessedAt.toISOString(), e.outcome, e.viewer, e.email, e.userAgent]);
+        }
+      }
+      return reply
+        .header('Content-Type', 'text/csv; charset=utf-8')
+        .header('Content-Disposition', attachmentDisposition(`link-activity-${id.slice(0, 8)}.csv`))
+        .header('Cache-Control', 'private, no-store')
+        .send(Readable.from(lines()));
     },
   });
 

@@ -527,6 +527,15 @@ function LinkRow({
         ) : null}
       </div>
 
+      {expanded && events.length > 0 ? (
+        <a
+          className="mt-3 inline-flex items-center gap-1 text-xs text-brand-600 hover:underline"
+          href={`/api/shares/${link.id}/events/export`}
+          download
+        >
+          <Download className="h-3 w-3" aria-hidden /> Download full history (CSV)
+        </a>
+      ) : null}
       {expanded ? (
         <ul className="mt-3 divide-y divide-line border-t border-line text-xs">
           {events.length === 0 ? (

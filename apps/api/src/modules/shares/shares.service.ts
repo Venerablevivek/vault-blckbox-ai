@@ -522,6 +522,29 @@ export function createSharesService(opts: SharesServiceOptions) {
       }));
     },
 
+    /** Every access to a link, newest first, for any member of its workspace (as listEvents). */
+    async *exportEvents(shareId: string, userId: string) {
+      const share = await sharesRepo.findById(pool, shareId);
+      if (!share) throw Errors.notFound('Link');
+      if (!(await workspacesRepo.findMembership(pool, share.workspace_id, userId))) throw Errors.notFound('Link');
+      let after: { at: Date; id: string } | null = null;
+      for (;;) {
+        const rows = await sharesRepo.eventsPage(pool, shareId, after, 1000);
+        for (const row of rows) {
+          yield {
+            accessedAt: row.accessed_at,
+            outcome: row.outcome,
+            viewer: row.ip_hash.toString('hex').slice(0, 8),
+            email: row.viewer_email,
+            userAgent: row.user_agent,
+          };
+        }
+        if (rows.length < 1000) return;
+        const last = rows[rows.length - 1]!;
+        after = { at: last.accessed_at, id: last.id };
+      }
+    },
+
     async revoke(shareId: string, userId: string): Promise<void> {
       const share = await requireManageable(shareId, userId);
       await sharesRepo.revoke(pool, shareId, clock.now());

@@ -1,23 +1,45 @@
 'use client';
 
-import { use, useCallback, useEffect, useMemo, useState } from 'react';
-import { History, Lock, ShieldAlert, ShieldCheck } from 'lucide-react';
-import { api, ApiRequestError, formatDate, timeAgo, type Schemas } from '@/lib/api';
+import { Suspense, use, useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { Download, History, Lock, ShieldAlert, ShieldCheck, X } from 'lucide-react';
+import { api, ApiRequestError, formatDate, timeAgo, type Member, type Schemas } from '@/lib/api';
 import { AUDIT_STYLE, describeAuditEvent, type AuditEvent } from '@/components/audit';
 import { EmptyState, ErrorNote, Shell, Skeleton, useSession } from '@/components/ui';
 
-type Category = 'all' | 'document' | 'share' | 'member';
+type Category = 'all' | 'document' | 'folder' | 'share' | 'people';
 
 const FILTERS: Array<{ key: Category; label: string }> = [
   { key: 'all', label: 'Everything' },
   { key: 'document', label: 'Documents' },
+  { key: 'folder', label: 'Folders' },
   { key: 'share', label: 'Share links' },
-  { key: 'member', label: 'People' },
+  { key: 'people', label: 'People' },
 ];
 
+/** The start of a calendar day in the viewer's time zone, as an instant. */
+const startOfDay = (day: string, plusDays = 0) => {
+  const date = new Date(`${day}T00:00:00`);
+  date.setDate(date.getDate() + plusDays);
+  return date.toISOString();
+};
+
 export default function ActivityPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id: workspaceId } = use(params);
+  const { id } = use(params);
+  return (
+    <Suspense fallback={null}>
+      <ActivityView workspaceId={id} />
+    </Suspense>
+  );
+}
+
+function ActivityView({ workspaceId }: { workspaceId: string }) {
   const session = useSession(workspaceId);
+  const searchParams = useSearchParams();
+  // Reached from a document's menu: only that document's history.
+  const documentId = searchParams.get('document');
+  const documentName = searchParams.get('name');
 
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +48,29 @@ export default function ActivityPage({ params }: { params: Promise<{ id: string 
   const [error, setError] = useState<string | null>(null);
   const [forbidden, setForbidden] = useState(false);
   const [category, setCategory] = useState<Category>('all');
+  const [actorId, setActorId] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [members, setMembers] = useState<Member[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+
+  useEffect(() => {
+    void api
+      .get<{ members: Member[] }>(`/api/workspaces/${workspaceId}/members`)
+      .then((result) => setMembers(result.members))
+      .catch(() => setMembers([]));
+  }, [workspaceId]);
+
+  /** The filters as a query string, shared by the listing and the CSV export. */
+  const filterQuery = useMemo(() => {
+    const qs = new URLSearchParams();
+    if (category !== 'all') qs.set('category', category);
+    if (actorId) qs.set('actorId', actorId);
+    if (documentId) qs.set('resourceId', documentId);
+    if (from) qs.set('from', startOfDay(from));
+    if (to) qs.set('to', startOfDay(to, 1));
+    return qs.toString();
+  }, [category, actorId, documentId, from, to]);
   const [verification, setVerification] = useState<Schemas['AuditVerification'] | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
@@ -45,12 +90,17 @@ export default function ActivityPage({ params }: { params: Promise<{ id: string 
   const PAGE = 50;
 
   const load = useCallback(
-    async (before?: string) => {
+    async (cursor?: string) => {
       try {
-        const qs = new URLSearchParams({ limit: String(PAGE), ...(before ? { before } : {}) });
-        const data = await api.get<{ events: AuditEvent[] }>(`/api/workspaces/${workspaceId}/audit?${qs}`);
-        setEvents((current) => (before ? [...current, ...data.events] : data.events));
-        setExhausted(data.events.length < PAGE);
+        const qs = new URLSearchParams(filterQuery);
+        qs.set('limit', String(PAGE));
+        if (cursor) qs.set('cursor', cursor);
+        const data = await api.get<{ events: AuditEvent[]; nextCursor: string | null }>(
+          `/api/workspaces/${workspaceId}/audit?${qs}`,
+        );
+        setEvents((current) => (cursor ? [...current, ...data.events] : data.events));
+        setNextCursor(data.nextCursor);
+        setExhausted(data.nextCursor === null);
         setError(null);
       } catch (err) {
         if (err instanceof ApiRequestError && err.status === 403) setForbidden(true);
@@ -62,20 +112,15 @@ export default function ActivityPage({ params }: { params: Promise<{ id: string 
         setLoadingMore(false);
       }
     },
-    [workspaceId],
+    [workspaceId, filterQuery],
   );
 
   useEffect(() => {
+    setLoading(true);
     void load();
   }, [load]);
 
-  const filtered = events.filter((e) =>
-    category === 'all'
-      ? true
-      : category === 'member'
-        ? /^(member|invitation|workspace)\./.test(e.action)
-        : e.action.startsWith(`${category}.`),
-  );
+  const filtered = events;
 
   // Group by calendar day, so a long trail reads as a timeline rather than a wall.
   const groups = useMemo(() => {
@@ -163,6 +208,72 @@ export default function ActivityPage({ params }: { params: Promise<{ id: string 
               </button>
             </section>
 
+            {documentId ? (
+              <p className="flex flex-wrap items-center gap-2 text-sm">
+                Showing activity for <span className="font-medium">{documentName ?? 'one document'}</span>
+                <Link
+                  href={`/workspaces/${workspaceId}/activity`}
+                  className="inline-flex items-center gap-1 rounded-full border border-line px-2 py-0.5 text-xs text-ink-muted hover:text-ink"
+                >
+                  <X className="h-3 w-3" aria-hidden /> Show everything
+                </Link>
+              </p>
+            ) : null}
+
+            <div className="flex flex-wrap items-end gap-3">
+              <div>
+                <label className="label" htmlFor="activity-person">
+                  Person
+                </label>
+                <select
+                  id="activity-person"
+                  className="input h-9 w-auto"
+                  value={actorId}
+                  onChange={(e) => setActorId(e.target.value)}
+                >
+                  <option value="">Anyone</option>
+                  {members.map((m) => (
+                    <option key={m.userId} value={m.userId}>
+                      {m.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label" htmlFor="activity-from">
+                  From
+                </label>
+                <input
+                  id="activity-from"
+                  type="date"
+                  className="input h-9 w-auto"
+                  value={from}
+                  max={to || undefined}
+                  onChange={(e) => setFrom(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label" htmlFor="activity-to">
+                  To
+                </label>
+                <input
+                  id="activity-to"
+                  type="date"
+                  className="input h-9 w-auto"
+                  value={to}
+                  min={from || undefined}
+                  onChange={(e) => setTo(e.target.value)}
+                />
+              </div>
+              <a
+                className="btn-secondary ml-auto h-9"
+                href={`/api/workspaces/${workspaceId}/audit/export${filterQuery ? `?${filterQuery}` : ''}`}
+                download
+              >
+                <Download className="h-4 w-4" aria-hidden /> Export CSV
+              </a>
+            </div>
+
             <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filter activity">
               {FILTERS.map((f) => (
                 <button
@@ -234,7 +345,7 @@ export default function ActivityPage({ params }: { params: Promise<{ id: string 
                   disabled={loadingMore}
                   onClick={() => {
                     setLoadingMore(true);
-                    void load(events[events.length - 1]!.createdAt);
+                    if (nextCursor) void load(nextCursor);
                   }}
                 >
                   {loadingMore ? 'Loading…' : 'Load older activity'}

@@ -45,6 +45,22 @@ export interface AuditRow {
   resource_id: string | null;
   metadata: Record<string, unknown>;
   created_at: Date;
+  /** Order within the workspace's trail; the paging cursor. */
+  seq: string;
+  hash: Buffer | null;
+}
+
+/** Narrowing an activity listing. Every field is optional; together they must all match. */
+export interface AuditFilter {
+  /** document, folder and share are action prefixes; people is membership, invitations and the workspace. */
+  category?: 'document' | 'folder' | 'share' | 'people';
+  action?: AuditAction;
+  actorId?: string;
+  /** Events about one document, folder, link or person. */
+  resourceId?: string;
+  from?: Date;
+  /** Exclusive. */
+  to?: Date;
 }
 
 export interface ChainRow {
@@ -134,17 +150,42 @@ export const auditRepo = {
    * reflected everywhere — but `metadata` keeps a snapshot of the subject (a filename, an
    * invited address) because that subject may no longer exist.
    */
-  async listForWorkspace(db: Db, workspaceId: string, options: { limit: number; before?: Date }): Promise<AuditRow[]> {
+  /**
+   * A page of a workspace's trail, newest first. Paged by seq, which never ties (created_at can),
+   * so no event is skipped or repeated between pages.
+   */
+  async listForWorkspace(
+    db: Db,
+    workspaceId: string,
+    options: AuditFilter & { limit: number; afterSeq?: string; before?: Date },
+  ): Promise<AuditRow[]> {
+    const where = ['a.workspace_id = $1'];
+    const params: unknown[] = [workspaceId];
+    const bind = (value: unknown) => {
+      params.push(value);
+      return `$${params.length}`;
+    };
+    if (options.afterSeq) where.push(`a.seq < ${bind(options.afterSeq)}::bigint`);
+    if (options.before) where.push(`a.created_at < ${bind(options.before)}`);
+    if (options.category === 'people') {
+      where.push(`(a.action LIKE 'member.%' OR a.action LIKE 'invitation.%' OR a.action LIKE 'workspace.%')`);
+    } else if (options.category) {
+      where.push(`a.action LIKE ${bind(`${options.category}.%`)}`);
+    }
+    if (options.action) where.push(`a.action = ${bind(options.action)}`);
+    if (options.actorId) where.push(`a.actor_user_id = ${bind(options.actorId)}::uuid`);
+    if (options.resourceId) where.push(`a.resource_id = ${bind(options.resourceId)}::uuid`);
+    if (options.from) where.push(`a.created_at >= ${bind(options.from)}`);
+    if (options.to) where.push(`a.created_at < ${bind(options.to)}`);
     const { rows } = await db.query<AuditRow>(
       `SELECT a.id, a.actor_user_id, u.email AS actor_email, a.action,
-              a.resource_type, a.resource_id, a.metadata, a.created_at
+              a.resource_type, a.resource_id, a.metadata, a.created_at, a.seq::text AS seq, a.hash
          FROM audit_events a
          LEFT JOIN users u ON u.id = a.actor_user_id
-        WHERE a.workspace_id = $1
-          AND ($2::timestamptz IS NULL OR a.created_at < $2)
-        ORDER BY a.created_at DESC
-        LIMIT $3`,
-      [workspaceId, options.before ?? null, options.limit],
+        WHERE ${where.join(' AND ')}
+        ORDER BY a.seq DESC
+        LIMIT ${bind(options.limit)}`,
+      params,
     );
     return rows;
   },

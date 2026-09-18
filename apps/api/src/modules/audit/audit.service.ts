@@ -6,7 +6,19 @@ import { withTenant } from '../../db/tenant';
 import { withTransaction } from '../../db/tx';
 import { chainHash } from './audit-chain';
 import type { Clock } from '../../types';
-import { auditRepo, type AuditAction, type AuditResource } from './audit.repo';
+import { auditRepo, type AuditAction, type AuditFilter, type AuditResource, type AuditRow } from './audit.repo';
+
+function toEvent(row: AuditRow) {
+  return {
+    id: row.id,
+    actorEmail: row.actor_email,
+    action: row.action,
+    resourceType: row.resource_type,
+    resourceId: row.resource_id,
+    metadata: row.metadata,
+    createdAt: row.created_at,
+  };
+}
 
 export interface AuditEntry {
   workspaceId: string;
@@ -132,22 +144,33 @@ export function createAuditService(deps: { pool: Pool; readPool?: Pool; clock: C
       return { valid: true, legacyEvents, chainedEvents, head, brokenAt: null };
     },
 
-    async list(workspaceId: string, userId: string, options: { limit?: number; before?: Date } = {}) {
+    /** One page of the trail, newest first, and the cursor for the next (null at the end). */
+    async list(
+      workspaceId: string,
+      userId: string,
+      options: AuditFilter & { limit?: number; cursor?: string; before?: Date } = {},
+    ) {
+      const limit = Math.min(options.limit ?? 50, 200);
       const rows = await withTenant(readPool, userId, (db) =>
-        auditRepo.listForWorkspace(db, workspaceId, {
-          limit: Math.min(options.limit ?? 50, 200),
-          before: options.before,
-        }),
+        auditRepo.listForWorkspace(db, workspaceId, { ...options, limit, afterSeq: options.cursor }),
       );
-      return rows.map((row) => ({
-        id: row.id,
-        actorEmail: row.actor_email,
-        action: row.action,
-        resourceType: row.resource_type,
-        resourceId: row.resource_id,
-        metadata: row.metadata,
-        createdAt: row.created_at,
-      }));
+      return {
+        events: rows.map(toEvent),
+        nextCursor: rows.length === limit ? rows[rows.length - 1]!.seq : null,
+      };
+    },
+
+    /** Every matching event, newest first, a batch at a time: for exports of any size. */
+    async *exportRows(workspaceId: string, userId: string, filter: AuditFilter): AsyncGenerator<AuditRow> {
+      let afterSeq: string | undefined;
+      for (;;) {
+        const rows = await withTenant(readPool, userId, (db) =>
+          auditRepo.listForWorkspace(db, workspaceId, { ...filter, limit: 1000, afterSeq }),
+        );
+        yield* rows;
+        if (rows.length < 1000) return;
+        afterSeq = rows[rows.length - 1]!.seq;
+      }
     },
   };
 }

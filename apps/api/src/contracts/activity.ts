@@ -45,11 +45,33 @@ export const AuditEvent = obj({
   createdAt: timestamp,
 }).openapi('AuditEvent');
 
+/** Narrowing the trail; shared by the listing and the CSV export. */
+const auditFilter = {
+  category: z.enum(['document', 'folder', 'share', 'people']).optional().openapi({
+    description: 'people covers members, invitations and the workspace itself.',
+  }),
+  action: AuditAction.optional(),
+  actorId: uuid.optional().openapi({ description: 'Only what this person did.' }),
+  resourceId: uuid.optional().openapi({ description: 'Only events about this document, folder, link or person.' }),
+  from: z.coerce.date().optional().openapi({ type: 'string', format: 'date-time', description: 'Inclusive.' }),
+  to: z.coerce.date().optional().openapi({ type: 'string', format: 'date-time', description: 'Exclusive.' }),
+};
+
 export const AuditQuery = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
-  before: z.coerce.date().optional().openapi({ type: 'string', format: 'date-time' }),
+  cursor: z
+    .string()
+    .regex(/^\d{1,19}$/)
+    .optional()
+    .openapi({ description: 'nextCursor from the previous page.' }),
+  before: z.coerce
+    .date()
+    .optional()
+    .openapi({ type: 'string', format: 'date-time', description: 'Deprecated: use cursor, which never skips events.' }),
+  ...auditFilter,
 });
-export const AuditResponse = obj({ events: z.array(AuditEvent) });
+export const AuditExportQuery = z.object(auditFilter);
+export const AuditResponse = obj({ events: z.array(AuditEvent), nextCursor: z.string().nullable() });
 export const AuditVerifyResponse = obj({
   valid: z.boolean(),
   legacyEvents: z.number().int().openapi({ description: 'Events recorded before hashing began; not verifiable.' }),

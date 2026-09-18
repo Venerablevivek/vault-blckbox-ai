@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Suspense, use, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
+  Activity,
   ArchiveRestore,
   FileArchive,
   X,
@@ -765,6 +766,13 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
               setDetailsFor(doc);
             }}
           />
+          {role === 'OWNER' ? (
+            <MenuItem
+              icon={Activity}
+              label="Activity"
+              href={`/workspaces/${workspaceId}/activity?document=${doc.id}&name=${encodeURIComponent(doc.filename)}`}
+            />
+          ) : null}
           <MenuItem
             icon={History}
             label={doc.version > 1 ? `Versions (${doc.version})` : 'Versions'}

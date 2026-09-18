@@ -675,6 +675,17 @@ export const operations: Operation[] = [
   },
   {
     method: 'get',
+    path: '/api/shares/:id/events/export',
+    tag: 'Sharing',
+    summary: "A link's full access history as CSV",
+    description: 'Columns: time_utc, outcome, viewer, email, user_agent. Any member of the workspace.',
+    auth: S,
+    params: shares.ShareIdParams,
+    success: { file: ['text/csv'] },
+    errors: [401, 404, 429],
+  },
+  {
+    method: 'get',
     path: '/api/shares/:token',
     tag: 'Public sharing',
     summary: 'Resolve a link',
@@ -865,6 +876,19 @@ export const operations: Operation[] = [
     query: activity.AuditQuery,
     success: [200, activity.AuditResponse],
     errors: [400, 401, 403, 404],
+  },
+  {
+    method: 'get',
+    path: '/api/workspaces/:id/audit/export',
+    tag: 'Activity',
+    summary: 'The activity trail as CSV (owners only)',
+    description:
+      'Same filters as the listing. Columns: time_utc, actor, action, resource_type, resource_id, file, details, hash. Cells that a spreadsheet would run as a formula are prefixed with an apostrophe.',
+    auth: S,
+    params: workspaces.WorkspaceParams,
+    query: activity.AuditExportQuery,
+    success: { file: ['text/csv'] },
+    errors: [401, 403, 404, 429],
   },
   {
     method: 'get',

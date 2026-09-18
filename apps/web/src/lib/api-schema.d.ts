@@ -4077,6 +4077,74 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/shares/{id}/events/export': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * A link's full access history as CSV
+     * @description Columns: time_utc, outcome, viewer, email, user_agent. Any member of the workspace.
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description The file, streamed as an attachment. */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'text/csv': string;
+          };
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Rate limited or locked out. See Retry-After. */
+        429: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/shares/{token}': {
     parameters: {
       query?: never;
@@ -5425,7 +5493,14 @@ export interface paths {
       parameters: {
         query?: {
           limit?: number;
+          cursor?: string;
           before?: string;
+          category?: 'document' | 'folder' | 'share' | 'people';
+          action?: components['schemas']['AuditAction'];
+          actorId?: string;
+          resourceId?: string;
+          from?: string;
+          to?: string;
         };
         header?: never;
         path: {
@@ -5443,6 +5518,7 @@ export interface paths {
           content: {
             'application/json': {
               events: components['schemas']['AuditEvent'][];
+              nextCursor: string | null;
             };
           };
         };
@@ -5475,6 +5551,90 @@ export interface paths {
         };
         /** @description Not found, or not a member (deliberately identical). */
         404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/workspaces/{id}/audit/export': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The activity trail as CSV (owners only)
+     * @description Same filters as the listing. Columns: time_utc, actor, action, resource_type, resource_id, file, details, hash. Cells that a spreadsheet would run as a formula are prefixed with an apostrophe.
+     */
+    get: {
+      parameters: {
+        query?: {
+          category?: 'document' | 'folder' | 'share' | 'people';
+          action?: components['schemas']['AuditAction'];
+          actorId?: string;
+          resourceId?: string;
+          from?: string;
+          to?: string;
+        };
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description The file, streamed as an attachment. */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'text/csv': string;
+          };
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Signed in and a member, but the role does not allow this. */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Rate limited or locked out. See Retry-After. */
+        429: {
           headers: {
             [name: string]: unknown;
           };
