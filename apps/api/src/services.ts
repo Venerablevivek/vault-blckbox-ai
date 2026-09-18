@@ -10,6 +10,7 @@ import { createMaintenanceService } from './modules/maintenance/maintenance.serv
 import { createNotificationsService } from './modules/notifications/notifications.service';
 import { createOverviewService } from './modules/overview/overview.service';
 import { createSharesService } from './modules/shares/shares.service';
+import { createFolderSharesService } from './modules/folder-shares/folder-shares.service';
 import { createWorkspacesService } from './modules/workspaces/workspaces.service';
 import { createUploadsService } from './modules/uploads/uploads.service';
 import { ClamdScanner, type Scanner } from './scanning/scanner';
@@ -106,6 +107,20 @@ export function createServices(deps: {
     jobs,
     watermarkMaxBytes: config.SHARE_WATERMARK_MAX_BYTES,
   });
+  const folderShares = createFolderSharesService({
+    pool,
+    storage,
+    clock,
+    logger,
+    webUrl: config.WEB_URL,
+    defaultTtlHours: config.SHARE_DEFAULT_TTL_HOURS,
+    signedUrlTtlSeconds: config.SIGNED_URL_TTL_SECONDS,
+    grantSecret: config.SHARE_GRANT_SECRET,
+    archiveMaxFiles: config.ARCHIVE_MAX_FILES,
+    archiveMaxBytes: config.ARCHIVE_MAX_BYTES,
+    audit,
+    notifications,
+  });
   // The dashboard is all aggregate reads: fine to serve from a replica.
   const overview = createOverviewService({ pool: readPool, clock, audit });
   const folders = createFoldersService({ pool, audit });
@@ -143,6 +158,7 @@ export function createServices(deps: {
     workspaces,
     documents,
     shares,
+    folderShares,
     overview,
     folders,
     uploads,

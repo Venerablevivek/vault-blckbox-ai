@@ -71,6 +71,7 @@ export type ArchiveSummary = Schemas['ArchiveSummary'];
 export type ShareActivity = Schemas['ShareActivity'];
 export type ShareSummary = Schemas['ShareSummary'];
 export type ShareOutcome = Schemas['ShareOutcome'];
+export type FolderShareSummary = Schemas['FolderShareSummary'];
 export interface ShareEvent {
   accessedAt: string;
   outcome: ShareOutcome;

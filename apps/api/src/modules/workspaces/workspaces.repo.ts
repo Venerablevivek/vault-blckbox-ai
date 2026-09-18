@@ -115,6 +115,10 @@ export const workspacesRepo = {
         WHERE d.id = s.document_id AND d.workspace_id = $1 AND s.revoked_at IS NULL`,
       [workspaceId, now],
     );
+    await db.query('UPDATE folder_shares SET revoked_at = $2 WHERE workspace_id = $1 AND revoked_at IS NULL', [
+      workspaceId,
+      now,
+    ]);
     await db.query('DELETE FROM invitations WHERE workspace_id = $1 AND accepted_at IS NULL', [workspaceId]);
     const { rows } = await db.query<{ user_id: string }>(
       'DELETE FROM workspace_members WHERE workspace_id = $1 RETURNING user_id',

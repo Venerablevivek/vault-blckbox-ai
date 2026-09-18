@@ -84,10 +84,14 @@ export function describeAuditEvent(event: AuditEvent): string {
     case 'document.deleted':
       return `${who} deleted ${file}`;
     case 'share.created':
-      return `${who} created a share link for ${file}`;
+      return m.folder ? `${who} created a link to the folder ${m.folder}` : `${who} created a share link for ${file}`;
     case 'share.revoked':
       return `${who} revoked a share link`;
     case 'share.accessed':
+      if (m.folder)
+        return m.outcome === 'download'
+          ? `${file} was downloaded through a folder link`
+          : `The shared folder ${m.folder} was opened`;
       return m.email ? `${email} opened ${file} through a share link` : `${file} was opened through a share link`;
     case 'share.blocked':
       return `A share link for ${file} was used after it stopped working`;

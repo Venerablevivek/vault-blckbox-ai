@@ -223,6 +223,42 @@ describe('API contract', () => {
     ok('POST', '/api/workspaces/:workspaceId/documents', upload);
     const documentId = upload.json().document.id;
     ok('PATCH', '/api/documents/:id', await send('PATCH', `/api/documents/${documentId}`, owner, { folderId }));
+
+    // A link to the folder the document is now in.
+    const folderShare = await send('POST', '/api/folder-shares', owner, { folderId });
+    ok('POST', '/api/folder-shares', folderShare);
+    const folderToken = folderShare.json().share.url.split('/f/')[1];
+    ok('GET', '/api/folder-shares/:token', await send('GET', `/api/folder-shares/${folderToken}`));
+    ok('POST', '/api/folder-shares/:token/view', await send('POST', `/api/folder-shares/${folderToken}/view`));
+    ok(
+      'GET',
+      '/api/folder-shares/:token/documents/:documentId/download',
+      await send('GET', `/api/folder-shares/${folderToken}/documents/${documentId}/download`),
+    );
+    ok(
+      'GET',
+      '/api/folder-shares/:token/archive/summary',
+      await send('GET', `/api/folder-shares/${folderToken}/archive/summary`),
+    );
+    ok('GET', '/api/folder-shares/:token/archive', await send('GET', `/api/folder-shares/${folderToken}/archive`));
+    const lockedFolder = await send('POST', '/api/folder-shares', owner, { folderId, password: 'open-sesame' });
+    ok(
+      'POST',
+      '/api/folder-shares/:token/unlock',
+      await send('POST', `/api/folder-shares/${lockedFolder.json().share.url.split('/f/')[1]}/unlock`, undefined, {
+        password: 'open-sesame',
+      }),
+    );
+    ok(
+      'GET',
+      '/api/workspaces/:workspaceId/folders/:folderId/shares',
+      await send('GET', `/api/workspaces/${workspaceId}/folders/${folderId}/shares`, owner),
+    );
+    ok(
+      'DELETE',
+      '/api/folder-shares/:id',
+      await send('DELETE', `/api/folder-shares/${folderShare.json().share.id}`, owner),
+    );
     ok(
       'GET',
       '/api/workspaces/:workspaceId/archive/summary',

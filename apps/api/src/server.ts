@@ -10,6 +10,7 @@ import { registerAuthRoutes } from './modules/auth/auth.routes';
 import { registerInvitationRoutes, registerWorkspaceRoutes } from './modules/workspaces/workspaces.routes';
 import { registerDocumentRoutes } from './modules/documents/documents.routes';
 import { registerShareRoutes } from './modules/shares/shares.routes';
+import { registerFolderShareRoutes } from './modules/folder-shares/folder-shares.routes';
 import { registerAuditRoutes } from './modules/audit/audit.routes';
 import { createNotificationStreamHub } from './modules/notifications/notification-stream';
 import { registerNotificationRoutes } from './modules/notifications/notifications.routes';
@@ -130,6 +131,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   registerInvitationRoutes(app, { workspaces });
   registerDocumentRoutes(app, { config, documents, workspaces, shares, storage });
   registerShareRoutes(app, { config, shares });
+  registerFolderShareRoutes(app, { config, folderShares: services.folderShares, storage });
   registerFolderRoutes(app, { folders, workspaces });
   registerUploadRoutes(app, { uploads: services.uploads, workspaces });
   registerAuditRoutes(app, { audit, workspaces });

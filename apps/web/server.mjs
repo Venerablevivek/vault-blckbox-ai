@@ -57,14 +57,16 @@ if (process.env.ENABLE_HSTS === 'true') {
   SECURITY_HEADERS['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
 }
 
-const SHARE_PAGE = /^\/s\/([A-Za-z0-9_-]{10,200})\/?$/;
+// Public link pages: /s/<token> for a document, /f/<token> for a folder.
+const SHARE_PAGE = /^\/(s|f)\/([A-Za-z0-9_-]{10,200})\/?$/;
 /** A shared file shown inside the share page: the one response this site may frame (itself only). */
 const SHARE_CONTENT = /^\/api\/shares\/[A-Za-z0-9_-]{10,200}\/content$/;
 
 /** Asks the API whether a share token is live, forwarding the visitor's address and cookies. */
-async function shareStatus(token, req) {
+async function shareStatus(kind, token, req) {
+  const resource = kind === 'f' ? 'folder-shares' : 'shares';
   try {
-    const response = await fetch(`${apiUrl}/api/shares/${encodeURIComponent(token)}`, {
+    const response = await fetch(`${apiUrl}/api/${resource}/${encodeURIComponent(token)}`, {
       headers: {
         'x-forwarded-for': req.headers['x-forwarded-for'] ?? '',
         ...(req.headers.cookie ? { cookie: req.headers.cookie } : {}),
@@ -105,7 +107,7 @@ createServer(async (req, res) => {
     (req.method === 'GET' || req.method === 'HEAD') && req.url ? SHARE_PAGE.exec(req.url.split('?')[0]) : null;
   if (share) {
     res.setHeader('Cache-Control', 'no-store');
-    const status = await shareStatus(share[1], req);
+    const status = await shareStatus(share[1], share[2], req);
     if (status === 404 || status === 410) {
       // Node writes headers through writeHead(statusCode), explicitly or implicitly, so
       // overriding it here fixes the status however Next.js ends the response.

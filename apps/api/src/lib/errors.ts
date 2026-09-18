@@ -57,6 +57,9 @@ export const Errors = {
 
   unsupportedMediaType: (message: string) => new AppError(415, 'UNSUPPORTED_FILE_TYPE', message),
 
+  /** 413 with a specific code, for requests that would produce too much rather than send too much. */
+  payloadTooLargeFor: (code: string, message: string) => new AppError(413, code, message),
+
   badRequest: (code: string, message: string) => new AppError(400, code, message),
 
   /** 401 with a specific code, for public routes that need a credential other than a session. */

@@ -46,6 +46,7 @@ import {
 import { useDialogs } from '@/components/dialog';
 import { DocumentDetails } from '@/components/document-details';
 import { FolderPicker } from '@/components/folder-picker';
+import { FolderSharePanel } from '@/components/folder-share-panel';
 import { PreviewModal, PREVIEWABLE } from '@/components/preview-modal';
 import { SharePanel } from '@/components/share-panel';
 import { toast } from '@/components/toast';
@@ -116,6 +117,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
   const loadMoreSentinel = useRef<HTMLDivElement>(null);
 
   const [shareFor, setShareFor] = useState<DocumentDto | null>(null);
+  const [shareFolderFor, setShareFolderFor] = useState<FolderDto | null>(null);
   const [previewFor, setPreviewFor] = useState<DocumentDto | null>(null);
   const [detailsFor, setDetailsFor] = useState<DocumentDto | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -1261,6 +1263,14 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                           label="Download as zip"
                           onClick={() => void downloadZip({ folderId: folder.id })}
                         />
+                        <MenuItem
+                          icon={Share2}
+                          label={contributor ? 'Share folder…' : 'Folder links'}
+                          onClick={() => {
+                            setMenuFor(null);
+                            setShareFolderFor(folder);
+                          }}
+                        />
                         {contributor ? (
                           <>
                             <MenuItem
@@ -1408,6 +1418,15 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
           userId={session.userId}
           onClose={() => setShareFor(null)}
           onChanged={() => void load()}
+        />
+      ) : null}
+      {shareFolderFor ? (
+        <FolderSharePanel
+          workspaceId={workspaceId}
+          folder={shareFolderFor}
+          role={role}
+          userId={session.userId}
+          onClose={() => setShareFolderFor(null)}
         />
       ) : null}
       {previewFor ? <PreviewModal document={previewFor} onClose={() => setPreviewFor(null)} /> : null}

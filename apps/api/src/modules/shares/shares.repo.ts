@@ -469,6 +469,12 @@ export const sharesRepo = {
           AND s.revoked_at IS NULL`,
       [workspaceId, userId, now],
     );
-    return rowCount ?? 0;
+    // Folder links too: whoever can no longer share mustn't keep a folder open to the outside.
+    const folders = await db.query(
+      `UPDATE folder_shares SET revoked_at = $3
+        WHERE workspace_id = $1 AND created_by = $2 AND revoked_at IS NULL`,
+      [workspaceId, userId, now],
+    );
+    return (rowCount ?? 0) + (folders.rowCount ?? 0);
   },
 };

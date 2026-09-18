@@ -31,7 +31,7 @@ export type AuditAction =
   | 'workspace.renamed'
   | 'document.quarantined';
 
-export type AuditResource = 'workspace' | 'document' | 'folder' | 'share' | 'member' | 'invitation';
+export type AuditResource = 'workspace' | 'document' | 'folder' | 'share' | 'folder_share' | 'member' | 'invitation';
 
 export interface AuditRow {
   id: string;

@@ -4191,6 +4191,753 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/folder-shares': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Create a link to a folder and everything below it */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['CreateFolderShareRequest'];
+        };
+      };
+      responses: {
+        /** @description Success */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              share: {
+                /** Format: uuid */
+                id: string;
+                /**
+                 * Format: uri
+                 * @description Contains the token. Returned only here, once.
+                 */
+                url: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-17T10:15:00.000Z
+                 */
+                expiresAt: string | null;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-17T10:15:00.000Z
+                 */
+                createdAt: string;
+                hasPassword: boolean;
+              };
+            };
+          };
+        };
+        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Signed in and a member, but the role does not allow this. */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/workspaces/{workspaceId}/folders/{folderId}/shares': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** A folder's live links, with how often each was opened and downloaded */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          workspaceId: string;
+          folderId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Success */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              shares: components['schemas']['FolderShareSummary'][];
+            };
+          };
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/folder-shares/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Revoke a folder link */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Success, no content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Signed in and a member, but the role does not allow this. */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/folder-shares/{token}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Browse a shared folder
+     * @description Records nothing. Only live files the malware scan has cleared are listed. A folder outside the shared one is 404.
+     */
+    get: {
+      parameters: {
+        query?: {
+          folderId?: string;
+        };
+        header?: never;
+        path: {
+          token: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Success */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['PublicFolderShare'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Gone: revoked, expired, used up, or already used. */
+        410: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Rate limited or locked out. See Retry-After. */
+        429: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/folder-shares/{token}/unlock': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Enter a folder link password
+     * @description Sets an HttpOnly cookie that unlocks this link for one hour.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          token: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['UnlockRequest'];
+        };
+      };
+      responses: {
+        /** @description Success, no content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Gone: revoked, expired, used up, or already used. */
+        410: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Rate limited or locked out. See Retry-After. */
+        429: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/folder-shares/{token}/view': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Record that the shared folder was opened */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          token: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Success, no content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Gone: revoked, expired, used up, or already used. */
+        410: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Rate limited or locked out. See Retry-After. */
+        429: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/folder-shares/{token}/documents/{documentId}/download': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Download one file from a shared folder (redirect to a signed URL) */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          token: string;
+          documentId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Redirect to a short-lived signed URL. */
+        302: {
+          headers: {
+            Location?: string;
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Signed in and a member, but the role does not allow this. */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Conflict with the current state. */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Gone: revoked, expired, used up, or already used. */
+        410: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Rate limited or locked out. See Retry-After. */
+        429: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/folder-shares/{token}/archive/summary': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** What a zip of the shared folder would contain */
+    get: {
+      parameters: {
+        query?: {
+          folderId?: string;
+        };
+        header?: never;
+        path: {
+          token: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Success */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ArchiveSummary'];
+          };
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Conflict with the current state. */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Gone: revoked, expired, used up, or already used. */
+        410: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
+        413: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Rate limited or locked out. See Retry-After. */
+        429: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/folder-shares/{token}/archive': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Download a shared folder (or a folder inside it) as a zip */
+    get: {
+      parameters: {
+        query?: {
+          folderId?: string;
+        };
+        header?: never;
+        path: {
+          token: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description The file, streamed as an attachment. */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/zip': string;
+          };
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Signed in and a member, but the role does not allow this. */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Conflict with the current state. */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Gone: revoked, expired, used up, or already used. */
+        410: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
+        413: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Rate limited or locked out. See Retry-After. */
+        429: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description At capacity; retry after Retry-After seconds. */
+        503: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/workspaces/{id}/audit': {
     parameters: {
       query?: never;
@@ -4761,7 +5508,7 @@ export interface components {
       actorEmail: string | null;
       action: components['schemas']['AuditAction'];
       /** @enum {string} */
-      resourceType: 'workspace' | 'document' | 'folder' | 'share' | 'member' | 'invitation';
+      resourceType: 'workspace' | 'document' | 'folder' | 'share' | 'folder_share' | 'member' | 'invitation';
       /** Format: uuid */
       resourceId: string | null;
       metadata: {
@@ -5185,6 +5932,86 @@ export interface components {
       email: string;
       code: string;
     };
+    CreateFolderShareRequest: {
+      /** Format: uuid */
+      folderId: string;
+      /** @description null = never expires; omitted = the default. */
+      expiresInHours?: number | null;
+      password?: string | null;
+    };
+    FolderShareSummary: {
+      /** Format: uuid */
+      id: string;
+      /** Format: uuid */
+      createdBy: string;
+      /**
+       * Format: date-time
+       * @example 2026-09-17T10:15:00.000Z
+       */
+      createdAt: string;
+      /**
+       * Format: date-time
+       * @example 2026-09-17T10:15:00.000Z
+       */
+      expiresAt: string | null;
+      hasPassword: boolean;
+      opens: number;
+      downloads: number;
+      /**
+       * Format: date-time
+       * @example 2026-09-17T10:15:00.000Z
+       */
+      lastAccessedAt: string | null;
+    };
+    PublicFolderShare:
+      | {
+          /** @enum {boolean} */
+          locked: true;
+          /**
+           * Format: date-time
+           * @example 2026-09-17T10:15:00.000Z
+           */
+          expiresAt: string | null;
+        }
+      | {
+          /** @enum {boolean} */
+          locked: false;
+          /** @description The shared folder. */
+          name: string;
+          /**
+           * Format: date-time
+           * @example 2026-09-17T10:15:00.000Z
+           */
+          expiresAt: string | null;
+          passwordProtected: boolean;
+          /** @description From the shared folder down to the one shown. */
+          path: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+          }[];
+          folders: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            documentCount: number;
+            folderCount: number;
+          }[];
+          documents: {
+            /** Format: uuid */
+            id: string;
+            filename: string;
+            mimeType: string;
+            size: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            createdAt: string;
+          }[];
+          /** @description More than 500 folders or files here; only the first are listed. */
+          truncated: boolean;
+        };
     AuditVerification: {
       valid: boolean;
       /** @description Events recorded before hashing began; not verifiable. */

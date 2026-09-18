@@ -11,7 +11,7 @@ import { KeyRound } from 'lucide-react';
  * the page re-renders on the server with the document shown. The password itself never
  * touches client-side storage.
  */
-export function SharePasswordForm({ token }: { token: string }) {
+export function SharePasswordForm({ token, kind = 'shares' }: { token: string; kind?: 'shares' | 'folder-shares' }) {
   const router = useRouter();
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +22,7 @@ export function SharePasswordForm({ token }: { token: string }) {
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch(`/api/shares/${encodeURIComponent(token)}/unlock`, {
+      const response = await fetch(`/api/${kind}/${encodeURIComponent(token)}/unlock`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),

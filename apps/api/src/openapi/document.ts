@@ -4,6 +4,7 @@ import * as activity from '../contracts/activity';
 import { ErrorBody, z } from '../contracts/common';
 import * as documents from '../contracts/documents';
 import * as shares from '../contracts/shares';
+import * as folderShares from '../contracts/folder-shares';
 import * as uploads from '../contracts/uploads';
 import * as workspaces from '../contracts/workspaces';
 
@@ -687,6 +688,105 @@ export const operations: Operation[] = [
     params: shares.ShareTokenParams,
     success: 'redirect',
     errors: [401, 404, 410, 429],
+  },
+
+  // ---- Folder links ------------------------------------------------------------------------
+  {
+    method: 'post',
+    path: '/api/folder-shares',
+    tag: 'Sharing',
+    summary: 'Create a link to a folder and everything below it',
+    auth: S,
+    body: folderShares.CreateFolderShareBody,
+    success: [201, folderShares.FolderShareCreatedResponse],
+    errors: [400, 401, 403, 404],
+  },
+  {
+    method: 'get',
+    path: '/api/workspaces/:workspaceId/folders/:folderId/shares',
+    tag: 'Sharing',
+    summary: "A folder's live links, with how often each was opened and downloaded",
+    auth: S,
+    params: folderShares.WorkspaceFolderParams,
+    success: [200, folderShares.FolderSharesResponse],
+    errors: [401, 404],
+  },
+  {
+    method: 'delete',
+    path: '/api/folder-shares/:id',
+    tag: 'Sharing',
+    summary: 'Revoke a folder link',
+    auth: S,
+    params: folderShares.FolderShareIdParams,
+    success: [204, null],
+    errors: [401, 403, 404],
+  },
+  {
+    method: 'get',
+    path: '/api/folder-shares/:token',
+    tag: 'Public sharing',
+    summary: 'Browse a shared folder',
+    auth: P,
+    params: shares.ShareTokenParams,
+    query: folderShares.FolderShareBrowseQuery,
+    success: [200, folderShares.PublicFolderShareResponse],
+    errors: [404, 410, 429],
+    description:
+      'Records nothing. Only live files the malware scan has cleared are listed. A folder outside the shared one is 404.',
+  },
+  {
+    method: 'post',
+    path: '/api/folder-shares/:token/unlock',
+    tag: 'Public sharing',
+    summary: 'Enter a folder link password',
+    auth: P,
+    params: shares.ShareTokenParams,
+    body: shares.UnlockBody,
+    success: [204, null],
+    errors: [400, 401, 404, 410, 429],
+    description: 'Sets an HttpOnly cookie that unlocks this link for one hour.',
+  },
+  {
+    method: 'post',
+    path: '/api/folder-shares/:token/view',
+    tag: 'Public sharing',
+    summary: 'Record that the shared folder was opened',
+    auth: P,
+    params: shares.ShareTokenParams,
+    success: [204, null],
+    errors: [401, 404, 410, 429],
+  },
+  {
+    method: 'get',
+    path: '/api/folder-shares/:token/documents/:documentId/download',
+    tag: 'Public sharing',
+    summary: 'Download one file from a shared folder (redirect to a signed URL)',
+    auth: P,
+    params: folderShares.FolderShareDocumentParams,
+    success: 'redirect',
+    errors: [401, 403, 404, 409, 410, 429],
+  },
+  {
+    method: 'get',
+    path: '/api/folder-shares/:token/archive/summary',
+    tag: 'Public sharing',
+    summary: 'What a zip of the shared folder would contain',
+    auth: P,
+    params: shares.ShareTokenParams,
+    query: folderShares.FolderShareBrowseQuery,
+    success: [200, documents.ArchiveSummaryResponse],
+    errors: [401, 404, 409, 410, 413, 429],
+  },
+  {
+    method: 'get',
+    path: '/api/folder-shares/:token/archive',
+    tag: 'Public sharing',
+    summary: 'Download a shared folder (or a folder inside it) as a zip',
+    auth: P,
+    params: shares.ShareTokenParams,
+    query: folderShares.FolderShareBrowseQuery,
+    success: { file: ['application/zip'] },
+    errors: [401, 403, 404, 409, 410, 413, 429, 503],
   },
 
   // ---- Activity ---------------------------------------------------------------------------

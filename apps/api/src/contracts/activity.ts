@@ -36,7 +36,7 @@ export const AuditEvent = obj({
   id: uuid,
   actorEmail: z.string().nullable(),
   action: AuditAction,
-  resourceType: z.enum(['workspace', 'document', 'folder', 'share', 'member', 'invitation']),
+  resourceType: z.enum(['workspace', 'document', 'folder', 'share', 'folder_share', 'member', 'invitation']),
   resourceId: uuid.nullable(),
   metadata: z.record(z.unknown()),
   createdAt: timestamp,
