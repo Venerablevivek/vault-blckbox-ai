@@ -21,8 +21,10 @@ import {
   Pencil,
   Search,
   Share2,
+  Star,
   Trash2,
   UploadCloud,
+  History,
 } from 'lucide-react';
 import {
   api,
@@ -46,7 +48,7 @@ import { toast } from '@/components/toast';
 import { cancelDirectUpload, directUpload, UploadCancelled } from '@/lib/direct-upload';
 import { EmptyState, ErrorNote, FileGlyph, Shell, Skeleton, StorageMeter, useSession } from '@/components/ui';
 
-type Tab = 'all' | 'shared' | 'mine' | 'trash';
+type Tab = 'all' | 'starred' | 'recent' | 'shared' | 'mine' | 'trash';
 type SortChoice = 'date-desc' | 'date-asc' | 'name-asc' | 'name-desc' | 'size-desc' | 'size-asc';
 
 const SORTS: Array<{ value: SortChoice; label: string }> = [
@@ -124,7 +126,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
       if (trash) qs.set('view', 'trash');
       else if (tab !== 'all') qs.set('filter', tab);
       if (search) qs.set('q', search);
-      if (folderId && !trash) qs.set('folderId', folderId);
+      if (folderId && tab === 'all') qs.set('folderId', folderId);
       if (cursor) qs.set('cursor', cursor);
       return qs.toString();
     },
@@ -392,6 +394,43 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
     } catch (err) {
       toast(err instanceof ApiRequestError ? err.message : 'Delete failed.', 'error');
     }
+  }
+
+  async function toggleStar(doc: DocumentDto) {
+    const starred = !doc.starred;
+    const apply = (value: boolean) =>
+      setDocuments((docs) => docs.map((d) => (d.id === doc.id ? { ...d, starred: value } : d)));
+    apply(starred);
+    try {
+      if (starred) await api.put(`/api/documents/${doc.id}/star`);
+      else await api.del(`/api/documents/${doc.id}/star`);
+      // The Starred tab and its count follow the change.
+      if (tab === 'starred' && !starred) setDocuments((docs) => docs.filter((d) => d.id !== doc.id));
+      setData((current) =>
+        current?.counts
+          ? { ...current, counts: { ...current.counts, starred: current.counts.starred + (starred ? 1 : -1) } }
+          : current,
+      );
+    } catch (err) {
+      apply(!starred);
+      toast(err instanceof ApiRequestError ? err.message : 'Could not update the star.', 'error');
+    }
+  }
+
+  function StarButton({ doc }: { doc: DocumentDto }) {
+    if (trash) return null;
+    return (
+      <button
+        type="button"
+        className={`shrink-0 rounded p-1 transition-colors ${doc.starred ? 'text-amber-500 hover:text-amber-600' : 'text-ink-subtle hover:text-ink'}`}
+        onClick={() => void toggleStar(doc)}
+        aria-pressed={Boolean(doc.starred)}
+        aria-label={doc.starred ? `Unstar ${doc.filename}` : `Star ${doc.filename}`}
+        title={doc.starred ? 'Unstar' : 'Star'}
+      >
+        <Star className="h-4 w-4" fill={doc.starred ? 'currentColor' : 'none'} aria-hidden />
+      </button>
+    );
   }
 
   async function restoreDocument(doc: DocumentDto) {
@@ -663,6 +702,8 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
 
   const tabs: Array<{ key: Tab; label: string; count?: number }> = [
     { key: 'all', label: 'All', count: counts?.all },
+    { key: 'starred', label: 'Starred', count: counts?.starred },
+    { key: 'recent', label: 'Recent' },
     { key: 'shared', label: 'Shared', count: counts?.shared },
     { key: 'mine', label: 'Mine', count: counts?.mine },
     { key: 'trash', label: 'Trash', count: counts?.trash },
@@ -762,6 +803,8 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                 className={`rounded-md px-3 py-1.5 text-sm transition-colors ${tab === t.key ? 'bg-brand-600 font-medium text-white' : 'text-ink-muted hover:text-ink'}`}
               >
                 {t.key === 'trash' ? <Trash2 className="mr-1 inline h-3.5 w-3.5" aria-hidden /> : null}
+                {t.key === 'starred' ? <Star className="mr-1 inline h-3.5 w-3.5" aria-hidden /> : null}
+                {t.key === 'recent' ? <History className="mr-1 inline h-3.5 w-3.5" aria-hidden /> : null}
                 {t.label}
                 {t.count !== undefined ? (
                   <span className={`ml-1.5 text-xs ${tab === t.key ? 'text-brand-100' : 'text-ink-subtle'}`}>
@@ -791,7 +834,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
             </kbd>
           </div>
 
-          {!trash ? (
+          {!trash && tab !== 'recent' ? (
             <select
               className="input h-9 w-auto"
               value={sort}
@@ -1056,6 +1099,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                   <li key={doc.id} className="card flex flex-col p-4 transition-shadow hover:shadow-lift">
                     <div className="flex items-start justify-between">
                       <FileGlyph filename={doc.filename} mimeType={doc.mimeType} />
+                      <StarButton doc={doc} />
                       <ScanChip doc={doc} />
                       <LinkChip doc={doc} />
                     </div>
@@ -1075,6 +1119,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                 ) : (
                   <li key={doc.id} className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-slate-50/70">
                     <FileGlyph filename={doc.filename} mimeType={doc.mimeType} />
+                    <StarButton doc={doc} />
                     <div className="min-w-0 flex-1">
                       <button
                         className="block max-w-full truncate text-left text-sm font-medium hover:text-brand-700 disabled:hover:text-ink"
@@ -1110,7 +1155,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                             {doc.links?.lastAccessedAt ? (
                               <span className="text-ink-subtle">last opened {timeAgo(doc.links.lastAccessedAt)}</span>
                             ) : null}
-                            {searching && doc.folderId ? (
+                            {(searching || tab !== 'all') && doc.folderId ? (
                               <Link
                                 href={`/workspaces/${workspaceId}/documents?folder=${doc.folderId}`}
                                 className="inline-flex items-center gap-1 text-brand-600 hover:underline"

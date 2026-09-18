@@ -172,6 +172,13 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
     return objects;
   }
 
+  /** Remembers that a person opened a document, for their Recent view. Best effort. */
+  function touchRecent(userId: string, documentId: string): void {
+    void documentsRepo.touchRecent(pool, userId, documentId, clock.now()).catch((error: unknown) => {
+      logger.warn({ err: error, documentId }, 'failed to record a recent document');
+    });
+  }
+
   /** A destination folder must exist in the document's own workspace. */
   async function requireFolderInWorkspace(workspaceId: string, folderId: string | null): Promise<void> {
     if (folderId === null) return;
@@ -277,6 +284,7 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
 
         // Identical content is allowed (people keep copies on purpose), but worth pointing out.
         const duplicateOf = await documentsRepo.findByChecksum(pool, workspaceId, sha256, document.id);
+        touchRecent(input.userId, document.id);
         return { document, duplicateOf };
       } catch (error) {
         // Metadata failed: remove the object we just wrote so no orphan is left behind.
@@ -388,6 +396,7 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
     async getPreviewUrl(documentId: string, userId: string): Promise<string> {
       const { document } = await authorizeById(documentId, userId);
       assertScanAllows(document);
+      touchRecent(userId, document.id);
       if (!PREVIEWABLE.has(document.mime_type)) {
         throw Errors.unsupportedMediaType('This type of file cannot be previewed. Download it instead.');
       }
@@ -410,6 +419,7 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
     async getDownloadUrl(documentId: string, userId: string): Promise<string> {
       const { document } = await authorizeById(documentId, userId);
       assertScanAllows(document);
+      touchRecent(userId, document.id);
       audit.recordAsync({
         workspaceId: document.workspace_id,
         actorUserId: userId,
@@ -552,6 +562,13 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
 
     computeChecksum,
     purgeWorkspace,
+    touchRecent,
+
+    /** Stars or unstars a document for the caller. Any member may star what they can see. */
+    async setStar(documentId: string, userId: string, starred: boolean): Promise<void> {
+      await authorizeById(documentId, userId);
+      await documentsRepo.setStar(pool, userId, documentId, starred);
+    },
 
     /**
      * Job handler for document.scan: streams the object to the scanner. Clean files become

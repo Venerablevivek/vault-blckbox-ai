@@ -218,6 +218,8 @@ describe('API contract', () => {
     ok('POST', '/api/workspaces/:workspaceId/documents', upload);
     const documentId = upload.json().document.id;
     ok('PATCH', '/api/documents/:id', await send('PATCH', `/api/documents/${documentId}`, owner, { folderId }));
+    ok('PUT', '/api/documents/:id/star', await send('PUT', `/api/documents/${documentId}/star`, owner));
+    ok('DELETE', '/api/documents/:id/star', await send('DELETE', `/api/documents/${documentId}/star`, owner));
     ok('GET', '/api/documents/:id/download', await send('GET', `/api/documents/${documentId}/download`, owner));
     ok('GET', '/api/documents/:id/preview', await send('GET', `/api/documents/${documentId}/preview`, owner));
 

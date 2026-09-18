@@ -28,6 +28,8 @@ export interface DocumentListRow extends DocumentRow {
   /** Page views of those links. */
   opens: string;
   last_accessed_at: Date | null;
+  /** Whether the person listing has starred it. */
+  starred: boolean;
   /**
    * The value the list is sorted by, as PostgreSQL's own text form, echoed back to build the
    * next cursor. Text, not a JS Date: timestamps have microsecond precision and a Date keeps
@@ -37,7 +39,7 @@ export interface DocumentListRow extends DocumentRow {
 }
 
 export type DocumentSort = 'date' | 'name' | 'size';
-export type DocumentFilter = 'all' | 'shared' | 'mine';
+export type DocumentFilter = 'all' | 'shared' | 'mine' | 'starred' | 'recent';
 
 export interface ListQuery {
   workspaceId: string;
@@ -57,11 +59,12 @@ export interface ListQuery {
  * Sort keys. Each entry is a fixed SQL fragment selected by name from this table — never
  * text supplied by the client — so building the ORDER BY from it cannot inject SQL.
  */
-const SORT_SQL: Record<DocumentSort | 'deleted', { expr: string; cast: string }> = {
+const SORT_SQL: Record<DocumentSort | 'deleted' | 'recent', { expr: string; cast: string }> = {
   date: { expr: 'd.created_at', cast: 'timestamptz' },
   name: { expr: 'lower(d.filename)', cast: 'text' },
   size: { expr: 'd.size', cast: 'bigint' },
   deleted: { expr: 'd.deleted_at', cast: 'timestamptz' },
+  recent: { expr: 'r.last_opened_at', cast: 'timestamptz' },
 };
 
 /** Escapes LIKE wildcards so a search for "50%" matches the text "50%", not everything. */
@@ -194,13 +197,15 @@ export const documentsRepo = {
    */
   async list(db: Db, q: ListQuery): Promise<DocumentListRow[]> {
     const trash = q.view === 'trash';
-    const sort = SORT_SQL[trash ? 'deleted' : q.sort];
-    const ascending = trash ? false : q.ascending;
+    const recent = !trash && q.filter === 'recent';
+    // Recent is always most recently opened first; its own ordering replaces the chosen sort.
+    const sort = SORT_SQL[trash ? 'deleted' : recent ? 'recent' : q.sort];
+    const ascending = trash || recent ? false : q.ascending;
     const direction = ascending ? 'ASC' : 'DESC';
     const comparator = ascending ? '>' : '<';
 
     const where: string[] = ['d.workspace_id = $1'];
-    const params: unknown[] = [q.workspaceId];
+    const params: unknown[] = [q.workspaceId, q.userId];
     const bind = (value: unknown) => {
       params.push(value);
       return `$${params.length}`;
@@ -210,11 +215,16 @@ export const documentsRepo = {
 
     if (q.search) {
       where.push(`d.filename ILIKE ${bind(`%${escapeLike(q.search)}%`)}`);
-    } else if (!trash) {
+    } else if (!trash && q.filter === 'all') {
+      // Only the plain view is per folder; search and the filters (shared, mine, starred,
+      // recent) cover the whole workspace, matching their tab counts.
       where.push(`d.folder_id IS NOT DISTINCT FROM ${bind(q.folderId)}::uuid`);
     }
 
-    if (!trash && q.filter === 'mine') where.push(`d.uploaded_by = ${bind(q.userId)}`);
+    if (!trash && q.filter === 'mine') where.push(`d.uploaded_by = $2`);
+    if (!trash && q.filter === 'starred') {
+      where.push(`EXISTS (SELECT 1 FROM document_stars st WHERE st.document_id = d.id AND st.user_id = $2)`);
+    }
     if (!trash && q.filter === 'shared') {
       where.push(`EXISTS (SELECT 1 FROM shares s WHERE s.document_id = d.id AND s.revoked_at IS NULL)`);
     }
@@ -233,8 +243,10 @@ export const documentsRepo = {
               du.email AS deleted_by_email,
               COALESCE(l.link_count, 0) AS link_count,
               COALESCE(l.opens, 0)      AS opens,
-              l.last_accessed_at
+              l.last_accessed_at,
+              EXISTS (SELECT 1 FROM document_stars st WHERE st.document_id = d.id AND st.user_id = $2) AS starred
          FROM documents d
+         ${recent ? 'JOIN document_recents r ON r.document_id = d.id AND r.user_id = $2' : ''}
          JOIN users u ON u.id = d.uploaded_by
          LEFT JOIN users du ON du.id = d.deleted_by
          LEFT JOIN LATERAL (
@@ -255,17 +267,44 @@ export const documentsRepo = {
 
   /** Tab counts for the active view, across the whole workspace. */
   async counts(db: Db, workspaceId: string, userId: string) {
-    const { rows } = await db.query<{ all: string; shared: string; mine: string; trash: string }>(
+    const { rows } = await db.query<{ all: string; shared: string; mine: string; starred: string; trash: string }>(
       `SELECT COUNT(*) FILTER (WHERE deleted_at IS NULL) AS all,
               COUNT(*) FILTER (WHERE deleted_at IS NULL AND EXISTS (
                 SELECT 1 FROM shares s WHERE s.document_id = documents.id AND s.revoked_at IS NULL)) AS shared,
               COUNT(*) FILTER (WHERE deleted_at IS NULL AND uploaded_by = $2) AS mine,
+              COUNT(*) FILTER (WHERE deleted_at IS NULL AND EXISTS (
+                SELECT 1 FROM document_stars st WHERE st.document_id = documents.id AND st.user_id = $2)) AS starred,
               COUNT(*) FILTER (WHERE deleted_at IS NOT NULL) AS trash
          FROM documents WHERE workspace_id = $1`,
       [workspaceId, userId],
     );
     const r = rows[0]!;
-    return { all: Number(r.all), shared: Number(r.shared), mine: Number(r.mine), trash: Number(r.trash) };
+    return {
+      all: Number(r.all),
+      shared: Number(r.shared),
+      mine: Number(r.mine),
+      starred: Number(r.starred),
+      trash: Number(r.trash),
+    };
+  },
+
+  async setStar(db: Db, userId: string, documentId: string, starred: boolean): Promise<void> {
+    if (starred) {
+      await db.query('INSERT INTO document_stars (user_id, document_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [
+        userId,
+        documentId,
+      ]);
+    } else {
+      await db.query('DELETE FROM document_stars WHERE user_id = $1 AND document_id = $2', [userId, documentId]);
+    }
+  },
+
+  async touchRecent(db: Db, userId: string, documentId: string, at: Date): Promise<void> {
+    await db.query(
+      `INSERT INTO document_recents (user_id, document_id, last_opened_at) VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, document_id) DO UPDATE SET last_opened_at = GREATEST(document_recents.last_opened_at, $3)`,
+      [userId, documentId, at],
+    );
   },
 
   /**

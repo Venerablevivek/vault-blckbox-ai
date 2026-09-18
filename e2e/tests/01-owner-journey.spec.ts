@@ -38,7 +38,7 @@ test('owner uploads, shares, tracks, revokes, trashes and restores a document', 
       mimeType: 'text/plain',
       buffer: Buffer.from('Quarterly numbers\n'),
     });
-    await expect(page.getByRole('button', { name: 'quarterly-report.txt' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'quarterly-report.txt', exact: true })).toBeVisible();
   });
 
   await test.step('rename uses the in-app dialog, not a browser prompt', async () => {
@@ -51,7 +51,7 @@ test('owner uploads, shares, tracks, revokes, trashes and restores a document', 
     await dialog.getByLabel('Name').fill('q3-report.txt');
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(dialog).toBeHidden();
-    await expect(page.getByRole('button', { name: 'q3-report.txt' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'q3-report.txt', exact: true })).toBeVisible();
   });
 
   await test.step('create a folder', async () => {
@@ -120,19 +120,21 @@ test('owner uploads, shares, tracks, revokes, trashes and restores a document', 
   });
 
   await test.step('trash and restore', async () => {
-    const row = page.getByRole('listitem').filter({ has: page.getByRole('button', { name: 'q3-report.txt' }) });
+    const row = page
+      .getByRole('listitem')
+      .filter({ has: page.getByRole('button', { name: 'q3-report.txt', exact: true }) });
     await row.getByRole('button', { name: 'More actions' }).click();
     await page.getByRole('menuitem', { name: 'Move to trash' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Move to trash' }).click();
-    await expect(page.getByRole('button', { name: 'q3-report.txt' })).toBeHidden();
+    await expect(page.getByRole('button', { name: 'q3-report.txt', exact: true })).toBeHidden();
 
     await page.getByRole('tab', { name: /trash/i }).click();
-    const trashed = page.getByRole('button', { name: 'q3-report.txt' });
+    const trashed = page.getByRole('button', { name: 'q3-report.txt', exact: true });
     await expect(trashed).toBeVisible();
     await page.getByRole('button', { name: 'Restore' }).click();
     await expect(trashed).toBeHidden();
 
     await page.getByRole('tab', { name: /^all/i }).click();
-    await expect(page.getByRole('button', { name: 'q3-report.txt' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'q3-report.txt', exact: true })).toBeVisible();
   });
 });

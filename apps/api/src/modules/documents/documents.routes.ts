@@ -24,6 +24,7 @@ export function toDocumentDto(row: DocumentRow & Partial<DocumentListRow>) {
     size: Number(row.size),
     sha256: row.sha256 ? row.sha256.toString('hex') : null,
     scanStatus: row.scan_status,
+    ...(row.starred !== undefined ? { starred: row.starred } : {}),
     folderId: row.folder_id,
     uploadedBy: row.uploaded_by,
     uploadedByEmail: row.uploaded_by_email,
@@ -173,6 +174,24 @@ export function registerDocumentRoutes(
     handler: async (request) => {
       const { id } = DocumentParams.parse(request.params);
       return documents.trash(id, currentUser(request).id);
+    },
+  });
+
+  app.put('/api/documents/:id/star', {
+    preHandler: requireSession,
+    handler: async (request, reply) => {
+      const { id } = DocumentParams.parse(request.params);
+      await documents.setStar(id, currentUser(request).id, true);
+      return reply.status(204).send();
+    },
+  });
+
+  app.delete('/api/documents/:id/star', {
+    preHandler: requireSession,
+    handler: async (request, reply) => {
+      const { id } = DocumentParams.parse(request.params);
+      await documents.setStar(id, currentUser(request).id, false);
+      return reply.status(204).send();
     },
   });
 

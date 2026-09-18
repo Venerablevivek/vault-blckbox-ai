@@ -13,7 +13,9 @@ export const ListDocumentsQuery = z.object({
     .transform((s) => s.trim())
     .optional()
     .openapi({ description: 'Searches file names across the whole workspace (ignores folderId).' }),
-  filter: z.enum(['all', 'shared', 'mine']).default('all'),
+  filter: z.enum(['all', 'shared', 'mine', 'starred', 'recent']).default('all').openapi({
+    description: 'Everything but all spans the whole workspace. recent is ordered by when you last opened each file.',
+  }),
   sort: z.enum(['date', 'name', 'size']).default('date'),
   order: z.enum(['asc', 'desc']).optional().openapi({ description: 'Defaults to asc for name, desc otherwise.' }),
   cursor: z.string().max(500).optional().openapi({ description: 'nextCursor from the previous page.' }),
@@ -58,6 +60,7 @@ export const Document = obj({
   createdAt: timestamp,
   deletedAt: timestamp.nullable(),
   deletedByEmail: z.string().nullable(),
+  starred: z.boolean().optional().openapi({ description: 'Whether you starred it. Present in listings.' }),
   links: obj({ count: z.number().int(), opens: z.number().int(), lastAccessedAt: timestamp.nullable() })
     .optional()
     .openapi({ description: 'Rollup of live share links. Present in listings.' }),
@@ -76,7 +79,13 @@ export const DocumentListResponse = obj({
   nextCursor: z.string().nullable(),
   folders: z.array(Folder),
   path: z.array(Folder),
-  counts: obj({ all: z.number().int(), shared: z.number().int(), mine: z.number().int(), trash: z.number().int() })
+  counts: obj({
+    all: z.number().int(),
+    shared: z.number().int(),
+    mine: z.number().int(),
+    starred: z.number().int(),
+    trash: z.number().int(),
+  })
     .nullable()
     .openapi({ description: 'Tab counts for the whole workspace; null on pages after the first.' }),
   storage: StorageUsage,

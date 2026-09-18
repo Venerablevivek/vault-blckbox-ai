@@ -313,6 +313,7 @@ export function createUploadsService(opts: UploadsServiceOptions) {
           await uploadsRepo.transition(tx, upload.id, ['completing'], 'completed', clock.now());
           return row;
         });
+        void documentsRepo.touchRecent(pool, user.id, document.id, clock.now()).catch(() => undefined);
         return { document };
       } catch (error) {
         if (error instanceof RejectUpload) {

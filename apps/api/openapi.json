@@ -811,6 +811,10 @@
               "null"
             ]
           },
+          "starred": {
+            "type": "boolean",
+            "description": "Whether you starred it. Present in listings."
+          },
           "links": {
             "type": "object",
             "properties": {
@@ -943,6 +947,9 @@
               "mine": {
                 "type": "integer"
               },
+              "starred": {
+                "type": "integer"
+              },
               "trash": {
                 "type": "integer"
               }
@@ -951,6 +958,7 @@
               "all",
               "shared",
               "mine",
+              "starred",
               "trash"
             ],
             "additionalProperties": false,
@@ -3437,9 +3445,12 @@
               "enum": [
                 "all",
                 "shared",
-                "mine"
+                "mine",
+                "starred",
+                "recent"
               ],
-              "default": "all"
+              "default": "all",
+              "description": "Everything but all spans the whole workspace. recent is ordered by when you last opened each file."
             },
             "required": false,
             "name": "filter",
@@ -3832,6 +3843,102 @@
           },
           "403": {
             "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/star": {
+      "put": {
+        "summary": "Star a document (for you only)",
+        "tags": [
+          "Documents"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success, no content"
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Unstar a document",
+        "tags": [
+          "Documents"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success, no content"
+          },
+          "401": {
+            "description": "Not signed in.",
             "content": {
               "application/json": {
                 "schema": {
