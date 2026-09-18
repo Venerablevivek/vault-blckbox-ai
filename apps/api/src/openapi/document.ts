@@ -588,6 +588,19 @@ export const operations: Operation[] = [
   },
   {
     method: 'get',
+    path: '/api/workspaces/:id/audit/verify',
+    tag: 'Activity',
+    summary: 'Verify the audit hash chain (owners)',
+    auth: S,
+    params: workspaces.WorkspaceParams,
+    success: [200, activity.AuditVerifyResponse],
+    errors: [401, 403, 404, 429],
+    description:
+      'Recomputes every event hash in order. Reports where the chain breaks if an event was changed, inserted or removed. Removal from the end is only detectable against a previously recorded head hash.',
+  },
+
+  {
+    method: 'get',
     path: '/api/notifications',
     tag: 'Activity',
     summary: 'Your notifications',

@@ -46,6 +46,17 @@ export const AuditQuery = z.object({
   before: z.coerce.date().optional().openapi({ type: 'string', format: 'date-time' }),
 });
 export const AuditResponse = obj({ events: z.array(AuditEvent) });
+export const AuditVerifyResponse = obj({
+  valid: z.boolean(),
+  legacyEvents: z.number().int().openapi({ description: 'Events recorded before hashing began; not verifiable.' }),
+  chainedEvents: z.number().int(),
+  head: obj({ eventId: uuid, hash: z.string().regex(/^[0-9a-f]{64}$/), at: timestamp })
+    .nullable()
+    .openapi({
+      description: 'The last verified event. Record its hash elsewhere to detect later removal from the end.',
+    }),
+  brokenAt: obj({ eventId: uuid, reason: z.string() }).nullable(),
+}).openapi('AuditVerification');
 
 export const NotificationType = z
   .enum([

@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
 import type { Logger } from 'pino';
 import type { Db } from '../../db/pool';
+import { withTransaction } from '../../db/tx';
+import { chainHash } from './audit-chain';
 import type { Clock } from '../../types';
 import { auditRepo, type AuditAction, type AuditResource } from './audit.repo';
 
@@ -41,7 +43,8 @@ export function createAuditService(deps: { pool: Pool; readPool?: Pool; clock: C
      * not at all.
      */
     async record(entry: AuditEntry, tx?: Db): Promise<void> {
-      await auditRepo.insert(tx ?? pool, toRow(entry));
+      if (tx) await auditRepo.insertChained(tx, toRow(entry));
+      else await withTransaction(pool, (own) => auditRepo.insertChained(own, toRow(entry)));
     },
 
     /**
@@ -53,9 +56,79 @@ export function createAuditService(deps: { pool: Pool; readPool?: Pool; clock: C
      * mutations — hence two methods rather than one.
      */
     recordAsync(entry: AuditEntry): void {
-      void auditRepo.insert(pool, toRow(entry)).catch((error: unknown) => {
+      void withTransaction(pool, (tx) => auditRepo.insertChained(tx, toRow(entry))).catch((error: unknown) => {
         logger.warn({ err: error, action: entry.action }, 'failed to write audit event');
       });
+    },
+
+    /**
+     * Recomputes a workspace's hash chain from the start. Any event that was changed, inserted
+     * or removed in the middle breaks the chain at that point. Removing events from the very end
+     * leaves a shorter valid chain, so the head hash is returned: record it elsewhere (a log, a
+     * ticket) and a later verify proves nothing after it was lost.
+     */
+    async verifyChain(workspaceId: string) {
+      let previous: Buffer | null = null;
+      let afterSeq = '0';
+      let legacyEvents = 0;
+      let chainedEvents = 0;
+      let head: { eventId: string; hash: string; at: Date } | null = null;
+      for (;;) {
+        const page = await auditRepo.chainPage(readPool, workspaceId, afterSeq, 1000);
+        if (page.length === 0) break;
+        for (const row of page) {
+          afterSeq = row.seq;
+          if (!row.hash) {
+            // Events from before hashing began are unverifiable, but may only come first.
+            if (chainedEvents > 0)
+              return {
+                valid: false,
+                legacyEvents,
+                chainedEvents,
+                head,
+                brokenAt: { eventId: row.id, reason: 'event without a hash after the chain began' },
+              };
+            legacyEvents += 1;
+            continue;
+          }
+          const followsPrevious = previous === null ? row.prev_hash === null : row.prev_hash?.equals(previous) === true;
+          if (!followsPrevious) {
+            return {
+              valid: false,
+              legacyEvents,
+              chainedEvents,
+              head,
+              brokenAt: {
+                eventId: row.id,
+                reason: 'does not follow the previous event (an event was removed or inserted)',
+              },
+            };
+          }
+          const recomputed = chainHash(previous, {
+            id: row.id,
+            workspaceId: row.workspace_id,
+            actorUserId: row.actor_user_id,
+            action: row.action,
+            resourceType: row.resource_type,
+            resourceId: row.resource_id,
+            metadata: row.metadata,
+            createdAt: row.created_at,
+          });
+          if (!recomputed.equals(row.hash)) {
+            return {
+              valid: false,
+              legacyEvents,
+              chainedEvents,
+              head,
+              brokenAt: { eventId: row.id, reason: 'content does not match its hash (the event was changed)' },
+            };
+          }
+          previous = row.hash;
+          chainedEvents += 1;
+          head = { eventId: row.id, hash: row.hash.toString('hex'), at: row.created_at };
+        }
+      }
+      return { valid: true, legacyEvents, chainedEvents, head, brokenAt: null };
     },
 
     async list(workspaceId: string, options: { limit?: number; before?: Date } = {}) {

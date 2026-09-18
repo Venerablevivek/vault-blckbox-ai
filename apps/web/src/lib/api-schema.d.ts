@@ -3485,6 +3485,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/workspaces/{id}/audit/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Verify the audit hash chain (owners)
+         * @description Recomputes every event hash in order. Reports where the chain breaks if an event was changed, inserted or removed. Removal from the end is only detectable against a previously recorded head hash.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AuditVerification"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/notifications": {
         parameters: {
             query?: never;
@@ -4210,6 +4287,28 @@ export interface components {
         };
         UnlockRequest: {
             password: string;
+        };
+        AuditVerification: {
+            valid: boolean;
+            /** @description Events recorded before hashing began; not verifiable. */
+            legacyEvents: number;
+            chainedEvents: number;
+            /** @description The last verified event. Record its hash elsewhere to detect later removal from the end. */
+            head: {
+                /** Format: uuid */
+                eventId: string;
+                hash: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-17T10:15:00.000Z
+                 */
+                at: string;
+            } | null;
+            brokenAt: {
+                /** Format: uuid */
+                eventId: string;
+                reason: string;
+            } | null;
         };
         /** @enum {string} */
         NotificationType: "share.first_open" | "share.new_viewer" | "share.forwarding_suspected" | "document.uploaded" | "member.joined" | "member.removed" | "member.role_changed" | "workspace.deleted";

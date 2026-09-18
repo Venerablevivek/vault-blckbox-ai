@@ -1,4 +1,5 @@
 import type { Db } from '../../db/pool';
+import { chainHash } from './audit-chain';
 
 /** Every action the trail can record. A union, so a typo is a compile error. */
 export type AuditAction =
@@ -42,9 +43,27 @@ export interface AuditRow {
   created_at: Date;
 }
 
+export interface ChainRow {
+  seq: string;
+  id: string;
+  workspace_id: string;
+  actor_user_id: string | null;
+  action: string;
+  resource_type: string;
+  resource_id: string | null;
+  metadata: unknown;
+  created_at: Date;
+  prev_hash: Buffer | null;
+  hash: Buffer | null;
+}
+
 export const auditRepo = {
-  async insert(
-    db: Db,
+  /**
+   * Appends an event to its workspace's hash chain. Must run inside a transaction: the advisory
+   * lock serialises writers per workspace, so two events can't both chain to the same predecessor.
+   */
+  async insertChained(
+    tx: Db,
     entry: {
       id: string;
       workspaceId: string;
@@ -56,10 +75,29 @@ export const auditRepo = {
       at: Date;
     },
   ): Promise<void> {
-    await db.query(
+    await tx.query(`SELECT pg_advisory_xact_lock(hashtextextended('audit:' || $1::text, 0))`, [entry.workspaceId]);
+    const { rows } = await tx.query<{ hash: Buffer }>(
+      `SELECT hash FROM audit_events WHERE workspace_id = $1 AND hash IS NOT NULL ORDER BY seq DESC LIMIT 1`,
+      [entry.workspaceId],
+    );
+    const previous = rows[0]?.hash ?? null;
+    // Round-trip the metadata through JSON first, so the hash covers exactly what jsonb stores
+    // (undefined values dropped, dates as strings).
+    const metadata = JSON.parse(JSON.stringify(entry.metadata)) as Record<string, unknown>;
+    const hash = chainHash(previous, {
+      id: entry.id,
+      workspaceId: entry.workspaceId,
+      actorUserId: entry.actorUserId,
+      action: entry.action,
+      resourceType: entry.resourceType,
+      resourceId: entry.resourceId,
+      metadata,
+      createdAt: entry.at,
+    });
+    await tx.query(
       `INSERT INTO audit_events
-         (id, workspace_id, actor_user_id, action, resource_type, resource_id, metadata, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+         (id, workspace_id, actor_user_id, action, resource_type, resource_id, metadata, created_at, prev_hash, hash)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
       [
         entry.id,
         entry.workspaceId,
@@ -67,10 +105,22 @@ export const auditRepo = {
         entry.action,
         entry.resourceType,
         entry.resourceId,
-        JSON.stringify(entry.metadata),
+        JSON.stringify(metadata),
         entry.at,
+        previous,
+        hash,
       ],
     );
+  },
+
+  /** A page of the chain in order, for verification. */
+  async chainPage(db: Db, workspaceId: string, afterSeq: string, limit: number): Promise<ChainRow[]> {
+    const { rows } = await db.query<ChainRow>(
+      `SELECT seq, id, workspace_id, actor_user_id, action, resource_type, resource_id, metadata, created_at, prev_hash, hash
+         FROM audit_events WHERE workspace_id = $1 AND seq > $2 ORDER BY seq LIMIT $3`,
+      [workspaceId, afterSeq, limit],
+    );
+    return rows;
   },
 
   /**

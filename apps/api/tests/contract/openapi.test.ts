@@ -254,6 +254,11 @@ describe('API contract', () => {
       await send('GET', `/api/workspaces/${workspaceId}/overview?tz=Europe/London`, owner),
     );
     ok('GET', '/api/workspaces/:id/audit', await send('GET', `/api/workspaces/${workspaceId}/audit`, owner));
+    ok(
+      'GET',
+      '/api/workspaces/:id/audit/verify',
+      await send('GET', `/api/workspaces/${workspaceId}/audit/verify`, owner),
+    );
     ok('GET', '/api/notifications', await send('GET', '/api/notifications', member.cookie));
     ok('POST', '/api/notifications/read', await send('POST', '/api/notifications/read', member.cookie, {}));
 

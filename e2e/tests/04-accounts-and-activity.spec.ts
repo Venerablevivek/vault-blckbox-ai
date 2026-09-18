@@ -58,6 +58,8 @@ test("an owner's dashboard and activity feed render every kind of event", async 
   ]) {
     await expect(page.getByText(text).first()).toBeVisible();
   }
+  await page.getByRole('button', { name: 'Verify integrity' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Intact.' })).toBeVisible();
   expect(errors).toEqual([]);
 });
 

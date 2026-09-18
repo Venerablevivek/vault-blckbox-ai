@@ -32,4 +32,16 @@ export function registerAuditRoutes(
       return { events: await audit.list(id, query) };
     },
   });
+
+  // Recomputes the workspace's audit hash chain. Owner-only, like the trail itself.
+  app.get('/api/workspaces/:id/audit/verify', {
+    preHandler: requireSession,
+    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+    handler: async (request) => {
+      const { id } = WorkspaceParams.parse(request.params);
+      const membership = await workspaces.requireMember(id, currentUser(request).id);
+      requireOwner(membership.role);
+      return audit.verifyChain(id);
+    },
+  });
 }

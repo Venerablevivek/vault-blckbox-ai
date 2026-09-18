@@ -1,8 +1,8 @@
 'use client';
 
 import { use, useCallback, useEffect, useMemo, useState } from 'react';
-import { History, Lock } from 'lucide-react';
-import { api, ApiRequestError, formatDate, timeAgo } from '@/lib/api';
+import { History, Lock, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { api, ApiRequestError, formatDate, timeAgo, type Schemas } from '@/lib/api';
 import { AUDIT_STYLE, describeAuditEvent, type AuditEvent } from '@/components/audit';
 import { EmptyState, ErrorNote, Shell, Skeleton, useSession } from '@/components/ui';
 
@@ -26,6 +26,21 @@ export default function ActivityPage({ params }: { params: Promise<{ id: string 
   const [error, setError] = useState<string | null>(null);
   const [forbidden, setForbidden] = useState(false);
   const [category, setCategory] = useState<Category>('all');
+  const [verification, setVerification] = useState<Schemas['AuditVerification'] | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+
+  async function verifyIntegrity() {
+    setVerifying(true);
+    setVerifyError(null);
+    try {
+      setVerification(await api.get<Schemas['AuditVerification']>(`/api/workspaces/${workspaceId}/audit/verify`));
+    } catch (err) {
+      setVerifyError(err instanceof ApiRequestError ? err.message : 'Could not verify the audit trail.');
+    } finally {
+      setVerifying(false);
+    }
+  }
 
   const PAGE = 50;
 
@@ -93,6 +108,61 @@ export default function ActivityPage({ params }: { params: Promise<{ id: string 
           </div>
         ) : (
           <>
+            <section className="card flex flex-wrap items-start gap-3 p-4" aria-labelledby="integrity-heading">
+              <span
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                  verification && !verification.valid ? 'bg-danger-soft text-danger' : 'bg-ok-soft text-ok'
+                }`}
+                aria-hidden
+              >
+                {verification && !verification.valid ? (
+                  <ShieldAlert className="h-5 w-5" />
+                ) : (
+                  <ShieldCheck className="h-5 w-5" />
+                )}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p id="integrity-heading" className="text-sm font-semibold">
+                  Tamper-evident trail
+                </p>
+                {verifyError ? <p className="mt-0.5 text-xs text-danger">{verifyError}</p> : null}
+                {!verification && !verifyError ? (
+                  <p className="mt-0.5 text-xs text-ink-muted">
+                    Each event is chained to the one before it by a hash, so any change, insertion or removal is
+                    detectable.
+                  </p>
+                ) : null}
+                {verification ? (
+                  <div className="mt-0.5 text-xs text-ink-muted" role="status">
+                    {verification.valid ? (
+                      <p>
+                        <span className="font-medium text-ok">Intact.</span> {verification.chainedEvents} events
+                        verified
+                        {verification.legacyEvents > 0
+                          ? `; ${verification.legacyEvents} older events predate hashing and can't be verified`
+                          : ''}
+                        .
+                      </p>
+                    ) : (
+                      <p>
+                        <span className="font-medium text-danger">Broken.</span> {verification.brokenAt?.reason}. Event{' '}
+                        <span className="font-mono">{verification.brokenAt?.eventId}</span>.
+                      </p>
+                    )}
+                    {verification.head ? (
+                      <p className="mt-1 break-all">
+                        Latest hash <span className="font-mono">{verification.head.hash}</span>. Keep a copy elsewhere
+                        to prove later that nothing after it was removed.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+              <button className="btn-secondary btn-sm" onClick={() => void verifyIntegrity()} disabled={verifying}>
+                {verifying ? 'Verifying…' : 'Verify integrity'}
+              </button>
+            </section>
+
             <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filter activity">
               {FILTERS.map((f) => (
                 <button

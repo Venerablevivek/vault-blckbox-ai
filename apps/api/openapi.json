@@ -1487,6 +1487,77 @@
           "password"
         ]
       },
+      "AuditVerification": {
+        "type": "object",
+        "properties": {
+          "valid": {
+            "type": "boolean"
+          },
+          "legacyEvents": {
+            "type": "integer",
+            "description": "Events recorded before hashing began; not verifiable."
+          },
+          "chainedEvents": {
+            "type": "integer"
+          },
+          "head": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "eventId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "hash": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "at": {
+                "type": "string",
+                "format": "date-time",
+                "example": "2026-09-17T10:15:00.000Z"
+              }
+            },
+            "required": [
+              "eventId",
+              "hash",
+              "at"
+            ],
+            "additionalProperties": false,
+            "description": "The last verified event. Record its hash elsewhere to detect later removal from the end."
+          },
+          "brokenAt": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "eventId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "eventId",
+              "reason"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "valid",
+          "legacyEvents",
+          "chainedEvents",
+          "head",
+          "brokenAt"
+        ],
+        "additionalProperties": false
+      },
       "NotificationType": {
         "type": "string",
         "enum": [
@@ -5624,6 +5695,83 @@
           },
           "404": {
             "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/workspaces/{id}/audit/verify": {
+      "get": {
+        "summary": "Verify the audit hash chain (owners)",
+        "description": "Recomputes every event hash in order. Reports where the chain breaks if an event was changed, inserted or removed. Removal from the end is only detectable against a previously recorded head hash.",
+        "tags": [
+          "Activity"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditVerification"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited or locked out. See Retry-After.",
             "content": {
               "application/json": {
                 "schema": {
