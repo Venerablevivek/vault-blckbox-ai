@@ -67,6 +67,14 @@ export const Errors = {
   tooManyRequests: (code: string, message: string, retryAfterSeconds: number) =>
     new AppError(429, code, message, { 'Retry-After': String(Math.max(1, Math.ceil(retryAfterSeconds))) }),
 
+  /** The account hasn't confirmed its email address yet. */
+  emailNotVerified: (action: string) =>
+    new AppError(
+      403,
+      'EMAIL_NOT_VERIFIED',
+      `Confirm your email address before you ${action}. Check your inbox, or resend the email from the banner.`,
+    ),
+
   notImplemented: (message: string) => new AppError(501, 'NOT_IMPLEMENTED', message),
 
   /** The request is fine but the server is at capacity; the client should retry shortly. */

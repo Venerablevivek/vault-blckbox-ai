@@ -46,13 +46,10 @@ export async function seedDemoData(pool: Pool, storage: FileStorage, logger: Log
   try {
     await client.query('BEGIN');
 
-    await client.query(`INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $4), ($3, $5, $4)`, [
-      aliceId,
-      DEMO_USERS[0]!.email,
-      bobId,
-      passwordHash,
-      DEMO_USERS[1]!.email,
-    ]);
+    await client.query(
+      `INSERT INTO users (id, email, password_hash, email_verified_at) VALUES ($1, $2, $4, now()), ($3, $5, $4, now())`,
+      [aliceId, DEMO_USERS[0]!.email, bobId, passwordHash, DEMO_USERS[1]!.email],
+    );
 
     await client.query(
       `INSERT INTO workspaces (id, name, created_by) VALUES ($1, 'My Workspace', $3), ($2, 'Marketing', $3)`,

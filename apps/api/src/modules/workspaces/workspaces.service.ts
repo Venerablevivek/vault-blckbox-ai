@@ -406,6 +406,8 @@ export function createWorkspacesService(opts: WorkspacesServiceOptions) {
         if (!accepted) {
           throw Errors.gone('This invitation has already been used or has expired.');
         }
+        // The invitation was emailed to this address and its owner followed the link: that proves it.
+        await authRepo.markEmailVerified(tx, user.id, clock.now());
         await workspacesRepo.insertMember(tx, {
           workspaceId: accepted.workspace_id,
           userId: user.id,

@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Config } from '../../config';
 import { CreateShareBody, ShareIdParams, ShareTokenParams, UnlockBody, UpdateShareBody } from '../../contracts/shares';
+import { Errors } from '../../lib/errors';
 import { currentUser, requireSession } from '../../plugins/session';
 import { grantCookieName, type SharesService, type Visitor } from './shares.service';
 
@@ -19,6 +20,8 @@ export function registerShareRoutes(app: FastifyInstance, deps: { config: Config
     handler: async (request, reply) => {
       const body = CreateShareBody.parse(request.body);
       const user = currentUser(request);
+      // Share links reach people outside the platform, so the account must own its address first.
+      if (!user.emailVerified) throw Errors.emailNotVerified('create share links');
       const result = await shares.create({ ...body, userId: user.id });
 
       // The plaintext token is returned exactly once, here. Only its hash is stored.

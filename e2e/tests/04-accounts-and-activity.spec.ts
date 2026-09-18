@@ -1,27 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { firstWorkspaceId, forbidNativeDialogs, registerViaApi, uniqueEmail, uploadText } from './helpers';
-
-const MAILPIT = process.env.MAILPIT_URL ?? 'http://localhost:8025';
-
-interface MailpitMessage {
-  ID: string;
-  To: Array<{ Address: string }>;
-  Subject: string;
-}
-
-/** Waits for Mailpit to receive a message for `to` with a subject containing `subject`. */
-async function waitForEmail(request: import('@playwright/test').APIRequestContext, to: string, subject: string) {
-  for (let attempt = 0; attempt < 50; attempt++) {
-    const list = (await (await request.get(`${MAILPIT}/api/v1/messages`)).json()) as { messages: MailpitMessage[] };
-    const found = list.messages.find((m) => m.To.some((t) => t.Address === to) && m.Subject.includes(subject));
-    if (found) {
-      const message = (await (await request.get(`${MAILPIT}/api/v1/message/${found.ID}`)).json()) as { Text: string };
-      return message.Text;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  throw new Error(`no "${subject}" email for ${to}`);
-}
+import {
+  firstWorkspaceId,
+  forbidNativeDialogs,
+  registerViaApi,
+  uniqueEmail,
+  uploadText,
+  waitForEmail,
+} from './helpers';
 
 test("an owner's dashboard and activity feed render every kind of event", async ({ page }) => {
   forbidNativeDialogs(page);

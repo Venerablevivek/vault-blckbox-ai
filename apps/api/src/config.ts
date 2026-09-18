@@ -132,6 +132,13 @@ const schema = z.object({
   /** Seconds between keep-alive comments on notification streams (below proxy idle timeouts). */
   NOTIFICATION_STREAM_HEARTBEAT_SECONDS: z.coerce.number().int().min(1).max(120).default(15),
 
+  /**
+   * required: new accounts confirm their address by email before they can create share links or
+   * invite people. off: accounts are treated as verified (for deployments without email).
+   */
+  EMAIL_VERIFICATION: z.enum(['required', 'off']).default('required'),
+  EMAIL_VERIFICATION_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(48),
+
   /** How long a password reset link works. */
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(60),
 

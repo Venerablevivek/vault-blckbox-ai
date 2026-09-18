@@ -29,7 +29,44 @@ export async function openDocuments(page: Page, workspaceId: string): Promise<vo
 }
 
 /** Registers through the API (sets the session cookie on this request context). */
-export async function registerViaApi(request: APIRequestContext, email: string, inviteToken?: string): Promise<void> {
+const MAILPIT = process.env.MAILPIT_URL ?? 'http://localhost:8025';
+
+interface MailpitSummary {
+  ID: string;
+  To: Array<{ Address: string }>;
+  Subject: string;
+}
+
+/** Waits for Mailpit to receive a message for `to` whose subject contains `subject`; returns its text. */
+export async function waitForEmail(request: APIRequestContext, to: string, subject: string): Promise<string> {
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const list = (await (await request.get(`${MAILPIT}/api/v1/messages`)).json()) as { messages: MailpitSummary[] };
+    const found = list.messages.find((m) => m.To.some((t) => t.Address === to) && m.Subject.includes(subject));
+    if (found)
+      return ((await (await request.get(`${MAILPIT}/api/v1/message/${found.ID}`)).json()) as { Text: string }).Text;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw new Error(`no "${subject}" email for ${to}`);
+}
+
+/** Follows the confirmation link from the verification email, as the person would. */
+export async function confirmEmail(request: APIRequestContext, email: string): Promise<void> {
+  const text = await waitForEmail(request, email, 'Confirm your email address');
+  const token = /verify-email#token=(evt_[\w-]+)/.exec(text)![1]!;
+  const response = await request.post('/api/auth/email/verify', { data: { token } });
+  expect(response.status(), await response.text()).toBe(204);
+}
+
+/**
+ * Registers through the API (sets the session cookie on this request context) and confirms the
+ * address, unless `confirm` is false. Joining with an invitation verifies it already.
+ */
+export async function registerViaApi(
+  request: APIRequestContext,
+  email: string,
+  inviteToken?: string,
+  confirm = true,
+): Promise<void> {
   const data = { email, password: PASSWORD, ...(inviteToken ? { inviteToken } : {}) };
   let response = await request.post('/api/auth/register', { data });
   // The suite registers more accounts than the 10-per-hour limit allows one address. Registration
@@ -39,6 +76,7 @@ export async function registerViaApi(request: APIRequestContext, email: string, 
     response = await request.post('/api/auth/register', { data });
   }
   expect(response.status(), await response.text()).toBe(201);
+  if (confirm && !inviteToken) await confirmEmail(request, email);
 }
 
 export async function firstWorkspaceId(request: APIRequestContext): Promise<string> {

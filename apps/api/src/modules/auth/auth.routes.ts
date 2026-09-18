@@ -7,6 +7,7 @@ import {
   RegisterBody,
   ResetPasswordBody,
   SessionParams,
+  VerifyEmailBody,
 } from '../../contracts/auth';
 import {
   clearSessionCookie,
@@ -100,6 +101,25 @@ export function registerAuthRoutes(app: FastifyInstance, deps: { config: Config;
         currentPassword: body.currentPassword,
         newPassword: body.newPassword,
       });
+    },
+  });
+
+  // Public: the token in the emailed link is the credential.
+  app.post('/api/auth/email/verify', {
+    config: { rateLimit: { max: 20, timeWindow: '15 minutes' } },
+    handler: async (request, reply) => {
+      const { token } = VerifyEmailBody.parse(request.body);
+      await auth.verifyEmail(token);
+      return reply.status(204).send();
+    },
+  });
+
+  app.post('/api/auth/email/resend', {
+    preHandler: requireSession,
+    config: { rateLimit: { max: 5, timeWindow: '1 hour' } },
+    handler: async (request, reply) => {
+      await auth.resendVerification(currentUser(request));
+      return reply.status(202).send({ message: 'A new confirmation email is on its way.' });
     },
   });
 

@@ -281,6 +281,18 @@ describe('API contract', () => {
       '/api/workspaces/:id',
       await send('DELETE', `/api/workspaces/${created.json().workspace.id}`, owner, { confirmName: 'Spare' }),
     );
+    // Email verification: an unverified account asks for a new link and follows it.
+    const unverified = await registerUser(h.app, 'unverified@example.com');
+    await h.query('UPDATE users SET email_verified_at = NULL WHERE id = $1', [unverified.userId]);
+    ok('POST', '/api/auth/email/resend', await send('POST', '/api/auth/email/resend', unverified.cookie));
+    const confirmMail = await h.mailer.waitFor((m) => m.to === 'unverified@example.com');
+    const verifyToken = /token=(evt_[\w-]+)/.exec(confirmMail.text)![1]!;
+    ok(
+      'POST',
+      '/api/auth/email/verify',
+      await send('POST', '/api/auth/email/verify', undefined, { token: verifyToken }),
+    );
+
     // A stream can't be read through inject; its behaviour is covered in notification-stream.test.ts.
     ok('GET', '/api/notifications/stream', { statusCode: 200, body: '', headers: {} });
     ok('POST', '/api/auth/logout', await send('POST', '/api/auth/logout', owner));

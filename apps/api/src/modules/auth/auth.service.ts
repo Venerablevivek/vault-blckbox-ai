@@ -11,7 +11,7 @@ import { workspacesRepo } from '../workspaces/workspaces.repo';
 import { invitationsRepo } from '../workspaces/invitations.repo';
 import type { AuditService } from '../audit/audit.service';
 import type { JobQueue } from '../../jobs/queue';
-import { passwordChangedEmail, passwordResetEmail } from '../../mail/templates';
+import { passwordChangedEmail, passwordResetEmail, verificationEmail } from '../../mail/templates';
 import { authRepo } from './auth.repo';
 import { burnVerifyTime, hashPassword, verifyPassword } from './password';
 
@@ -26,7 +26,12 @@ export interface AuthServiceOptions {
   logger: Logger;
   webUrl: string;
   passwordResetTtlMinutes: number;
+  emailVerification: 'required' | 'off';
+  emailVerificationTtlHours: number;
 }
+
+/** Verification emails per account per hour (resends included). */
+export const VERIFICATION_EMAILS_PER_HOUR = 3;
 
 /** A session's last_seen_at is refreshed at most this often, so reads don't each cost a write. */
 export const SESSION_TOUCH_INTERVAL_MS = 5 * 60_000;
@@ -64,7 +69,31 @@ export function createAuthService({
   logger,
   webUrl,
   passwordResetTtlMinutes,
+  emailVerification,
+  emailVerificationTtlHours,
 }: AuthServiceOptions) {
+  /** Creates a single-use verification token for the user and queues the email, in `db`'s transaction. */
+  async function sendVerification(db: Db, user: { id: string; email: string }): Promise<void> {
+    const token = generateToken('evt');
+    const now = clock.now();
+    await authRepo.insertEmailVerification(db, {
+      id: randomUUID(),
+      userId: user.id,
+      tokenHash: hashToken(token),
+      expiresAt: new Date(now.getTime() + emailVerificationTtlHours * 3_600_000),
+      now,
+    });
+    await jobs.enqueue(
+      db,
+      'email.send',
+      verificationEmail({
+        to: user.email,
+        url: `${webUrl}/verify-email#token=${token}`,
+        ttlHours: emailVerificationTtlHours,
+      }),
+    );
+  }
+
   async function issueSession(
     db: Db,
     userId: string,
@@ -129,7 +158,13 @@ export function createAuthService({
       const now = clock.now();
 
       return withTransaction(pool, async (tx) => {
-        const user = await authRepo.insertUser(tx, { id: randomUUID(), email, passwordHash });
+        const user = await authRepo.insertUser(tx, {
+          id: randomUUID(),
+          email,
+          passwordHash,
+          emailVerifiedAt: emailVerification === 'off' ? now : null,
+        });
+        let verified = emailVerification === 'off';
 
         const workspace = await workspacesRepo.insertWorkspace(tx, {
           id: randomUUID(),
@@ -180,12 +215,16 @@ export function createAuthService({
                 },
                 tx,
               );
+              // The invitation link went to this address, so following it proves the address.
+              await authRepo.markEmailVerified(tx, user.id, now);
+              verified = true;
             }
           }
         }
 
+        if (!verified) await sendVerification(tx, user);
         const session = await issueSession(tx, user.id, input.userAgent);
-        return { user: { id: user.id, email: user.email }, session };
+        return { user: { id: user.id, email: user.email, emailVerified: verified }, session };
       });
     },
 
@@ -220,7 +259,7 @@ export function createAuthService({
 
       // A fresh session row on every login; no client-supplied identifier is ever honoured.
       const session = await issueSession(pool, user.id, input.userAgent);
-      return { user: { id: user.id, email: user.email }, session };
+      return { user: { id: user.id, email: user.email, emailVerified: user.email_verified_at !== null }, session };
     },
 
     async logout(token: string): Promise<void> {
@@ -237,7 +276,10 @@ export function createAuthService({
           logger.warn({ err: error }, 'failed to update session last_seen_at');
         });
       }
-      return { user: { id: row.id, email: row.email }, sessionId: row.session_id };
+      return {
+        user: { id: row.id, email: row.email, emailVerified: row.email_verified_at !== null },
+        sessionId: row.session_id,
+      };
     },
 
     /**
@@ -314,7 +356,9 @@ export function createAuthService({
         await authRepo.clearLoginFailures(tx, loginKey(user.email));
         const session = await issueSession(tx, user.id, input.userAgent);
         await jobs.enqueue(tx, 'email.send', passwordChangedEmail({ to: user.email, webUrl, via: 'reset' }));
-        return { user: { id: user.id, email: user.email }, session, signedOut };
+        // The reset link went to this address, which proves it.
+        await authRepo.markEmailVerified(tx, user.id, now);
+        return { user: { id: user.id, email: user.email, emailVerified: true }, session, signedOut };
       });
       return result;
     },
@@ -354,6 +398,37 @@ export function createAuthService({
         return authRepo.deleteOtherSessions(tx, user.id, input.sessionId);
       });
       return { signedOutSessions };
+    },
+
+    /** Confirms an address from a verification link. */
+    async verifyEmail(token: string): Promise<{ userId: string }> {
+      const now = clock.now();
+      return withTransaction(pool, async (tx) => {
+        const claimed = await authRepo.claimEmailVerification(tx, hashToken(token), now);
+        if (!claimed) {
+          throw new AppError(
+            410,
+            'VERIFICATION_LINK_INVALID',
+            'This verification link is invalid, already used or expired. Request a new one from the app.',
+          );
+        }
+        await authRepo.markEmailVerified(tx, claimed.user_id, now);
+        return { userId: claimed.user_id };
+      });
+    },
+
+    /** Sends another verification email, at most a few an hour. */
+    async resendVerification(user: SessionUser): Promise<void> {
+      if (user.emailVerified) throw Errors.conflict('ALREADY_VERIFIED', 'Your email address is already verified.');
+      const since = new Date(clock.now().getTime() - 3_600_000);
+      if ((await authRepo.countRecentEmailVerifications(pool, user.id, since)) >= VERIFICATION_EMAILS_PER_HOUR) {
+        throw Errors.tooManyRequests(
+          'TOO_MANY_EMAILS',
+          'We sent several verification emails recently. Check your inbox, or try again in an hour.',
+          3600,
+        );
+      }
+      await withTransaction(pool, (tx) => sendVerification(tx, user));
     },
 
     async listSessions(userId: string, currentSessionId: string) {

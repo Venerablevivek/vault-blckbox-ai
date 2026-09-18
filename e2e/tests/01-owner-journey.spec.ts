@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { forbidNativeDialogs, PASSWORD, uniqueEmail } from './helpers';
+import { forbidNativeDialogs, PASSWORD, uniqueEmail, waitForEmail } from './helpers';
 
 /**
  * The main journey, entirely through the browser: sign up, upload, organise, share, have an
@@ -18,6 +18,17 @@ test('owner uploads, shares, tracks, revokes, trashes and restores a document', 
   });
 
   const workspaceUrl = page.url();
+
+  await test.step('confirms the email address from the link in the email', async () => {
+    await expect(page.getByText('Confirm your email address to share documents')).toBeVisible();
+    const text = await waitForEmail(page.request, email, 'Confirm your email address');
+    const link = new URL(/http\S+verify-email#token=evt_[\w-]+/.exec(text)![0]);
+    await page.goto(link.pathname + link.hash);
+    await expect(page.getByRole('heading', { name: 'Email address confirmed' })).toBeVisible();
+    await page.goto(workspaceUrl);
+    await expect(page.getByRole('heading', { name: /My Workspace|Overview/ }).first()).toBeVisible();
+    await expect(page.getByText('Confirm your email address to share documents')).toHaveCount(0);
+  });
 
   await test.step('upload a file from the documents page', async () => {
     await page.goto(`${workspaceUrl}/documents`);

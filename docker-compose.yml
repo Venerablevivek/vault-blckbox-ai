@@ -43,6 +43,7 @@ x-api-environment: &api-environment
   SMTP_URL: ${SMTP_URL:-smtp://mailpit:1025}
   MAIL_FROM: ${MAIL_FROM:-Vault <no-reply@vault.local>}
   PASSWORD_RESET_TTL_MINUTES: ${PASSWORD_RESET_TTL_MINUTES:-60}
+  EMAIL_VERIFICATION: ${EMAIL_VERIFICATION:-required}
   EXPOSE_INVITE_LINKS: ${EXPOSE_INVITE_LINKS:-true}
   SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
 

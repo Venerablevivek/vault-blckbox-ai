@@ -17,7 +17,14 @@ export const ChangePasswordBody = z
   .openapi('ChangePasswordRequest');
 export const SessionParams = obj({ sessionId: uuid });
 
-export const User = obj({ id: uuid, email: z.string() }).openapi('User');
+export const User = obj({
+  id: uuid,
+  email: z.string(),
+  emailVerified: z
+    .boolean()
+    .openapi({ description: 'False until the address is confirmed; share links and invitations need it.' }),
+}).openapi('User');
+export const VerifyEmailBody = z.object({ token: z.string().min(10).max(200) }).openapi('VerifyEmailRequest');
 export const WorkspaceSummary = obj({ id: uuid, name: z.string(), role: Role }).openapi('WorkspaceSummary');
 
 export const UserResponse = obj({ user: User });

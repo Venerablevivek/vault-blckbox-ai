@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import {
   AlertTriangle,
   Check,
@@ -18,11 +18,12 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
-import { api, ApiRequestError, formatBytes, type Role, type Workspace } from '@/lib/api';
+import { api, ApiRequestError, formatBytes, type Role, type Schemas, type Workspace } from '@/lib/api';
 import { useDialogs } from './dialog';
 import { Brand } from './brand';
 import { NotificationBell } from './notification-bell';
 import { Toaster, toast } from './toast';
+import { VerifyEmailBanner } from './verify-email-banner';
 
 export function ErrorNote({ message }: { message: string }) {
   return (
@@ -220,6 +221,7 @@ export function Shell({
   actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const emailVerified = useEmailVerified();
   const active = workspaces.find((w) => w.id === activeId);
   const pathname = usePathname();
   const router = useRouter();
@@ -408,6 +410,7 @@ export function Shell({
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
+        {emailVerified === false && email ? <VerifyEmailBanner email={email} /> : null}
         <header className="sticky top-0 z-20 border-b border-line/80 bg-white/80 backdrop-blur">
           <div className="flex h-16 items-center gap-3 px-4 sm:px-6">
             <button className="btn-ghost lg:hidden" onClick={() => setDrawerOpen(true)} aria-label="Open menu">
@@ -449,6 +452,27 @@ export function Shell({
   );
 }
 
+/**
+ * Whether the signed-in account has confirmed its email, shared between useSession (which loads
+ * it) and the Shell (which shows the banner), without threading a prop through every page.
+ */
+let emailVerifiedState: boolean | null = null;
+const emailVerifiedListeners = new Set<() => void>();
+function setEmailVerified(value: boolean) {
+  emailVerifiedState = value;
+  emailVerifiedListeners.forEach((listener) => listener());
+}
+function useEmailVerified(): boolean | null {
+  return useSyncExternalStore(
+    (listener) => {
+      emailVerifiedListeners.add(listener);
+      return () => emailVerifiedListeners.delete(listener);
+    },
+    () => emailVerifiedState,
+    () => null,
+  );
+}
+
 /** Shared loader for pages inside the shell: current user + workspaces, with auth redirect. */
 export function useSession(workspaceId: string) {
   const router = useRouter();
@@ -458,11 +482,12 @@ export function useSession(workspaceId: string) {
 
   useEffect(() => {
     api
-      .get<{ user: { id: string; email: string }; workspaces: Workspace[] }>('/api/auth/me')
+      .get<Schemas['Me']>('/api/auth/me')
       .then((me) => {
         setWorkspaces(me.workspaces);
         setEmail(me.user.email);
         setUserId(me.user.id);
+        setEmailVerified(me.user.emailVerified);
       })
       .catch((err) => {
         if (err instanceof ApiRequestError && err.status === 401) {

@@ -112,6 +112,9 @@ export async function createHarness(options?: {
     S3_ACCESS_KEY: 'minioadmin',
     S3_SECRET_KEY: 'minioadmin',
     SEED_DEMO_DATA: 'false',
+    // Accounts start verified, so tests about other features don't each need a verification
+    // step. tests/security/email-verification.test.ts turns it on.
+    EMAIL_VERIFICATION: 'off',
     ...options?.env,
   });
 

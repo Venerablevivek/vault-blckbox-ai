@@ -104,3 +104,27 @@ export function passwordChangedEmail(input: { to: string; webUrl: string; via: '
     ),
   };
 }
+
+export function verificationEmail(input: { to: string; url: string; ttlHours: number }): MailMessage {
+  return {
+    to: input.to,
+    subject: 'Confirm your email address for Vault',
+    text: [
+      'Confirm this is your email address to finish setting up your Vault account.',
+      '',
+      `Confirm: ${input.url}`,
+      '',
+      `The link works once and expires in ${input.ttlHours} hours. Until you confirm, you can upload and view documents, but not share them or invite people.`,
+      "If you didn't create a Vault account, you can ignore this email.",
+    ].join('\n'),
+    html: layout(
+      'Confirm your email address',
+      [
+        'Confirm this is your email address to finish setting up your Vault account.',
+        `The link works once and expires in ${input.ttlHours} hours. Until you confirm, you can upload and view documents, but not share them or invite people.`,
+        "If you didn't create a Vault account, you can ignore this email.",
+      ],
+      { label: 'Confirm email address', url: input.url },
+    ),
+  };
+}

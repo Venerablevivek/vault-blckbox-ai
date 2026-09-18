@@ -51,6 +51,8 @@ export function createServices(deps: {
     logger,
     webUrl: config.WEB_URL,
     passwordResetTtlMinutes: config.PASSWORD_RESET_TTL_MINUTES,
+    emailVerification: config.EMAIL_VERIFICATION,
+    emailVerificationTtlHours: config.EMAIL_VERIFICATION_TTL_HOURS,
   });
   const workspaces = createWorkspacesService({
     pool,

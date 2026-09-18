@@ -36,6 +36,8 @@ export type Role = 'OWNER' | 'MEMBER' | 'VIEWER';
 export interface SessionUser {
   id: string;
   email: string;
+  /** Proven ownership of the address (verification link, reset link or invitation). */
+  emailVerified: boolean;
 }
 
 export interface Membership {

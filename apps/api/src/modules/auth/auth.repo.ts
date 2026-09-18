@@ -4,6 +4,7 @@ export interface UserRow {
   id: string;
   email: string;
   password_hash: string;
+  email_verified_at: Date | null;
   created_at: Date;
 }
 
@@ -34,10 +35,13 @@ export const authRepo = {
     return rows[0] ?? null;
   },
 
-  async insertUser(db: Db, user: { id: string; email: string; passwordHash: string }): Promise<UserRow> {
+  async insertUser(
+    db: Db,
+    user: { id: string; email: string; passwordHash: string; emailVerifiedAt: Date | null },
+  ): Promise<UserRow> {
     const { rows } = await db.query<UserRow>(
-      `INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3) RETURNING *`,
-      [user.id, user.email, user.passwordHash],
+      `INSERT INTO users (id, email, password_hash, email_verified_at) VALUES ($1, $2, $3, $4) RETURNING *`,
+      [user.id, user.email, user.passwordHash, user.emailVerifiedAt],
     );
     return rows[0]!;
   },
@@ -61,12 +65,58 @@ export const authRepo = {
     db: Db,
     tokenHash: Buffer,
     now: Date,
-  ): Promise<{ id: string; email: string; session_id: string; last_seen_at: Date | null } | null> {
-    const { rows } = await db.query<{ id: string; email: string; session_id: string; last_seen_at: Date | null }>(
-      `SELECT u.id, u.email, s.id AS session_id, s.last_seen_at
+  ): Promise<{
+    id: string;
+    email: string;
+    email_verified_at: Date | null;
+    session_id: string;
+    last_seen_at: Date | null;
+  } | null> {
+    const { rows } = await db.query<{
+      id: string;
+      email: string;
+      email_verified_at: Date | null;
+      session_id: string;
+      last_seen_at: Date | null;
+    }>(
+      `SELECT u.id, u.email, u.email_verified_at, s.id AS session_id, s.last_seen_at
          FROM sessions s
          JOIN users u ON u.id = s.user_id
         WHERE s.token_hash = $1 AND s.expires_at > $2`,
+      [tokenHash, now],
+    );
+    return rows[0] ?? null;
+  },
+
+  /** Idempotent: keeps the first verification time. */
+  async markEmailVerified(db: Db, userId: string, now: Date): Promise<void> {
+    await db.query('UPDATE users SET email_verified_at = COALESCE(email_verified_at, $2) WHERE id = $1', [userId, now]);
+  },
+
+  async insertEmailVerification(
+    db: Db,
+    row: { id: string; userId: string; tokenHash: Buffer; expiresAt: Date; now: Date },
+  ): Promise<void> {
+    await db.query(
+      `INSERT INTO email_verifications (id, user_id, token_hash, expires_at, created_at) VALUES ($1, $2, $3, $4, $5)`,
+      [row.id, row.userId, row.tokenHash, row.expiresAt, row.now],
+    );
+  },
+
+  async countRecentEmailVerifications(db: Db, userId: string, since: Date): Promise<number> {
+    const { rows } = await db.query<{ count: string }>(
+      'SELECT COUNT(*) AS count FROM email_verifications WHERE user_id = $1 AND created_at > $2',
+      [userId, since],
+    );
+    return Number(rows[0]?.count ?? 0);
+  },
+
+  /** Claims a verification token atomically; null if unknown, used or expired. */
+  async claimEmailVerification(db: Db, tokenHash: Buffer, now: Date): Promise<{ user_id: string } | null> {
+    const { rows } = await db.query<{ user_id: string }>(
+      `UPDATE email_verifications SET used_at = $2
+        WHERE token_hash = $1 AND used_at IS NULL AND expires_at > $2
+        RETURNING user_id`,
       [tokenHash, now],
     );
     return rows[0] ?? null;

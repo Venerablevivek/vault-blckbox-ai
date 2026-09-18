@@ -11,6 +11,7 @@ import {
   RenameWorkspaceBody,
   WorkspaceParams,
 } from '../../contracts/workspaces';
+import { Errors } from '../../lib/errors';
 import { currentUser, requireSession } from '../../plugins/session';
 import { requireOwner } from '../../policy';
 import type { OverviewService } from '../overview/overview.service';
@@ -163,6 +164,7 @@ export function registerWorkspaceRoutes(
       // used to distinguish "workspace exists" from "workspace does not exist".
       const membership = await workspaces.requireMember(id, user.id);
       requireOwner(membership.role);
+      if (!user.emailVerified) throw Errors.emailNotVerified('invite people');
 
       const body = InviteBody.parse(request.body);
 
