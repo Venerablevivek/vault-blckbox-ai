@@ -12,6 +12,8 @@ export interface FileStorage {
   download(key: string): Promise<Readable>;
   delete(key: string): Promise<void>;
   getSignedUrl(key: string, expiresIn: number, options?: SignedUrlOptions): Promise<string>;
+  /** Optional: a copy made by the store itself. Without it, callers stream the bytes through. */
+  copy?(sourceKey: string, targetKey: string): Promise<void>;
 }
 
 export interface SignedUrlOptions {

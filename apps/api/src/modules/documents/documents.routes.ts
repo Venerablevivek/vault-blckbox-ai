@@ -7,6 +7,7 @@ import {
   ListDocumentsQuery,
   UpdateDocumentBody,
   UploadQuery,
+  VersionParams,
   WorkspaceDocumentsParams,
 } from '../../contracts/documents';
 import { Errors } from '../../lib/errors';
@@ -28,6 +29,7 @@ export function toDocumentDto(row: DocumentRow & Partial<DocumentListRow>) {
     size: Number(row.size),
     sha256: row.sha256 ? row.sha256.toString('hex') : null,
     scanStatus: row.scan_status,
+    version: row.version,
     ...(row.starred !== undefined ? { starred: row.starred } : {}),
     folderId: row.folder_id,
     uploadedBy: row.uploaded_by,
@@ -240,6 +242,86 @@ export function registerDocumentRoutes(
         release();
         throw error;
       }
+    },
+  });
+
+  // Versions. A new version is uploaded like a document (same size limit, type checks and scan).
+  app.post('/api/documents/:id/versions', {
+    preHandler: requireSession,
+    config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
+    handler: async (request, reply) => {
+      const { id } = DocumentParams.parse(request.params);
+      const user = currentUser(request);
+      const release = uploadSlots.tryAcquire();
+      if (!release) {
+        throw Errors.busy('UPLOADS_BUSY', 'The server is handling other uploads. Please retry in a moment.', 5);
+      }
+      try {
+        const part = await request.file({ limits: { fileSize: config.MAX_UPLOAD_BYTES } });
+        if (!part) throw Errors.badRequest('NO_FILE', 'Expected a multipart form field named "file".');
+        const body = await part.toBuffer();
+        const document = await documents.uploadVersion({
+          documentId: id,
+          userId: user.id,
+          userEmail: user.email,
+          declaredMimeType: part.mimetype,
+          body,
+          truncated: part.file.truncated,
+        });
+        return reply.status(201).send({ document: toDocumentDto(document) });
+      } finally {
+        release();
+      }
+    },
+  });
+
+  app.get('/api/documents/:id/versions', {
+    preHandler: requireSession,
+    handler: async (request) => {
+      const { id } = DocumentParams.parse(request.params);
+      const { current, history } = await documents.listVersions(id, currentUser(request).id);
+      return {
+        versions: [
+          { ...current, current: true, sha256: current.sha256 ? current.sha256.toString('hex') : null },
+          ...history.map((v) => ({
+            version: v.version,
+            current: false,
+            filename: v.filename,
+            size: Number(v.size),
+            sha256: v.sha256 ? v.sha256.toString('hex') : null,
+            scanStatus: v.scan_status,
+            uploadedBy: v.uploaded_by,
+            uploadedByEmail: v.uploaded_by_email,
+            createdAt: v.created_at,
+          })),
+        ],
+      };
+    },
+  });
+
+  app.get('/api/documents/:id/versions/:version/download', {
+    preHandler: requireSession,
+    handler: async (request, reply) => {
+      const { id, version } = VersionParams.parse(request.params);
+      return reply.redirect(await documents.getVersionDownloadUrl(id, version, currentUser(request).id), 302);
+    },
+  });
+
+  app.post('/api/documents/:id/versions/:version/restore', {
+    preHandler: requireSession,
+    handler: async (request) => {
+      const { id, version } = VersionParams.parse(request.params);
+      const document = await documents.restoreVersion(id, version, currentUser(request).id);
+      return { document: toDocumentDto(document) };
+    },
+  });
+
+  app.delete('/api/documents/:id/versions/:version', {
+    preHandler: requireSession,
+    handler: async (request, reply) => {
+      const { id, version } = VersionParams.parse(request.params);
+      await documents.deleteVersion(id, version, currentUser(request).id);
+      return reply.status(204).send();
     },
   });
 

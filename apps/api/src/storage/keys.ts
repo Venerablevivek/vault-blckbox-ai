@@ -11,3 +11,12 @@
 export function documentObjectKey(workspaceId: string, documentId: string): string {
   return `workspaces/${workspaceId}/documents/${documentId}`;
 }
+
+/**
+ * A later version of a document. Not under the document's own key: on a file-system backed store
+ * (MinIO) an object can't also be a directory, so `.../documents/<id>` and `.../documents/<id>/x`
+ * could not both exist.
+ */
+export function documentVersionObjectKey(workspaceId: string, documentId: string, versionId: string): string {
+  return `workspaces/${workspaceId}/versions/${documentId}/${versionId}`;
+}

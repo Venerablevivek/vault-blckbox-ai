@@ -91,6 +91,7 @@ export function createServices(deps: {
     scanner,
     archiveMaxFiles: config.ARCHIVE_MAX_FILES,
     archiveMaxBytes: config.ARCHIVE_MAX_BYTES,
+    maxVersions: config.DOCUMENT_MAX_VERSIONS,
   });
   const shares = createSharesService({
     pool,

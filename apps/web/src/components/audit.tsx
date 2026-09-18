@@ -1,4 +1,5 @@
 import {
+  History,
   Download,
   Eye,
   ArchiveRestore,
@@ -52,6 +53,9 @@ export const AUDIT_STYLE: Record<AuditAction, { icon: LucideIcon; tone: string }
   'document.trashed': { icon: Trash2, tone: 'bg-warn-soft text-warn' },
   'document.restored': { icon: ArchiveRestore, tone: 'bg-ok-soft text-ok' },
   'document.purged': { icon: FileX2, tone: 'bg-danger-soft text-danger' },
+  'document.version_uploaded': { icon: History, tone: 'bg-brand-50 text-brand-600' },
+  'document.version_restored': { icon: History, tone: 'bg-ok-soft text-ok' },
+  'document.version_deleted': { icon: History, tone: 'bg-danger-soft text-danger' },
   'folder.created': { icon: FolderPlus, tone: 'bg-brand-50 text-brand-600' },
   'folder.renamed': { icon: FolderPen, tone: 'bg-slate-100 text-ink-muted' },
   'folder.moved': { icon: FolderInput, tone: 'bg-slate-100 text-ink-muted' },
@@ -113,6 +117,12 @@ export function describeAuditEvent(event: AuditEvent): string {
       return `${who} moved ${file} to the trash`;
     case 'document.restored':
       return `${who} restored ${file} from the trash`;
+    case 'document.version_uploaded':
+      return `${who} uploaded version ${m.version} of ${file}`;
+    case 'document.version_restored':
+      return `${who} restored version ${m.restoredFrom} of ${file} (now version ${m.version})`;
+    case 'document.version_deleted':
+      return `${who} deleted version ${m.version} of ${file}`;
     case 'document.purged':
       return m.reason === 'retention'
         ? `${file} was deleted forever after 30 days in the trash`

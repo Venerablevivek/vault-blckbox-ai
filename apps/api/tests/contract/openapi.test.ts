@@ -279,6 +279,39 @@ describe('API contract', () => {
     ok('GET', '/api/documents/:id/download', await send('GET', `/api/documents/${documentId}/download`, owner));
     ok('GET', '/api/documents/:id/preview', await send('GET', `/api/documents/${documentId}/preview`, owner));
 
+    // Versions: a second PDF becomes version 2; version 1 is downloaded, restored, then deleted.
+    const boundary = '----contract-version';
+    const newVersion = await h.app.inject({
+      method: 'POST',
+      url: `/api/documents/${documentId}/versions`,
+      headers: { cookie: owner, 'content-type': `multipart/form-data; boundary=${boundary}` },
+      payload: Buffer.concat([
+        Buffer.from(
+          `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="v2.pdf"\r\nContent-Type: application/pdf\r\n\r\n`,
+        ),
+        SAMPLE_PDF,
+        Buffer.from('% revised\n'),
+        Buffer.from(`\r\n--${boundary}--\r\n`),
+      ]),
+    });
+    ok('POST', '/api/documents/:id/versions', newVersion);
+    ok('GET', '/api/documents/:id/versions', await send('GET', `/api/documents/${documentId}/versions`, owner));
+    ok(
+      'GET',
+      '/api/documents/:id/versions/:version/download',
+      await send('GET', `/api/documents/${documentId}/versions/1/download`, owner),
+    );
+    ok(
+      'POST',
+      '/api/documents/:id/versions/:version/restore',
+      await send('POST', `/api/documents/${documentId}/versions/1/restore`, owner),
+    );
+    ok(
+      'DELETE',
+      '/api/documents/:id/versions/:version',
+      await send('DELETE', `/api/documents/${documentId}/versions/2`, owner),
+    );
+
     // Sharing, including an unlocked and a locked public link
     const share = await send('POST', '/api/shares', owner, { documentId, maxDownloads: 5 });
     ok('POST', '/api/shares', share);

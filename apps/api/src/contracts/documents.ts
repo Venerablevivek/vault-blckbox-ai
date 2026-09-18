@@ -1,6 +1,7 @@
 import { obj, Role, StorageUsage, timestamp, uuid, z } from './common';
 
 export const DocumentParams = obj({ id: uuid });
+export const VersionParams = obj({ id: uuid, version: z.coerce.number().int().min(1).max(1_000_000) });
 export const WorkspaceDocumentsParams = obj({ workspaceId: uuid });
 export const UploadQuery = z.object({ folderId: uuid.optional() });
 
@@ -61,12 +62,29 @@ export const Document = obj({
   deletedAt: timestamp.nullable(),
   deletedByEmail: z.string().nullable(),
   starred: z.boolean().optional().openapi({ description: 'Whether you starred it. Present in listings.' }),
+  version: z.number().int().min(1).openapi({ description: 'The current version; earlier ones are in /versions.' }),
   links: obj({ count: z.number().int(), opens: z.number().int(), lastAccessedAt: timestamp.nullable() })
     .optional()
     .openapi({ description: 'Rollup of live share links. Present in listings.' }),
 }).openapi('Document');
 
 export const DocumentResponse = obj({ document: Document });
+
+export const DocumentVersion = obj({
+  version: z.number().int().min(1),
+  current: z.boolean(),
+  filename: z.string().openapi({ description: 'The name the document had when this version was current.' }),
+  size: z.number().int().nonnegative(),
+  sha256: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/)
+    .nullable(),
+  scanStatus: z.enum(['pending', 'clean', 'infected', 'unscanned']),
+  uploadedBy: uuid,
+  uploadedByEmail: z.string(),
+  createdAt: timestamp.openapi({ description: 'When this version was uploaded.' }),
+}).openapi('DocumentVersion');
+export const VersionsResponse = obj({ versions: z.array(DocumentVersion) }).openapi('DocumentVersions');
 export const UploadResponse = obj({
   document: Document,
   duplicateOf: obj({ id: uuid, filename: z.string() })

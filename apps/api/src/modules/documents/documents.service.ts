@@ -8,7 +8,7 @@ import { AppError, Errors } from '../../lib/errors';
 import { assertAllowedType } from '../../lib/mime';
 import { stripControlCharacters } from '../../lib/text';
 import { Permissions, requireContributor } from '../../policy';
-import { documentObjectKey } from '../../storage/keys';
+import { documentObjectKey, documentVersionObjectKey } from '../../storage/keys';
 import type { FileStorage } from '../../storage/file-storage';
 import type { Clock, Membership, Role } from '../../types';
 import { workspacesRepo } from '../workspaces/workspaces.repo';
@@ -18,8 +18,9 @@ import type { NotificationsService } from '../notifications/notifications.servic
 import { sharesRepo } from '../shares/shares.repo';
 import type { JobQueue } from '../../jobs/queue';
 import type { Scanner } from '../../scanning/scanner';
-import { assertScanAllows, initialScanStatus } from './scan-policy';
+import { assertScanAllows, initialScanStatus, type ScanStatus } from './scan-policy';
 import { planArchive, type ArchivePlan } from './archive';
+import { versionsRepo, type VersionRow } from './versions.repo';
 import {
   documentsRepo,
   type DocumentFilter,
@@ -48,6 +49,8 @@ export interface DocumentsServiceOptions {
   scanner: Scanner | null;
   archiveMaxFiles: number;
   archiveMaxBytes: number;
+  /** Earlier versions kept per document; older ones are removed when a new version arrives. */
+  maxVersions: number;
 }
 
 /** Opaque pagination cursor: the last row's sort value and id, base64url-encoded JSON. */
@@ -112,6 +115,121 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
     return { document, role };
   }
 
+  /**
+   * Deletes the objects of a document's earlier versions. Called before its row goes (the rows
+   * cascade with it). Deleting an object that is already gone succeeds, so a retry after a
+   * partial failure simply carries on.
+   */
+  async function deleteVersionObjects(documentId: string): Promise<void> {
+    for (const key of await versionsRepo.storageKeys(pool, documentId)) await storage.delete(key);
+  }
+
+  /** Removes an earlier version: its row and quota first, then its object. */
+  async function removeVersion(version: VersionRow): Promise<void> {
+    const removed = await withTransaction(pool, async (tx) => {
+      const row = await versionsRepo.delete(tx, version.id);
+      if (row && row.scan_status !== 'infected') {
+        await workspacesRepo.releaseStorage(tx, row.workspace_id, Number(row.size));
+      }
+      return row;
+    });
+    if (!removed) return;
+    // Row first: a failure here leaves an unreachable object behind (logged), never a version
+    // in the list that can't be downloaded.
+    await storage.delete(removed.storage_key).catch((error: unknown) => {
+      logger.error({ err: error, storageKey: removed.storage_key }, 'failed to delete an earlier version object');
+    });
+  }
+
+  /**
+   * Makes new content the current version: the object is already in storage under `storageKey`.
+   * In one transaction: re-reads and locks the document, reserves quota, moves the current
+   * content into history (unless malware removed it), and points the document at the new object.
+   * If anything fails the new object is deleted again. Then prunes versions beyond the limit.
+   */
+  async function replaceCurrent(input: {
+    document: DocumentRow;
+    userId: string;
+    storageKey: string;
+    size: number;
+    sha256: Buffer | null;
+    scanStatus: ScanStatus;
+    audit: { action: 'document.version_uploaded' | 'document.version_restored'; metadata: Record<string, unknown> };
+    notifyAs?: string;
+  }): Promise<DocumentRow> {
+    const now = clock.now();
+    let updated: DocumentRow;
+    try {
+      updated = await withTransaction(pool, async (tx) => {
+        const current = await versionsRepo.lockLive(tx, input.document.id);
+        if (!current) throw Errors.notFound('Document');
+        if (current.storage_key !== input.document.storage_key) {
+          throw Errors.conflict('VERSION_CONFLICT', 'Someone else changed this document just now. Please try again.');
+        }
+        if (!(await workspacesRepo.reserveStorage(tx, current.workspace_id, input.size))) {
+          const latest = await workspacesRepo.storageUsage(tx, current.workspace_id);
+          throw Errors.quotaExceeded(latest.usedBytes, latest.quotaBytes);
+        }
+        if (current.scan_status !== 'infected') await versionsRepo.archiveCurrent(tx, randomUUID(), current);
+        const row = await versionsRepo.setCurrent(tx, current.id, {
+          storageKey: input.storageKey,
+          size: input.size,
+          sha256: input.sha256,
+          scanStatus: input.scanStatus,
+          version: current.version + 1,
+          uploadedBy: input.userId,
+          at: now,
+        });
+        if (row.scan_status === 'pending') {
+          await jobs.enqueue(tx, 'document.scan', { documentId: row.id }, { dedupeKey: row.id, maxAttempts: 8 });
+        }
+        await audit.record(
+          {
+            workspaceId: row.workspace_id,
+            actorUserId: input.userId,
+            action: input.audit.action,
+            resourceType: 'document',
+            resourceId: row.id,
+            metadata: { filename: row.filename, version: row.version, ...input.audit.metadata },
+          },
+          tx,
+        );
+        if (input.notifyAs) {
+          await notifications.notifyWorkspace(tx, row.workspace_id, input.userId, {
+            type: 'document.uploaded',
+            title: `${row.filename} was updated`,
+            body: `${input.notifyAs} uploaded version ${row.version}.`,
+            resourceId: row.id,
+          });
+        }
+        return row;
+      });
+    } catch (error) {
+      await storage.delete(input.storageKey).catch((cleanupError: unknown) => {
+        logger.error({ err: cleanupError, storageKey: input.storageKey }, 'failed to clean up a version object');
+      });
+      throw error;
+    }
+
+    for (const old of await versionsRepo.beyond(pool, updated.id, opts.maxVersions)) {
+      await removeVersion(old).catch((error: unknown) => {
+        logger.error({ err: error, versionId: old.id }, 'failed to prune an old version');
+      });
+    }
+    touchRecent(input.userId, updated.id);
+    return updated;
+  }
+
+  /** Authorizes a change to a live document's content: the uploader or an owner. */
+  async function authorizeContentChange(documentId: string, userId: string) {
+    const { document, role } = await authorizeById(documentId, userId);
+    requireContributor(role, 'change documents');
+    if (!Permissions.canModifyDocument(role, document.uploaded_by, userId)) {
+      throw Errors.forbidden('Only the uploader or a workspace owner can change this document.');
+    }
+    return document;
+  }
+
   /** Removes a trashed row and gives its bytes back to the workspace quota, atomically. */
   async function deleteTrashedRow(documentId: string): Promise<void> {
     await withTransaction(pool, async (tx) => {
@@ -135,6 +253,7 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
       // A trashed document whose bytes are already gone can never be restored. Before the trash
       // existed, deleting removed the object straight away, and those rows became "trashed" when
       // the trash was introduced. Finish deleting them rather than retrying forever.
+      await deleteVersionObjects(row.id);
       await deleteTrashedRow(row.id);
       audit.recordAsync({
         workspaceId: row.workspace_id,
@@ -147,7 +266,7 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
       logger.warn({ documentId: row.id }, 'removed a trashed document whose object no longer exists');
       return;
     }
-    await documentsRepo.setChecksum(pool, row.id, hash.digest());
+    await documentsRepo.setChecksum(pool, row.id, row.storage_key, hash.digest());
   }
 
   /** Whether storage still has an object: fetches it and discards the stream straight away. */
@@ -174,6 +293,7 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
       const rows = await documentsRepo.anyInWorkspace(pool, workspaceId, batchSize);
       if (rows.length === 0) break;
       for (const row of rows) {
+        await deleteVersionObjects(row.id);
         await storage.delete(row.storage_key);
         await documentsRepo.deleteRow(pool, row.id);
         objects += 1;
@@ -519,6 +639,7 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
       if (!Permissions.canPurgeDocument(role)) {
         throw Errors.forbidden('Only a workspace owner can permanently delete documents.');
       }
+      await deleteVersionObjects(document.id);
       await storage.delete(document.storage_key);
       await deleteTrashedRow(document.id);
       await audit.record({
@@ -678,6 +799,166 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
       return results;
     },
 
+    /**
+     * Uploads new content for a document, which becomes its current version; the previous one is
+     * kept in its history. Same checks as an upload (size, real type, quota, malware scan), plus:
+     * the type must match the document's, and content identical to the current version, or a
+     * current version still being scanned, is refused.
+     */
+    async uploadVersion(input: {
+      documentId: string;
+      userId: string;
+      userEmail: string;
+      declaredMimeType: string;
+      body: Buffer;
+      truncated: boolean;
+    }): Promise<DocumentRow> {
+      const document = await authorizeContentChange(input.documentId, input.userId);
+      if (input.truncated || input.body.length > opts.maxUploadBytes) throw Errors.payloadTooLarge(opts.maxUploadBytes);
+      if (input.body.length === 0) throw Errors.badRequest('EMPTY_FILE', 'The uploaded file is empty.');
+      if (document.scan_status === 'pending') {
+        throw Errors.conflict(
+          'SCAN_PENDING',
+          'The current version is still being checked for malware. Try again in a moment.',
+        );
+      }
+      const mimeType = assertAllowedType(input.declaredMimeType, input.body.subarray(0, 4096));
+      if (mimeType !== document.mime_type) {
+        throw Errors.unsupportedMediaType(
+          `A new version must be the same type of file as the document (${document.mime_type}). Upload it as a new document instead.`,
+        );
+      }
+      const sha256 = createHash('sha256').update(input.body).digest();
+      if (document.sha256 && sha256.equals(document.sha256)) {
+        throw Errors.conflict('VERSION_UNCHANGED', 'This file is identical to the current version.');
+      }
+      const usage = await workspacesRepo.storageUsage(pool, document.workspace_id);
+      if (usage.usedBytes + input.body.length > usage.quotaBytes) {
+        throw Errors.quotaExceeded(usage.usedBytes, usage.quotaBytes);
+      }
+
+      const storageKey = documentVersionObjectKey(document.workspace_id, document.id, randomUUID());
+      await storage.upload(storageKey, Readable.from(input.body), mimeType);
+      return replaceCurrent({
+        document,
+        userId: input.userId,
+        storageKey,
+        size: input.body.length,
+        sha256,
+        scanStatus: initialScanStatus(opts.scanMode, input.body.length, opts.scanMaxBytes),
+        audit: { action: 'document.version_uploaded', metadata: { size: input.body.length } },
+        notifyAs: input.userEmail,
+      });
+    },
+
+    /** The document's versions, current first, for any member of its workspace. */
+    async listVersions(documentId: string, userId: string) {
+      const { document } = await authorizeById(documentId, userId);
+      const [history, uploader] = await Promise.all([
+        versionsRepo.list(pool, document.id),
+        workspacesRepo.findUserEmail(pool, document.version_uploaded_by ?? document.uploaded_by),
+      ]);
+      return {
+        document,
+        current: {
+          version: document.version,
+          filename: document.filename,
+          size: Number(document.size),
+          sha256: document.sha256,
+          scanStatus: document.scan_status,
+          uploadedBy: document.version_uploaded_by ?? document.uploaded_by,
+          uploadedByEmail: uploader ?? '',
+          createdAt: document.version_created_at ?? document.created_at,
+        },
+        history,
+      };
+    },
+
+    /** A signed URL for one earlier version (the current one goes through getDownloadUrl). */
+    async getVersionDownloadUrl(documentId: string, version: number, userId: string): Promise<string> {
+      const { document } = await authorizeById(documentId, userId);
+      if (version === document.version) return service.getDownloadUrl(documentId, userId);
+      const row = await versionsRepo.find(pool, document.id, version);
+      if (!row) throw Errors.notFound('Version');
+      assertScanAllows(row);
+      audit.recordAsync({
+        workspaceId: document.workspace_id,
+        actorUserId: userId,
+        action: 'document.downloaded',
+        resourceType: 'document',
+        resourceId: document.id,
+        metadata: { filename: row.filename, version },
+      });
+      return storage.getSignedUrl(row.storage_key, opts.signedUrlTtlSeconds, {
+        filename: row.filename,
+        contentType: row.mime_type,
+      });
+    },
+
+    /**
+     * Brings back an earlier version by copying its bytes into a new current version, so the
+     * history is never rewritten and every version keeps its own object.
+     */
+    async restoreVersion(documentId: string, version: number, userId: string): Promise<DocumentRow> {
+      const document = await authorizeContentChange(documentId, userId);
+      if (version === document.version)
+        throw Errors.conflict('ALREADY_CURRENT', 'That is already the current version.');
+      const row = await versionsRepo.find(pool, document.id, version);
+      if (!row) throw Errors.notFound('Version');
+      assertScanAllows(row);
+      if (document.scan_status === 'pending') {
+        throw Errors.conflict(
+          'SCAN_PENDING',
+          'The current version is still being checked for malware. Try again in a moment.',
+        );
+      }
+      const usage = await workspacesRepo.storageUsage(pool, document.workspace_id);
+      if (usage.usedBytes + Number(row.size) > usage.quotaBytes) {
+        throw Errors.quotaExceeded(usage.usedBytes, usage.quotaBytes);
+      }
+
+      const storageKey = documentVersionObjectKey(document.workspace_id, document.id, randomUUID());
+      if (storage.copy) {
+        await storage.copy(row.storage_key, storageKey);
+      } else if (Number(row.size) <= opts.maxUploadBytes) {
+        // A store without its own copy: the bytes pass through here, so only as much as an upload.
+        await storage.upload(storageKey, await storage.download(row.storage_key), row.mime_type);
+      } else {
+        throw Errors.payloadTooLarge(opts.maxUploadBytes);
+      }
+      return replaceCurrent({
+        document,
+        userId,
+        storageKey,
+        size: Number(row.size),
+        sha256: row.sha256,
+        scanStatus: row.scan_status,
+        audit: { action: 'document.version_restored', metadata: { restoredFrom: version } },
+      });
+    },
+
+    /** Deletes one earlier version for good. The current version can only go to the trash. */
+    async deleteVersion(documentId: string, version: number, userId: string): Promise<void> {
+      const document = await authorizeContentChange(documentId, userId);
+      if (version === document.version) {
+        throw Errors.conflict(
+          'CURRENT_VERSION',
+          'The current version cannot be deleted on its own. Restore another version first, or move the document to the trash.',
+        );
+      }
+      const row = await versionsRepo.find(pool, document.id, version);
+      if (!row) throw Errors.notFound('Version');
+      await removeVersion(row);
+      await audit.record({
+        workspaceId: document.workspace_id,
+        actorUserId: userId,
+        action: 'document.version_deleted',
+        resourceType: 'document',
+        resourceId: document.id,
+        metadata: { filename: row.filename, version },
+      });
+    },
+
     async setStar(documentId: string, userId: string, starred: boolean): Promise<void> {
       await authorizeById(documentId, userId);
       await documentsRepo.setStar(pool, userId, documentId, starred);
@@ -702,12 +983,14 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
       const result = await opts.scanner.scan(await storage.download(row.storage_key));
       const now = clock.now();
       if (!result.infected) {
-        await documentsRepo.setScanResult(pool, row.id, 'clean', null, now);
+        await documentsRepo.setScanResult(pool, row.id, row.storage_key, 'clean', null, now);
         return;
       }
 
       const quarantined = await withTransaction(pool, async (tx) => {
-        if (!(await documentsRepo.setScanResult(tx, row.id, 'infected', result.signature, now))) return false;
+        if (!(await documentsRepo.setScanResult(tx, row.id, row.storage_key, 'infected', result.signature, now))) {
+          return false;
+        }
         const revoked = await sharesRepo.revokeForDocument(tx, row.id, now);
         await workspacesRepo.releaseStorage(tx, row.workspace_id, Number(row.size));
         await audit.record(
@@ -758,6 +1041,7 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
       let failed = 0;
       for (const document of expired) {
         try {
+          await deleteVersionObjects(document.id);
           await storage.delete(document.storage_key);
           await deleteTrashedRow(document.id);
           audit.recordAsync({

@@ -49,6 +49,7 @@ import { FolderPicker } from '@/components/folder-picker';
 import { FolderSharePanel } from '@/components/folder-share-panel';
 import { PreviewModal, PREVIEWABLE } from '@/components/preview-modal';
 import { SharePanel } from '@/components/share-panel';
+import { VersionHistory } from '@/components/version-history';
 import { toast } from '@/components/toast';
 import { cancelDirectUpload, directUpload, UploadCancelled } from '@/lib/direct-upload';
 import { EmptyState, ErrorNote, FileGlyph, Shell, Skeleton, StorageMeter, useSession } from '@/components/ui';
@@ -118,6 +119,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
 
   const [shareFor, setShareFor] = useState<DocumentDto | null>(null);
   const [shareFolderFor, setShareFolderFor] = useState<FolderDto | null>(null);
+  const [versionsFor, setVersionsFor] = useState<DocumentDto | null>(null);
   const [previewFor, setPreviewFor] = useState<DocumentDto | null>(null);
   const [detailsFor, setDetailsFor] = useState<DocumentDto | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -741,6 +743,14 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
             onClick={() => {
               setMenuFor(null);
               setDetailsFor(doc);
+            }}
+          />
+          <MenuItem
+            icon={History}
+            label={doc.version > 1 ? `Versions (${doc.version})` : 'Versions'}
+            onClick={() => {
+              setMenuFor(null);
+              setVersionsFor(doc);
             }}
           />
           {previewable ? (
@@ -1369,6 +1379,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                         ) : (
                           <>
                             <span className="truncate">{doc.uploadedByEmail}</span>
+                            {doc.version > 1 ? <span className="chip">v{doc.version}</span> : null}
                             <ScanChip doc={doc} />
                             <LinkChip doc={doc} />
                             {doc.links?.lastAccessedAt ? (
@@ -1417,6 +1428,14 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
           role={role}
           userId={session.userId}
           onClose={() => setShareFor(null)}
+          onChanged={() => void load()}
+        />
+      ) : null}
+      {versionsFor ? (
+        <VersionHistory
+          document={versionsFor}
+          canModify={contributor && canModify(versionsFor)}
+          onClose={() => setVersionsFor(null)}
           onChanged={() => void load()}
         />
       ) : null}

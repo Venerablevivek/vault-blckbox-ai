@@ -1,4 +1,5 @@
 import {
+  CopyObjectCommand,
   AbortMultipartUploadCommand,
   CompleteMultipartUploadCommand,
   CreateBucketCommand,
@@ -112,6 +113,18 @@ export class S3Storage implements FileStorage, MultipartStorage {
     await this.internal.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
   }
 
+  /** Copies an object inside the bucket, on the storage side: no bytes pass through the API. */
+  async copy(sourceKey: string, targetKey: string): Promise<void> {
+    await this.internal.send(
+      new CopyObjectCommand({
+        Bucket: this.bucket,
+        Key: targetKey,
+        // The source is "<bucket>/<key>", URL-encoded. Keys here are UUID paths, but encode anyway.
+        CopySource: `${this.bucket}/${encodeKey(sourceKey)}`,
+      }),
+    );
+  }
+
   async getSignedUrl(key: string, expiresIn: number, options?: SignedUrlOptions): Promise<string> {
     const command = new GetObjectCommand({
       Bucket: this.bucket,
@@ -210,4 +223,8 @@ export class S3Storage implements FileStorage, MultipartStorage {
     for await (const chunk of result.Body as AsyncIterable<Buffer>) chunks.push(chunk);
     return Buffer.concat(chunks);
   }
+}
+
+function encodeKey(key: string): string {
+  return key.split('/').map(encodeURIComponent).join('/');
 }

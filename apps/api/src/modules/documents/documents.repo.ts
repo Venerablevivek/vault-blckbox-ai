@@ -18,6 +18,11 @@ export interface DocumentRow {
   scan_status: ScanStatus;
   scanned_at: Date | null;
   scan_signature: string | null;
+  /** The current version's number; earlier versions are in document_versions. */
+  version: number;
+  /** Who uploaded the current version, and when; null for the original upload. */
+  version_uploaded_by: string | null;
+  version_created_at: Date | null;
 }
 
 export interface DocumentListRow extends DocumentRow {
@@ -166,16 +171,22 @@ export const documentsRepo = {
     return rows;
   },
 
+  /**
+   * Records a scan result, only if the document still holds the object that was scanned: a new
+   * version uploaded meanwhile must be scanned itself, never inherit its predecessor's verdict.
+   */
   async setScanResult(
     db: Db,
     id: string,
+    storageKey: string,
     status: 'clean' | 'infected',
     signature: string | null,
     now: Date,
   ): Promise<boolean> {
     const { rowCount } = await db.query(
-      `UPDATE documents SET scan_status = $2, scan_signature = $3, scanned_at = $4 WHERE id = $1 AND scan_status = 'pending'`,
-      [id, status, signature, now],
+      `UPDATE documents SET scan_status = $3, scan_signature = $4, scanned_at = $5
+        WHERE id = $1 AND storage_key = $2 AND scan_status = 'pending'`,
+      [id, storageKey, status, signature, now],
     );
     return (rowCount ?? 0) > 0;
   },
@@ -194,8 +205,13 @@ export const documentsRepo = {
     return rows;
   },
 
-  async setChecksum(db: Db, id: string, sha256: Buffer): Promise<void> {
-    await db.query('UPDATE documents SET sha256 = $2 WHERE id = $1 AND sha256 IS NULL', [id, sha256]);
+  /** Stores a computed checksum, only if the document still holds the object it was computed from. */
+  async setChecksum(db: Db, id: string, storageKey: string, sha256: Buffer): Promise<void> {
+    await db.query('UPDATE documents SET sha256 = $3 WHERE id = $1 AND storage_key = $2 AND sha256 IS NULL', [
+      id,
+      storageKey,
+      sha256,
+    ]);
   },
 
   /**
@@ -406,9 +422,17 @@ export const documentsRepo = {
   },
 
   /** Deletes a trashed row. Returns its size so the caller can release the quota, or null if already gone. */
+  /**
+   * Deletes a trashed document and its earlier versions (by cascade). Returns the bytes this
+   * gives back to the quota: every version's, except a quarantined current version, whose bytes
+   * were released when malware was found.
+   */
   async hardDelete(db: Db, id: string): Promise<{ workspace_id: string; size: string } | null> {
     const { rows } = await db.query<{ workspace_id: string; size: string }>(
-      'DELETE FROM documents WHERE id = $1 AND deleted_at IS NOT NULL RETURNING workspace_id, size',
+      `WITH history AS (SELECT COALESCE(SUM(size), 0) AS bytes FROM document_versions WHERE document_id = $1)
+       DELETE FROM documents WHERE id = $1 AND deleted_at IS NOT NULL
+       RETURNING workspace_id,
+                 ((CASE WHEN scan_status = 'infected' THEN 0 ELSE size END) + (SELECT bytes FROM history))::text AS size`,
       [id],
     );
     return rows[0] ?? null;
