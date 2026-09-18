@@ -106,6 +106,11 @@ const schema = z.object({
   /** Lifetime of each signed part-upload URL. */
   UPLOAD_PART_URL_TTL_SECONDS: z.coerce.number().int().min(60).max(86_400).default(3600),
 
+  /** Zip downloads: most files and total bytes in one archive, and archives streaming at once. */
+  ARCHIVE_MAX_FILES: z.coerce.number().int().min(1).max(10_000).default(1000),
+  ARCHIVE_MAX_BYTES: z.coerce.number().int().positive().default(5_368_709_120),
+  MAX_CONCURRENT_ARCHIVES: z.coerce.number().int().min(1).max(64).default(4),
+
   /** Days a deleted document stays restorable before it is purged. */
   TRASH_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(30),
 

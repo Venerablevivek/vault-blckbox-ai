@@ -36,6 +36,11 @@ describe('API contract', () => {
       // Streams are exercised in tests/integration/notification-stream.test.ts; inject can't hold one open.
       return;
     }
+    if (typeof op!.success === 'object' && !Array.isArray(op!.success)) {
+      expect(response.statusCode, response.body).toBe(200);
+      expect(response.headers['content-type']).toBe(op!.success.file);
+      return;
+    }
     if (op!.success === 'redirect') {
       expect(response.statusCode, response.body).toBe(302);
       expect(String(response.headers.location)).toMatch(/^https?:\/\//);
@@ -218,6 +223,21 @@ describe('API contract', () => {
     ok('POST', '/api/workspaces/:workspaceId/documents', upload);
     const documentId = upload.json().document.id;
     ok('PATCH', '/api/documents/:id', await send('PATCH', `/api/documents/${documentId}`, owner, { folderId }));
+    ok(
+      'GET',
+      '/api/workspaces/:workspaceId/archive/summary',
+      await send('GET', `/api/workspaces/${workspaceId}/archive/summary?ids=${documentId}`, owner),
+    );
+    ok(
+      'GET',
+      '/api/workspaces/:workspaceId/archive',
+      await send('GET', `/api/workspaces/${workspaceId}/archive?ids=${documentId}`, owner),
+    );
+    ok(
+      'POST',
+      '/api/documents/bulk',
+      await send('POST', '/api/documents/bulk', owner, { action: 'move', ids: [documentId], folderId: null }),
+    );
     ok('PUT', '/api/documents/:id/star', await send('PUT', `/api/documents/${documentId}/star`, owner));
     ok('DELETE', '/api/documents/:id/star', await send('DELETE', `/api/documents/${documentId}/star`, owner));
     ok('GET', '/api/documents/:id/download', await send('GET', `/api/documents/${documentId}/download`, owner));

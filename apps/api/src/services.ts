@@ -88,6 +88,8 @@ export function createServices(deps: {
     scanMode: config.SCAN_MODE,
     scanMaxBytes: config.SCAN_MAX_BYTES,
     scanner,
+    archiveMaxFiles: config.ARCHIVE_MAX_FILES,
+    archiveMaxBytes: config.ARCHIVE_MAX_BYTES,
   });
   const shares = createSharesService({
     pool,

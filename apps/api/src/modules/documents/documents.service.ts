@@ -19,6 +19,7 @@ import { sharesRepo } from '../shares/shares.repo';
 import type { JobQueue } from '../../jobs/queue';
 import type { Scanner } from '../../scanning/scanner';
 import { assertScanAllows, initialScanStatus } from './scan-policy';
+import { planArchive, type ArchivePlan } from './archive';
 import {
   documentsRepo,
   type DocumentFilter,
@@ -45,6 +46,8 @@ export interface DocumentsServiceOptions {
   scanMaxBytes: number;
   /** Null when scanning is off. */
   scanner: Scanner | null;
+  archiveMaxFiles: number;
+  archiveMaxBytes: number;
 }
 
 /** Opaque pagination cursor: the last row's sort value and id, base64url-encoded JSON. */
@@ -74,6 +77,14 @@ export function cleanFilename(name: string): string {
   const clean = stripControlCharacters(name).trim();
   if (!clean) throw Errors.badRequest('INVALID_NAME', 'A document needs a name.');
   return clean;
+}
+
+export type BulkAction = 'trash' | 'restore' | 'delete' | 'move';
+
+export interface BulkResult {
+  id: string;
+  ok: boolean;
+  error?: { code: string; message: string };
 }
 
 export function createDocumentsService(opts: DocumentsServiceOptions) {
@@ -186,7 +197,7 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
     if (!folder) throw Errors.notFound('Folder');
   }
 
-  return {
+  const service = {
     authorizeById,
 
     /**
@@ -565,6 +576,108 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
     touchRecent,
 
     /** Stars or unstars a document for the caller. Any member may star what they can see. */
+    /**
+     * Works out what a zip download of some documents, or of a folder and everything below it,
+     * will contain. Nothing is read from storage yet. Files the malware scan hasn't cleared are
+     * left out and named in the archive instead, so one pending file doesn't block the rest.
+     * Reads and records nothing: see recordArchiveDownload.
+     */
+    async planArchive(
+      workspaceId: string,
+      userId: string,
+      selection: { ids: string[] } | { folderId: string },
+    ): Promise<ArchivePlan> {
+      if (!(await workspacesRepo.findMembership(pool, workspaceId, userId))) throw Errors.notFound('Workspace');
+      const limit = opts.archiveMaxFiles + 1;
+
+      let filename: string;
+      let rows;
+      if ('folderId' in selection) {
+        const folder = await foldersRepo.findInWorkspace(pool, workspaceId, selection.folderId);
+        if (!folder) throw Errors.notFound('Folder');
+        filename = `${folder.name}.zip`;
+        rows = await withTenant(pool, userId, (db) =>
+          documentsRepo.archiveFolder(db, workspaceId, selection.folderId, limit),
+        );
+        if (rows.length === 0) throw Errors.conflict('NOTHING_TO_DOWNLOAD', 'This folder has no files in it.');
+      } else {
+        filename = `documents-${clock.now().toISOString().slice(0, 10)}.zip`;
+        rows = await withTenant(pool, userId, (db) =>
+          documentsRepo.archiveByIds(db, workspaceId, selection.ids, limit),
+        );
+        if (rows.length === 0) throw Errors.notFound('Document');
+      }
+
+      if (rows.length > opts.archiveMaxFiles) {
+        throw new AppError(
+          413,
+          'ARCHIVE_TOO_LARGE',
+          `A zip download can hold at most ${opts.archiveMaxFiles} files. Download a smaller folder or selection.`,
+        );
+      }
+      const plan = planArchive(filename, rows);
+      if (plan.entries.length === 0) {
+        throw Errors.conflict(
+          'NOTHING_TO_DOWNLOAD',
+          'None of these files can be downloaded: they are still being checked for malware, or malware was found.',
+        );
+      }
+      const totalBytes = plan.entries.reduce((sum, entry) => sum + entry.size, 0);
+      if (totalBytes > opts.archiveMaxBytes) {
+        throw new AppError(
+          413,
+          'ARCHIVE_TOO_LARGE',
+          `A zip download can hold at most ${(opts.archiveMaxBytes / 1024 ** 3).toFixed(1)} GB. Download a smaller folder or selection.`,
+        );
+      }
+      return plan;
+    },
+
+    /** Records each file in a zip as downloaded by the person who asked for it. */
+    async recordArchiveDownload(workspaceId: string, userId: string, plan: ArchivePlan): Promise<void> {
+      await withTransaction(pool, async (tx) => {
+        for (const entry of plan.entries) {
+          await audit.record(
+            {
+              workspaceId,
+              actorUserId: userId,
+              action: 'document.downloaded',
+              resourceType: 'document',
+              resourceId: entry.id,
+              metadata: { filename: entry.path.slice(entry.path.lastIndexOf('/') + 1), archive: plan.filename },
+            },
+            tx,
+          );
+        }
+      });
+    },
+
+    /**
+     * Applies one action to many documents. Each is authorized and carried out on its own,
+     * exactly as the single-document endpoint would, so one the caller may not touch fails
+     * alone and the rest still go through. Results come back in the order the ids were given.
+     */
+    async bulk(userId: string, action: BulkAction, ids: string[], folderId: string | null): Promise<BulkResult[]> {
+      const results: BulkResult[] = [];
+      for (const id of ids) {
+        try {
+          if (action === 'trash') await service.trash(id, userId);
+          else if (action === 'restore') await service.restore(id, userId);
+          else if (action === 'delete') await service.purge(id, userId);
+          else await service.update(id, userId, { folderId });
+          results.push({ id, ok: true });
+        } catch (error) {
+          if (!(error instanceof AppError)) {
+            logger.error({ err: error, documentId: id, action }, 'bulk action failed');
+            results.push({ id, ok: false, error: { code: 'INTERNAL_ERROR', message: 'Something went wrong.' } });
+          } else {
+            results.push({ id, ok: false, error: { code: error.code, message: error.message } });
+          }
+        }
+      }
+      return results;
+    },
+
     async setStar(documentId: string, userId: string, starred: boolean): Promise<void> {
       await authorizeById(documentId, userId);
       await documentsRepo.setStar(pool, userId, documentId, starred);
@@ -664,6 +777,7 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
       return { purged, failed };
     },
   };
+  return service;
 }
 
 export type DocumentsService = ReturnType<typeof createDocumentsService>;

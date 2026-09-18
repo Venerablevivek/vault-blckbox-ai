@@ -39,7 +39,7 @@ interface Operation {
   body?: ZodSchema;
   multipart?: boolean;
   /** Success status and body; null body means no content. */
-  success: [number, ZodSchema | null] | 'redirect' | 'stream';
+  success: [number, ZodSchema | null] | 'redirect' | 'stream' | { file: string };
   errors?: ErrorStatus[];
 }
 
@@ -353,6 +353,43 @@ export const operations: Operation[] = [
     success: [200, documents.TrashResponse],
     errors: [401, 403, 404],
     description: "Revokes the document's share links.",
+  },
+  {
+    method: 'post',
+    path: '/api/documents/bulk',
+    tag: 'Documents',
+    summary: 'Trash, restore, permanently delete or move many documents',
+    description:
+      'Each document is authorized and handled on its own, exactly as by its single-document endpoint, so some can fail while the rest succeed. Always 200; check each result.',
+    auth: S,
+    body: documents.BulkDocumentsBody,
+    success: [200, documents.BulkDocumentsResponse],
+    errors: [400, 401, 429],
+  },
+  {
+    method: 'get',
+    path: '/api/workspaces/:workspaceId/archive',
+    tag: 'Documents',
+    summary: 'Download documents or a folder as a zip',
+    description:
+      'Streams a zip built from storage. Folders keep their structure. Files the malware scan has not cleared are left out and listed in NOT-INCLUDED.txt inside the zip. Each included file is recorded as downloaded.',
+    auth: S,
+    params: documents.WorkspaceDocumentsParams,
+    query: documents.ArchiveQuery,
+    success: { file: 'application/zip' },
+    errors: [400, 401, 404, 409, 413, 429, 503],
+  },
+  {
+    method: 'get',
+    path: '/api/workspaces/:workspaceId/archive/summary',
+    tag: 'Documents',
+    summary: 'What a zip download would contain, without building it',
+    description: 'Same checks and errors as the download itself; nothing is read from storage or recorded.',
+    auth: S,
+    params: documents.WorkspaceDocumentsParams,
+    query: documents.ArchiveQuery,
+    success: [200, documents.ArchiveSummaryResponse],
+    errors: [400, 401, 404, 409, 413],
   },
   {
     method: 'put',
@@ -717,6 +754,11 @@ export function buildOpenApiDocument() {
       responses[200] = {
         description: 'An open stream of server-sent events.',
         content: { 'text/event-stream': { schema: { type: 'string' } } },
+      };
+    } else if (typeof op.success === 'object' && !Array.isArray(op.success)) {
+      responses[200] = {
+        description: 'The file, streamed as an attachment.',
+        content: { [op.success.file]: { schema: { type: 'string', format: 'binary' } } },
       };
     } else if (op.success === 'redirect') {
       responses[302] = {

@@ -91,6 +91,72 @@ export const DocumentListResponse = obj({
   storage: StorageUsage,
   trashRetentionDays: z.number().int(),
 }).openapi('DocumentList');
+/** At most this many documents in one bulk request or zip selection. */
+export const MAX_BATCH = 100;
+
+const documentIds = z
+  .array(uuid)
+  .min(1)
+  .max(MAX_BATCH)
+  .refine((ids) => new Set(ids).size === ids.length, 'List each document once.');
+
+export const BulkDocumentsBody = z
+  .object({
+    action: z.enum(['trash', 'restore', 'delete', 'move']).openapi({
+      description: 'delete permanently removes documents already in the trash (owners only).',
+    }),
+    ids: documentIds,
+    folderId: uuid.nullable().optional().openapi({ description: 'Where move puts them; null is the workspace root.' }),
+  })
+  .refine((b) => b.action !== 'move' || b.folderId !== undefined, {
+    message: 'Say where to move the documents (folderId, or null for the root).',
+    path: ['folderId'],
+  })
+  .openapi('BulkDocumentsRequest');
+
+export const BulkDocumentsResponse = obj({
+  results: z.array(
+    obj({
+      id: uuid,
+      ok: z.boolean(),
+      error: obj({ code: z.string(), message: z.string() }).optional(),
+    }),
+  ),
+  succeeded: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+}).openapi('BulkDocumentsResult');
+
+export const ArchiveQuery = z.object({
+  ids: z
+    .string()
+    .max(4000)
+    .transform((value, ctx) => {
+      const ids = value
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean);
+      if (ids.length === 0 || ids.length > MAX_BATCH || !ids.every((id) => uuid.safeParse(id).success)) {
+        ctx.addIssue({ code: 'custom', message: `Give 1 to ${MAX_BATCH} comma-separated document ids.` });
+        return z.NEVER;
+      }
+      return [...new Set(ids)];
+    })
+    .optional()
+    .openapi({ description: `Comma-separated document ids, up to ${MAX_BATCH}. Give this or folderId.` }),
+  folderId: uuid.optional().openapi({ description: 'Download this folder and everything below it.' }),
+});
+
+export const ArchiveSummaryResponse = obj({
+  filename: z.string(),
+  files: z.number().int().positive(),
+  bytes: z.number().int().nonnegative(),
+  skipped: z
+    .number()
+    .int()
+    .nonnegative()
+    .openapi({ description: 'Chosen files left out because the malware scan has not cleared them.' }),
+}).openapi('ArchiveSummary');
+
 export const TrashResponse = obj({ revokedLinks: z.number().int().nonnegative(), purgeAt: timestamp });
 
 export const FolderParams = obj({ workspaceId: uuid, folderId: uuid });

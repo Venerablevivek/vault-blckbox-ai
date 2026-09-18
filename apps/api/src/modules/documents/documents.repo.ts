@@ -38,6 +38,17 @@ export interface DocumentListRow extends DocumentRow {
   sort_value: string;
 }
 
+/** A live document to put in a zip, with the folder names between the archive root and it. */
+export interface ArchiveRow {
+  id: string;
+  filename: string;
+  storage_key: string;
+  size: string;
+  scan_status: ScanStatus;
+  created_at: Date;
+  dir: string[];
+}
+
 export type DocumentSort = 'date' | 'name' | 'size';
 export type DocumentFilter = 'all' | 'shared' | 'mine' | 'starred' | 'recent';
 
@@ -311,6 +322,43 @@ export const documentsRepo = {
    * Looks a document up by id alone. The caller is authorized against the workspace on
    * the returned row before anything is returned to them — see authorizeById.
    */
+  /**
+   * Live documents chosen by id, flat. At most `limit` rows; callers ask for one more than
+   * they allow, to tell "exactly the limit" from "too many".
+   */
+  async archiveByIds(db: Db, workspaceId: string, ids: string[], limit: number): Promise<ArchiveRow[]> {
+    const { rows } = await db.query<ArchiveRow>(
+      `SELECT d.id, d.filename, d.storage_key, d.size, d.scan_status, d.created_at, ARRAY[]::text[] AS dir
+         FROM documents d
+        WHERE d.workspace_id = $1 AND d.deleted_at IS NULL AND d.id = ANY($2::uuid[])
+        ORDER BY d.filename, d.id
+        LIMIT $3`,
+      [workspaceId, ids, limit],
+    );
+    return rows;
+  },
+
+  /** Every live document in a folder and its subfolders, with each one's path below it. */
+  async archiveFolder(db: Db, workspaceId: string, folderId: string, limit: number): Promise<ArchiveRow[]> {
+    const { rows } = await db.query<ArchiveRow>(
+      `WITH RECURSIVE tree AS (
+         SELECT f.id, ARRAY[]::text[] AS dir, 0 AS depth
+           FROM folders f WHERE f.id = $2 AND f.workspace_id = $1
+         UNION ALL
+         SELECT c.id, tree.dir || c.name::text, tree.depth + 1
+           FROM folders c JOIN tree ON c.parent_id = tree.id
+          WHERE tree.depth < 32
+       )
+       SELECT d.id, d.filename, d.storage_key, d.size, d.scan_status, d.created_at, tree.dir
+         FROM documents d JOIN tree ON d.folder_id = tree.id
+        WHERE d.workspace_id = $1 AND d.deleted_at IS NULL
+        ORDER BY tree.dir, d.filename, d.id
+        LIMIT $3`,
+      [workspaceId, folderId, limit],
+    );
+    return rows;
+  },
+
   async findLiveById(db: Db, id: string): Promise<DocumentRow | null> {
     const { rows } = await db.query<DocumentRow>(`SELECT * FROM documents WHERE id = $1 AND deleted_at IS NULL`, [id]);
     return rows[0] ?? null;

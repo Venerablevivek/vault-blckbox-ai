@@ -128,7 +128,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   registerAuthRoutes(app, { config, auth });
   registerWorkspaceRoutes(app, { workspaces, overview });
   registerInvitationRoutes(app, { workspaces });
-  registerDocumentRoutes(app, { config, documents, workspaces, shares });
+  registerDocumentRoutes(app, { config, documents, workspaces, shares, storage });
   registerShareRoutes(app, { config, shares });
   registerFolderRoutes(app, { folders, workspaces });
   registerUploadRoutes(app, { uploads: services.uploads, workspaces });

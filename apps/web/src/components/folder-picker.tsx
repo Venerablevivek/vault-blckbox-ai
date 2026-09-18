@@ -25,7 +25,8 @@ export function FolderPicker({
   workspaceId: string;
   title: string;
   confirmLabel: string;
-  currentFolderId: string | null;
+  /** Where the items are now; undefined when they come from several folders. */
+  currentFolderId?: string | null;
   excludeId?: string;
   onPick: (folderId: string | null) => void;
   onClose: () => void;
@@ -59,7 +60,7 @@ export function FolderPicker({
     void load(parentId);
   }, [load, parentId]);
 
-  const here = parentId === currentFolderId;
+  const here = currentFolderId !== undefined && parentId === currentFolderId;
 
   return (
     <Modal open onClose={onClose} title={title} size="md">

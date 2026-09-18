@@ -5,6 +5,8 @@ import { Suspense, use, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArchiveRestore,
+  FileArchive,
+  X,
   ChevronRight,
   Download,
   Eye,
@@ -34,6 +36,8 @@ import {
   formatDate,
   ownsOrAdministers,
   timeAgo,
+  type ArchiveSummary,
+  type BulkResult,
   type DocumentDto,
   type DocumentListResponse,
   type FolderDto,
@@ -72,7 +76,10 @@ function useDebounced<T>(value: T, ms: number): T {
   return debounced;
 }
 
-type MoveTarget = { kind: 'document'; doc: DocumentDto } | { kind: 'folder'; folder: FolderDto };
+type MoveTarget =
+  { kind: 'document'; doc: DocumentDto } | { kind: 'folder'; folder: FolderDto } | { kind: 'bulk'; ids: string[] };
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 function DocumentsView({ workspaceId }: { workspaceId: string }) {
   const session = useSession(workspaceId);
@@ -113,6 +120,9 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
   const [detailsFor, setDetailsFor] = useState<DocumentDto | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [moving, setMoving] = useState<MoveTarget | null>(null);
+  /** Documents ticked for a bulk action. Only ever ids that are on screen. */
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const role: Role = data?.role ?? session.role;
   const contributor = canContribute(role);
@@ -146,6 +156,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
       shownQuery.current = qs;
       setData(null);
       setDocuments([]);
+      setSelected(new Set());
     }
     setLoading(true);
     try {
@@ -417,6 +428,18 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
     }
   }
 
+  function SelectBox({ doc }: { doc: DocumentDto }) {
+    return (
+      <input
+        type="checkbox"
+        className="h-4 w-4 shrink-0 cursor-pointer rounded border-line text-brand-600 focus:ring-brand-500"
+        checked={selected.has(doc.id)}
+        onChange={() => toggleSelected(doc.id)}
+        aria-label={`Select ${doc.filename}`}
+      />
+    );
+  }
+
   function StarButton({ doc }: { doc: DocumentDto }) {
     if (trash) return null;
     return (
@@ -462,10 +485,101 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
     }
   }
 
+  // Rows that leave the screen (trashed, moved, filtered away) leave the selection too.
+  useEffect(() => {
+    setSelected((current) => {
+      const onScreen = new Set(documents.map((d) => d.id));
+      const kept = [...current].filter((id) => onScreen.has(id));
+      return kept.length === current.size ? current : new Set(kept);
+    });
+  }, [documents]);
+
+  function toggleSelected(id: string) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  /** Runs one action over the selection and says how it went, naming the first failure. */
+  async function runBulk(action: 'trash' | 'restore' | 'delete' | 'move', done: string, folder?: string | null) {
+    const ids = [...selected];
+    setBulkBusy(true);
+    try {
+      const result = await api.post<BulkResult>('/api/documents/bulk', {
+        action,
+        ids,
+        ...(action === 'move' ? { folderId: folder ?? null } : {}),
+      });
+      const firstError = result.results.find((r) => !r.ok)?.error?.message;
+      if (result.failed === 0) toast(`${plural(result.succeeded, 'document')} ${done}`, 'success');
+      else if (result.succeeded === 0) toast(firstError ?? 'Nothing could be changed.', 'error');
+      else
+        toast(
+          `${result.succeeded} of ${plural(ids.length, 'document')} ${done}. ${result.failed} not: ${firstError}`,
+          'info',
+        );
+      setSelected(new Set(result.results.filter((r) => !r.ok).map((r) => r.id)));
+      await load();
+    } catch (err) {
+      toast(err instanceof ApiRequestError ? err.message : 'That didn’t work. Please try again.', 'error');
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  async function bulkTrash() {
+    const ok = await dialogs.confirm({
+      title: `Move ${plural(selected.size, 'document')} to the trash?`,
+      body: `Their share links stop working straight away. You can restore them for ${data?.trashRetentionDays ?? 30} days.`,
+      confirmLabel: 'Move to trash',
+      tone: 'danger',
+    });
+    if (ok) await runBulk('trash', 'moved to the trash');
+  }
+
+  async function bulkPurge() {
+    const ok = await dialogs.confirm({
+      title: `Delete ${plural(selected.size, 'document')} forever?`,
+      body: 'The files are removed from storage immediately. This cannot be undone.',
+      confirmLabel: 'Delete forever',
+      tone: 'danger',
+    });
+    if (ok) await runBulk('delete', 'permanently deleted');
+  }
+
+  /**
+   * Downloads a zip. Asks first what it would contain, so a refusal (too large, nothing
+   * downloadable yet) is explained here rather than by navigating to an error page.
+   */
+  async function downloadZip(selection: { ids: string[] } | { folderId: string }) {
+    const qs = 'ids' in selection ? `ids=${selection.ids.join(',')}` : `folderId=${selection.folderId}`;
+    setMenuFor(null);
+    try {
+      const summary = await api.get<ArchiveSummary>(`/api/workspaces/${workspaceId}/archive/summary?${qs}`);
+      toast(
+        `Downloading ${plural(summary.files, 'file')} (${formatBytes(summary.bytes)}) as ${summary.filename}` +
+          (summary.skipped
+            ? `. ${plural(summary.skipped, 'file')} still being checked for malware won’t be included.`
+            : ''),
+        'info',
+      );
+      window.location.assign(`/api/workspaces/${workspaceId}/archive?${qs}`);
+    } catch (err) {
+      toast(err instanceof ApiRequestError ? err.message : 'Could not prepare the download.', 'error');
+    }
+  }
+
   async function completeMove(destination: string | null) {
     const target = moving;
     setMoving(null);
     if (!target) return;
+    if (target.kind === 'bulk') {
+      await runBulk('move', 'moved', destination);
+      return;
+    }
     try {
       if (target.kind === 'document') {
         await api.patch(`/api/documents/${target.doc.id}`, { folderId: destination });
@@ -609,8 +723,8 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
           </button>
         ) : null}
         {contributor ? (
-          <button className="btn-secondary btn-sm" onClick={() => setShareFor(doc)}>
-            <Share2 className="h-3.5 w-3.5" aria-hidden /> Share
+          <button className="btn-secondary btn-sm" onClick={() => setShareFor(doc)} aria-label="Share">
+            <Share2 className="h-3.5 w-3.5" aria-hidden /> <span className="hidden sm:inline">Share</span>
           </button>
         ) : (
           <a className="btn-secondary btn-sm" href={`/api/documents/${doc.id}/download`}>
@@ -711,6 +825,22 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
 
   const empty = !loading && documents.length === 0 && folders.length === 0;
 
+  const selectAllBox =
+    documents.length > 0 ? (
+      <input
+        type="checkbox"
+        className="h-4 w-4 shrink-0 cursor-pointer rounded border-line text-brand-600 focus:ring-brand-500"
+        checked={selected.size > 0 && selected.size === documents.length}
+        ref={(box) => {
+          if (box) box.indeterminate = selected.size > 0 && selected.size < documents.length;
+        }}
+        onChange={() =>
+          setSelected(selected.size === documents.length ? new Set() : new Set(documents.map((d) => d.id)))
+        }
+        aria-label="Select all documents shown"
+      />
+    ) : null;
+
   return (
     <Shell
       workspaces={session.workspaces}
@@ -787,7 +917,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
 
         <div className="flex flex-wrap items-center gap-3">
           <div
-            className="flex rounded-lg border border-line bg-white p-0.5 shadow-card"
+            className="flex max-w-full overflow-x-auto rounded-lg border border-line bg-white p-0.5 shadow-card"
             role="tablist"
             aria-label="Filter documents"
           >
@@ -800,7 +930,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                   setTab(t.key);
                   setMenuFor(null);
                 }}
-                className={`rounded-md px-3 py-1.5 text-sm transition-colors ${tab === t.key ? 'bg-brand-600 font-medium text-white' : 'text-ink-muted hover:text-ink'}`}
+                className={`shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm transition-colors ${tab === t.key ? 'bg-brand-600 font-medium text-white' : 'text-ink-muted hover:text-ink'}`}
               >
                 {t.key === 'trash' ? <Trash2 className="mr-1 inline h-3.5 w-3.5" aria-hidden /> : null}
                 {t.key === 'starred' ? <Star className="mr-1 inline h-3.5 w-3.5" aria-hidden /> : null}
@@ -815,7 +945,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
             ))}
           </div>
 
-          <div className="relative ml-auto w-full sm:w-72">
+          <div className="relative ml-auto w-full sm:w-56 2xl:w-72">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-subtle"
               aria-hidden
@@ -868,6 +998,61 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
             </button>
           </div>
         </div>
+
+        {selected.size > 0 ? (
+          <div
+            role="toolbar"
+            aria-label="Selected documents"
+            className="sticky top-2 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-2.5 shadow-card"
+          >
+            <span className="text-sm font-medium text-brand-800">{plural(selected.size, 'document')} selected</span>
+            <div className="ml-auto flex flex-wrap items-center gap-1.5">
+              {trash ? (
+                <>
+                  <button
+                    className="btn-secondary btn-sm"
+                    onClick={() => void runBulk('restore', 'restored')}
+                    disabled={bulkBusy}
+                  >
+                    <ArchiveRestore className="h-3.5 w-3.5" aria-hidden /> Restore
+                  </button>
+                  {role === 'OWNER' ? (
+                    <button className="btn-danger btn-sm" onClick={() => void bulkPurge()} disabled={bulkBusy}>
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden /> Delete forever
+                    </button>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <button
+                    className="btn-secondary btn-sm"
+                    onClick={() => void downloadZip({ ids: [...selected] })}
+                    disabled={bulkBusy}
+                  >
+                    <FileArchive className="h-3.5 w-3.5" aria-hidden /> Download zip
+                  </button>
+                  {contributor ? (
+                    <>
+                      <button
+                        className="btn-secondary btn-sm"
+                        onClick={() => setMoving({ kind: 'bulk', ids: [...selected] })}
+                        disabled={bulkBusy}
+                      >
+                        <FolderInput className="h-3.5 w-3.5" aria-hidden /> Move…
+                      </button>
+                      <button className="btn-danger btn-sm" onClick={() => void bulkTrash()} disabled={bulkBusy}>
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden /> Move to trash
+                      </button>
+                    </>
+                  ) : null}
+                </>
+              )}
+              <button className="btn-ghost btn-sm" onClick={() => setSelected(new Set())} aria-label="Clear selection">
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {/* Breadcrumbs: where you are in the folder tree, or what you are searching. */}
         {!trash ? (
@@ -1002,13 +1187,23 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
           </div>
         ) : (
           <div className={view === 'grid' ? 'space-y-3' : 'card'}>
-            {view === 'list' && !trash ? (
+            {view === 'list' ? (
               <div className="flex items-center gap-4 border-b border-line bg-slate-50/70 px-5 py-2.5 text-xs font-medium text-ink-muted">
+                {selectAllBox}
                 <span className="flex-1">Name</span>
-                <span className="hidden w-20 text-right md:block">Size</span>
-                <span className="hidden w-28 md:block">Added</span>
-                <span className="w-[168px]" />
+                {!trash ? (
+                  <>
+                    <span className="hidden w-20 text-right md:block">Size</span>
+                    <span className="hidden w-28 md:block">Added</span>
+                    <span className="hidden sm:block sm:w-[168px]" />
+                  </>
+                ) : null}
               </div>
+            ) : documents.length > 0 ? (
+              <label className="flex w-fit cursor-pointer items-center gap-2 text-xs font-medium text-ink-muted">
+                {selectAllBox}
+                Select all
+              </label>
             ) : null}
 
             <ul
@@ -1029,6 +1224,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                         : 'flex items-center gap-4 px-5 py-3 hover:bg-slate-50/70'
                     }
                   >
+                    {view === 'list' && documents.length > 0 ? <span className="w-4 shrink-0" aria-hidden /> : null}
                     <span
                       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600"
                       aria-hidden
@@ -1050,45 +1246,52 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                         {formatDate(folder.createdAt)}
                       </span>
                     ) : null}
-                    <div className={view === 'list' ? 'flex w-[168px] justify-end' : ''}>
-                      {contributor ? (
-                        <Menu id={`folder-${folder.id}`}>
-                          <MenuItem
-                            icon={Folder}
-                            label="Open"
-                            onClick={() => {
-                              setMenuFor(null);
-                              openFolder(folder.id);
-                            }}
-                          />
-                          <MenuItem
-                            icon={Pencil}
-                            label="Rename"
-                            onClick={() => void renameFolder(folder)}
-                            disabled={!mayModify}
-                            title={mayModify ? undefined : 'Only the creator or an owner can rename this folder'}
-                          />
-                          <MenuItem
-                            icon={FolderInput}
-                            label="Move to…"
-                            onClick={() => {
-                              setMenuFor(null);
-                              setMoving({ kind: 'folder', folder });
-                            }}
-                            disabled={!mayModify}
-                            title={mayModify ? undefined : 'Only the creator or an owner can move this folder'}
-                          />
-                          <div className="my-1 h-px bg-line" />
-                          <MenuItem
-                            icon={Trash2}
-                            label="Delete folder"
-                            danger
-                            onClick={() => void deleteFolder(folder)}
-                            disabled={!mayModify}
-                            title={mayModify ? undefined : 'Only the creator or an owner can delete this folder'}
-                          />
-                        </Menu>
-                      ) : null}
+                    <div className={view === 'list' ? 'flex justify-end sm:w-[168px]' : ''}>
+                      <Menu id={`folder-${folder.id}`}>
+                        <MenuItem
+                          icon={Folder}
+                          label="Open"
+                          onClick={() => {
+                            setMenuFor(null);
+                            openFolder(folder.id);
+                          }}
+                        />
+                        <MenuItem
+                          icon={FileArchive}
+                          label="Download as zip"
+                          onClick={() => void downloadZip({ folderId: folder.id })}
+                        />
+                        {contributor ? (
+                          <>
+                            <MenuItem
+                              icon={Pencil}
+                              label="Rename"
+                              onClick={() => void renameFolder(folder)}
+                              disabled={!mayModify}
+                              title={mayModify ? undefined : 'Only the creator or an owner can rename this folder'}
+                            />
+                            <MenuItem
+                              icon={FolderInput}
+                              label="Move to…"
+                              onClick={() => {
+                                setMenuFor(null);
+                                setMoving({ kind: 'folder', folder });
+                              }}
+                              disabled={!mayModify}
+                              title={mayModify ? undefined : 'Only the creator or an owner can move this folder'}
+                            />
+                            <div className="my-1 h-px bg-line" />
+                            <MenuItem
+                              icon={Trash2}
+                              label="Delete folder"
+                              danger
+                              onClick={() => void deleteFolder(folder)}
+                              disabled={!mayModify}
+                              title={mayModify ? undefined : 'Only the creator or an owner can delete this folder'}
+                            />
+                          </>
+                        ) : null}
+                      </Menu>
                     </div>
                   </li>
                 );
@@ -1098,7 +1301,10 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                 view === 'grid' ? (
                   <li key={doc.id} className="card flex flex-col p-4 transition-shadow hover:shadow-lift">
                     <div className="flex items-start justify-between">
-                      <FileGlyph filename={doc.filename} mimeType={doc.mimeType} />
+                      <div className="flex items-center gap-2">
+                        <SelectBox doc={doc} />
+                        <FileGlyph filename={doc.filename} mimeType={doc.mimeType} />
+                      </div>
                       <StarButton doc={doc} />
                       <ScanChip doc={doc} />
                       <LinkChip doc={doc} />
@@ -1118,7 +1324,10 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                   </li>
                 ) : (
                   <li key={doc.id} className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-slate-50/70">
-                    <FileGlyph filename={doc.filename} mimeType={doc.mimeType} />
+                    <SelectBox doc={doc} />
+                    <span className="hidden shrink-0 sm:block">
+                      <FileGlyph filename={doc.filename} mimeType={doc.mimeType} />
+                    </span>
                     <StarButton doc={doc} />
                     <div className="min-w-0 flex-1">
                       <button
@@ -1173,7 +1382,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                     {!trash ? (
                       <span className="hidden w-28 text-sm text-ink-muted md:block">{formatDate(doc.createdAt)}</span>
                     ) : null}
-                    <div className={`flex justify-end ${trash ? '' : 'w-[168px]'}`}>
+                    <div className={`flex justify-end ${trash ? '' : 'sm:w-[168px]'}`}>
                       <DocumentActions doc={doc} />
                     </div>
                   </li>
@@ -1206,9 +1415,23 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
       {moving ? (
         <FolderPicker
           workspaceId={workspaceId}
-          title={moving.kind === 'document' ? `Move “${moving.doc.filename}”` : `Move folder “${moving.folder.name}”`}
+          title={
+            moving.kind === 'bulk'
+              ? `Move ${plural(moving.ids.length, 'document')}`
+              : moving.kind === 'document'
+                ? `Move “${moving.doc.filename}”`
+                : `Move folder “${moving.folder.name}”`
+          }
           confirmLabel="Move here"
-          currentFolderId={moving.kind === 'document' ? moving.doc.folderId : moving.folder.parentId}
+          currentFolderId={
+            moving.kind === 'bulk'
+              ? tab === 'all'
+                ? folderId
+                : undefined
+              : moving.kind === 'document'
+                ? moving.doc.folderId
+                : moving.folder.parentId
+          }
           excludeId={moving.kind === 'folder' ? moving.folder.id : undefined}
           onPick={(destination) => void completeMove(destination)}
           onClose={() => setMoving(null)}

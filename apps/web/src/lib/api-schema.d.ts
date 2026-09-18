@@ -1890,6 +1890,272 @@ export interface paths {
     };
     trace?: never;
   };
+  '/api/documents/bulk': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Trash, restore, permanently delete or move many documents
+     * @description Each document is authorized and handled on its own, exactly as by its single-document endpoint, so some can fail while the rest succeed. Always 200; check each result.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['BulkDocumentsRequest'];
+        };
+      };
+      responses: {
+        /** @description Success */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['BulkDocumentsResult'];
+          };
+        };
+        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Rate limited or locked out. See Retry-After. */
+        429: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/workspaces/{workspaceId}/archive': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Download documents or a folder as a zip
+     * @description Streams a zip built from storage. Folders keep their structure. Files the malware scan has not cleared are left out and listed in NOT-INCLUDED.txt inside the zip. Each included file is recorded as downloaded.
+     */
+    get: {
+      parameters: {
+        query?: {
+          ids?: string;
+          folderId?: string;
+        };
+        header?: never;
+        path: {
+          workspaceId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description The file, streamed as an attachment. */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/zip': string;
+          };
+        };
+        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Conflict with the current state. */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
+        413: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Rate limited or locked out. See Retry-After. */
+        429: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description At capacity; retry after Retry-After seconds. */
+        503: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/workspaces/{workspaceId}/archive/summary': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * What a zip download would contain, without building it
+     * @description Same checks and errors as the download itself; nothing is read from storage or recorded.
+     */
+    get: {
+      parameters: {
+        query?: {
+          ids?: string;
+          folderId?: string;
+        };
+        header?: never;
+        path: {
+          workspaceId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Success */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ArchiveSummary'];
+          };
+        };
+        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Conflict with the current state. */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
+        413: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/documents/{id}/star': {
     parameters: {
       query?: never;
@@ -4403,6 +4669,39 @@ export interface components {
        * @description null moves the document to the workspace root.
        */
       folderId?: string | null;
+    };
+    BulkDocumentsResult: {
+      results: {
+        /** Format: uuid */
+        id: string;
+        ok: boolean;
+        error?: {
+          code: string;
+          message: string;
+        };
+      }[];
+      succeeded: number;
+      failed: number;
+    };
+    BulkDocumentsRequest: {
+      /**
+       * @description delete permanently removes documents already in the trash (owners only).
+       * @enum {string}
+       */
+      action: 'trash' | 'restore' | 'delete' | 'move';
+      ids: string[];
+      /**
+       * Format: uuid
+       * @description Where move puts them; null is the workspace root.
+       */
+      folderId?: string | null;
+    };
+    ArchiveSummary: {
+      filename: string;
+      files: number;
+      bytes: number;
+      /** @description Chosen files left out because the malware scan has not cleared them. */
+      skipped: number;
     };
     ShareActivity: {
       opens: number;

@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import type { Config } from '../../config';
 import {
+  ArchiveQuery,
+  BulkDocumentsBody,
   DocumentParams,
   ListDocumentsQuery,
   UpdateDocumentBody,
@@ -14,6 +16,8 @@ import { toFolderDto } from '../folders/folders.service';
 import type { WorkspacesService } from '../workspaces/workspaces.service';
 import type { SharesService } from '../shares/shares.service';
 import type { DocumentsService } from './documents.service';
+import type { FileStorage } from '../../storage/file-storage';
+import { createArchiveStream } from './archive';
 import type { DocumentListRow, DocumentRow } from './documents.repo';
 
 export function toDocumentDto(row: DocumentRow & Partial<DocumentListRow>) {
@@ -43,6 +47,25 @@ export function toDocumentDto(row: DocumentRow & Partial<DocumentListRow>) {
   };
 }
 
+/**
+ * Content-Disposition for a download: a plain-ASCII filename for old clients, and the real
+ * one in RFC 5987 form for everything else.
+ */
+export function attachmentDisposition(filename: string): string {
+  const ascii = filename.replace(/[^\x20-\x7e]|["\\]/g, '_');
+  const encoded = encodeURIComponent(filename).replace(
+    /['()*]/g,
+    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
+}
+
+function archiveSelection(ids: string[] | undefined, folderId: string | undefined) {
+  if (ids !== undefined && folderId === undefined) return { ids };
+  if (folderId !== undefined && ids === undefined) return { folderId };
+  throw Errors.badRequest('INVALID_SELECTION', 'Give either ids or folderId.');
+}
+
 export function registerDocumentRoutes(
   app: FastifyInstance,
   deps: {
@@ -50,9 +73,11 @@ export function registerDocumentRoutes(
     documents: DocumentsService;
     workspaces: WorkspacesService;
     shares: SharesService;
+    storage: FileStorage;
   },
 ): void {
-  const { config, documents, workspaces, shares } = deps;
+  const { config, documents, workspaces, shares, storage } = deps;
+  const archiveSlots = createSlots(config.MAX_CONCURRENT_ARCHIVES);
 
   // At most MAX_CONCURRENT_UPLOADS files are buffered in this process at once, so worst-case
   // upload memory is MAX_CONCURRENT_UPLOADS x MAX_UPLOAD_BYTES rather than unbounded.
@@ -153,6 +178,68 @@ export function registerDocumentRoutes(
     handler: async (request, reply) => {
       const { id } = DocumentParams.parse(request.params);
       return reply.redirect(await documents.getPreviewUrl(id, currentUser(request).id), 302);
+    },
+  });
+
+  app.post('/api/documents/bulk', {
+    preHandler: requireSession,
+    config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
+    handler: async (request) => {
+      const { action, ids, folderId } = BulkDocumentsBody.parse(request.body);
+      const results = await documents.bulk(currentUser(request).id, action, ids, folderId ?? null);
+      const succeeded = results.filter((r) => r.ok).length;
+      return { results, succeeded, failed: results.length - succeeded };
+    },
+  });
+
+  // What a zip download would contain, without building it: lets the app explain a refusal
+  // (too large, nothing downloadable) instead of navigating to an error.
+  app.get('/api/workspaces/:workspaceId/archive/summary', {
+    preHandler: requireSession,
+    handler: async (request) => {
+      const { workspaceId } = WorkspaceDocumentsParams.parse(request.params);
+      const { ids, folderId } = ArchiveQuery.parse(request.query);
+      const plan = await documents.planArchive(workspaceId, currentUser(request).id, archiveSelection(ids, folderId));
+      return {
+        filename: plan.filename,
+        files: plan.entries.length,
+        bytes: plan.entries.reduce((sum, entry) => sum + entry.size, 0),
+        skipped: plan.skipped.length,
+      };
+    },
+  });
+
+  // A zip of chosen documents, or of a folder and everything below it, streamed from storage.
+  app.get('/api/workspaces/:workspaceId/archive', {
+    preHandler: requireSession,
+    config: { rateLimit: { max: 20, timeWindow: '1 minute' } },
+    handler: async (request, reply) => {
+      const { workspaceId } = WorkspaceDocumentsParams.parse(request.params);
+      const { ids, folderId } = ArchiveQuery.parse(request.query);
+      const release = archiveSlots.tryAcquire();
+      if (!release) {
+        throw Errors.busy('ARCHIVES_BUSY', 'The server is building other zip files. Please retry in a moment.', 10);
+      }
+      try {
+        const userId = currentUser(request).id;
+        const plan = await documents.planArchive(workspaceId, userId, archiveSelection(ids, folderId));
+        await documents.recordArchiveDownload(workspaceId, userId, plan);
+        const archive = await createArchiveStream(plan, storage, request.log);
+        // The slot is held until the response ends, however it ends.
+        reply.raw.on('close', () => {
+          if (!reply.raw.writableFinished) archive.abort();
+          release();
+        });
+        reply
+          .header('Content-Type', 'application/zip')
+          .header('Content-Disposition', attachmentDisposition(plan.filename))
+          .header('Cache-Control', 'private, no-store');
+        if (archive.size !== null) reply.header('Content-Length', String(archive.size));
+        return reply.send(archive.stream);
+      } catch (error) {
+        release();
+        throw error;
+      }
     },
   });
 
