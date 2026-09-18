@@ -4075,7 +4075,7 @@ export interface components {
             quotaBytes: number;
         };
         /** @enum {string} */
-        AuditAction: "workspace.created" | "workspace.renamed" | "document.uploaded" | "document.downloaded" | "document.previewed" | "document.deleted" | "document.renamed" | "document.moved" | "document.trashed" | "document.restored" | "document.purged" | "folder.created" | "folder.renamed" | "folder.moved" | "folder.deleted" | "share.created" | "share.updated" | "share.revoked" | "share.accessed" | "share.blocked" | "member.invited" | "member.joined" | "member.removed" | "member.left" | "member.role_changed" | "invitation.revoked";
+        AuditAction: "workspace.created" | "workspace.renamed" | "document.uploaded" | "document.downloaded" | "document.previewed" | "document.deleted" | "document.renamed" | "document.moved" | "document.trashed" | "document.restored" | "document.purged" | "folder.created" | "folder.renamed" | "folder.moved" | "folder.deleted" | "share.created" | "share.updated" | "share.revoked" | "share.accessed" | "share.blocked" | "member.invited" | "member.joined" | "member.removed" | "member.left" | "member.role_changed" | "invitation.revoked" | "document.quarantined";
         AuditEvent: {
             /** Format: uuid */
             id: string;
@@ -4200,6 +4200,11 @@ export interface components {
             size: number;
             /** @description Hex SHA-256 of the stored bytes; null only while an older file is backfilled. */
             sha256: string | null;
+            /**
+             * @description pending: being checked for malware (not downloadable yet). infected: removed. unscanned: not scanned (scanning off, too large, or uploaded before scanning).
+             * @enum {string}
+             */
+            scanStatus: "pending" | "clean" | "infected" | "unscanned";
             /** Format: uuid */
             folderId: string | null;
             /** Format: uuid */
@@ -4449,7 +4454,7 @@ export interface components {
             } | null;
         };
         /** @enum {string} */
-        NotificationType: "share.first_open" | "share.new_viewer" | "share.forwarding_suspected" | "document.uploaded" | "member.joined" | "member.removed" | "member.role_changed" | "workspace.deleted";
+        NotificationType: "share.first_open" | "share.new_viewer" | "share.forwarding_suspected" | "document.uploaded" | "member.joined" | "member.removed" | "member.role_changed" | "workspace.deleted" | "document.quarantined";
         Notification: {
             /** Format: uuid */
             id: string;

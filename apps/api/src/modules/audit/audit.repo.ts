@@ -28,7 +28,8 @@ export type AuditAction =
   | 'folder.moved'
   | 'folder.deleted'
   | 'share.updated'
-  | 'workspace.renamed';
+  | 'workspace.renamed'
+  | 'document.quarantined';
 
 export type AuditResource = 'workspace' | 'document' | 'folder' | 'share' | 'member' | 'invitation';
 

@@ -1,4 +1,5 @@
 import type { Db } from '../../db/pool';
+import type { ScanStatus } from './scan-policy';
 
 export interface DocumentRow {
   id: string;
@@ -14,6 +15,9 @@ export interface DocumentRow {
   deleted_by: string | null;
   /** SHA-256 of the stored bytes. Null only for rows created before checksums existed. */
   sha256: Buffer | null;
+  scan_status: ScanStatus;
+  scanned_at: Date | null;
+  scan_signature: string | null;
 }
 
 export interface DocumentListRow extends DocumentRow {
@@ -79,11 +83,12 @@ export const documentsRepo = {
       size: number;
       /** Null for direct uploads: computed afterwards by a job, from the stored object. */
       sha256: Buffer | null;
+      scanStatus: ScanStatus;
     },
   ): Promise<DocumentRow> {
     const { rows } = await db.query<DocumentRow>(
-      `INSERT INTO documents (id, workspace_id, folder_id, uploaded_by, filename, storage_key, mime_type, size, sha256)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO documents (id, workspace_id, folder_id, uploaded_by, filename, storage_key, mime_type, size, sha256, scan_status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
       [
         doc.id,
@@ -95,6 +100,7 @@ export const documentsRepo = {
         doc.mimeType,
         doc.size,
         doc.sha256,
+        doc.scanStatus,
       ],
     );
     return rows[0]!;
@@ -142,6 +148,34 @@ export const documentsRepo = {
     const { rows } = await db.query<{ id: string; storage_key: string }>(
       'SELECT id, storage_key FROM documents WHERE sha256 IS NULL ORDER BY created_at LIMIT $1',
       [limit],
+    );
+    return rows;
+  },
+
+  async setScanResult(
+    db: Db,
+    id: string,
+    status: 'clean' | 'infected',
+    signature: string | null,
+    now: Date,
+  ): Promise<boolean> {
+    const { rowCount } = await db.query(
+      `UPDATE documents SET scan_status = $2, scan_signature = $3, scanned_at = $4 WHERE id = $1 AND scan_status = 'pending'`,
+      [id, status, signature, now],
+    );
+    return (rowCount ?? 0) > 0;
+  },
+
+  /** Pending documents with no unfinished scan job: to be queued again (the scanner was down). */
+  async pendingWithoutScanJob(db: Db, olderThanMinutes: number, limit: number): Promise<Array<{ id: string }>> {
+    // created_at is set by the database clock, so the cutoff uses it too.
+    const { rows } = await db.query<{ id: string }>(
+      `SELECT d.id FROM documents d
+        WHERE d.scan_status = 'pending' AND d.created_at < now() - make_interval(mins => $1)
+          AND NOT EXISTS (SELECT 1 FROM jobs j WHERE j.queue = 'document.scan' AND j.dedupe_key = d.id::text
+                            AND j.status IN ('queued', 'running'))
+        ORDER BY d.created_at LIMIT $2`,
+      [olderThanMinutes, limit],
     );
     return rows;
   },

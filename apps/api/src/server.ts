@@ -92,6 +92,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     pool,
     directPool: deps.directPool,
     readPool: deps.readPool,
+    scanner: deps.scanner,
     storage,
     multipartStorage: deps.multipartStorage ?? null,
     logger,

@@ -30,6 +30,7 @@ const ICONS: Record<NotificationDto['type'], { icon: LucideIcon; tone: string }>
   'member.removed': { icon: UserMinus, tone: 'bg-danger-soft text-danger' },
   'member.role_changed': { icon: UserCog, tone: 'bg-violet-50 text-violet-600' },
   'workspace.deleted': { icon: Trash2, tone: 'bg-danger-soft text-danger' },
+  'document.quarantined': { icon: AlertTriangle, tone: 'bg-danger-soft text-danger' },
 };
 
 export function NotificationBell() {

@@ -23,6 +23,7 @@ export function toDocumentDto(row: DocumentRow & Partial<DocumentListRow>) {
     mimeType: row.mime_type,
     size: Number(row.size),
     sha256: row.sha256 ? row.sha256.toString('hex') : null,
+    scanStatus: row.scan_status,
     folderId: row.folder_id,
     uploadedBy: row.uploaded_by,
     uploadedByEmail: row.uploaded_by_email,

@@ -189,6 +189,15 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
     }
   }, [data, loadingMore, workspaceId, buildQuery]);
 
+  // While any file on screen is still being scanned, refresh the list every few seconds so it
+  // becomes available (or shows as removed) without a manual reload.
+  const scanning = documents.some((d) => d.scanStatus === 'pending');
+  useEffect(() => {
+    if (!scanning) return;
+    const timer = setInterval(() => void load(), 4000);
+    return () => clearInterval(timer);
+  }, [scanning, load]);
+
   // Infinite scroll: load the next page as the end of the list comes into view.
   useEffect(() => {
     const node = loadMoreSentinel.current;
@@ -519,6 +528,34 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
         </div>
       );
     }
+    // Until the malware scan clears it (or after it found something) the file can't leave storage.
+    if (doc.scanStatus === 'pending' || doc.scanStatus === 'infected') {
+      return (
+        <div className="flex items-center gap-1">
+          <button
+            className="btn-secondary btn-sm"
+            disabled
+            title={
+              doc.scanStatus === 'pending' ? 'Being checked for malware' : 'Malware was found, so the file was removed'
+            }
+          >
+            {doc.scanStatus === 'pending' ? 'Scanning…' : 'Removed'}
+          </button>
+          {contributor ? (
+            <Menu id={doc.id}>
+              <MenuItem
+                icon={Trash2}
+                label="Move to trash"
+                danger
+                onClick={() => void trashDocument(doc)}
+                disabled={!canModify(doc)}
+                title={canModify(doc) ? undefined : 'Only the uploader or an owner can delete this'}
+              />
+            </Menu>
+          ) : null}
+        </div>
+      );
+    }
     const previewable = PREVIEWABLE.has(doc.mimeType);
     return (
       <div className="flex items-center gap-1">
@@ -602,6 +639,14 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
         </Menu>
       </div>
     );
+  }
+
+  /** Where the malware scan stands, when it matters: while it runs, and if it found something. */
+  function ScanChip({ doc }: { doc: DocumentDto }) {
+    if (doc.scanStatus === 'pending') return <span className="chip">Scanning…</span>;
+    if (doc.scanStatus === 'infected')
+      return <span className="chip bg-danger-soft text-danger">Malware found, removed</span>;
+    return null;
   }
 
   function LinkChip({ doc }: { doc: DocumentDto }) {
@@ -1011,6 +1056,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                   <li key={doc.id} className="card flex flex-col p-4 transition-shadow hover:shadow-lift">
                     <div className="flex items-start justify-between">
                       <FileGlyph filename={doc.filename} mimeType={doc.mimeType} />
+                      <ScanChip doc={doc} />
                       <LinkChip doc={doc} />
                     </div>
                     <p className="mt-3 truncate text-sm font-semibold" title={doc.filename}>
@@ -1039,7 +1085,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                               ? setShareFor(doc)
                               : undefined
                         }
-                        disabled={trash}
+                        disabled={trash || doc.scanStatus === 'pending' || doc.scanStatus === 'infected'}
                         title={doc.filename}
                       >
                         {doc.filename}
@@ -1059,6 +1105,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                         ) : (
                           <>
                             <span className="truncate">{doc.uploadedByEmail}</span>
+                            <ScanChip doc={doc} />
                             <LinkChip doc={doc} />
                             {doc.links?.lastAccessedAt ? (
                               <span className="text-ink-subtle">last opened {timeAgo(doc.links.lastAccessedAt)}</span>

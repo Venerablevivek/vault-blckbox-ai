@@ -48,6 +48,10 @@ export const Document = obj({
     .regex(/^[0-9a-f]{64}$/)
     .nullable()
     .openapi({ description: 'Hex SHA-256 of the stored bytes; null only while an older file is backfilled.' }),
+  scanStatus: z.enum(['pending', 'clean', 'infected', 'unscanned']).openapi({
+    description:
+      'pending: being checked for malware (not downloadable yet). infected: removed. unscanned: not scanned (scanning off, too large, or uploaded before scanning).',
+  }),
   folderId: uuid.nullable(),
   uploadedBy: uuid,
   uploadedByEmail: z.string().optional().openapi({ description: 'Present in listings.' }),

@@ -362,7 +362,8 @@
           "member.removed",
           "member.left",
           "member.role_changed",
-          "invitation.revoked"
+          "invitation.revoked",
+          "document.quarantined"
         ]
       },
       "AuditEvent": {
@@ -766,6 +767,16 @@
             "pattern": "^[0-9a-f]{64}$",
             "description": "Hex SHA-256 of the stored bytes; null only while an older file is backfilled."
           },
+          "scanStatus": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "clean",
+              "infected",
+              "unscanned"
+            ],
+            "description": "pending: being checked for malware (not downloadable yet). infected: removed. unscanned: not scanned (scanning off, too large, or uploaded before scanning)."
+          },
           "folderId": {
             "type": [
               "string",
@@ -833,6 +844,7 @@
           "mimeType",
           "size",
           "sha256",
+          "scanStatus",
           "folderId",
           "uploadedBy",
           "createdAt",
@@ -1586,7 +1598,8 @@
           "member.joined",
           "member.removed",
           "member.role_changed",
-          "workspace.deleted"
+          "workspace.deleted",
+          "document.quarantined"
         ]
       },
       "Notification": {

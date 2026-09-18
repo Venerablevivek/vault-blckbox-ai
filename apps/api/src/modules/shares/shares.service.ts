@@ -13,6 +13,7 @@ import { workspacesRepo } from '../workspaces/workspaces.repo';
 import type { AuditService } from '../audit/audit.service';
 import type { NotificationsService } from '../notifications/notifications.service';
 import { sharesRepo, type AccessOutcome, type ResolvedShare, type ShareActivity } from './shares.repo';
+import { assertScanAllows } from '../documents/scan-policy';
 
 export interface SharesServiceOptions {
   pool: Pool;
@@ -286,6 +287,8 @@ export function createSharesService(opts: SharesServiceOptions) {
       const role = await workspacesRepo.findMembership(pool, document.workspace_id, input.userId);
       if (!role) throw Errors.notFound('Document');
       requireContributor(role, 'create share links');
+      // A file still being scanned (or found infected) can't be handed to anyone outside.
+      assertScanAllows(document);
 
       const token = generateToken('shr');
       const passwordHash = input.password ? await hashPassword(input.password) : null;

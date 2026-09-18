@@ -8,7 +8,8 @@ export type NotificationType =
   | 'member.joined'
   | 'member.removed'
   | 'member.role_changed'
-  | 'workspace.deleted';
+  | 'workspace.deleted'
+  | 'document.quarantined';
 
 export interface NotificationRow {
   id: string;

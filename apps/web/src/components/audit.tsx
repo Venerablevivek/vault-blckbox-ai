@@ -57,6 +57,7 @@ export const AUDIT_STYLE: Record<AuditAction, { icon: LucideIcon; tone: string }
   'folder.moved': { icon: FolderInput, tone: 'bg-slate-100 text-ink-muted' },
   'folder.deleted': { icon: FolderMinus, tone: 'bg-danger-soft text-danger' },
   'share.updated': { icon: Settings2, tone: 'bg-violet-50 text-violet-600' },
+  'document.quarantined': { icon: ShieldAlert, tone: 'bg-danger-soft text-danger' },
 };
 
 export function describeAuditEvent(event: AuditEvent): string {
@@ -120,6 +121,8 @@ export function describeAuditEvent(event: AuditEvent): string {
       return `${who} moved the folder ${folder}`;
     case 'folder.deleted':
       return `${who} deleted the folder ${folder}`;
+    case 'document.quarantined':
+      return `${file} was removed: the malware scanner found ${(m.signature as string) ?? 'a threat'}`;
     case 'share.updated':
       return `${who} changed a share link's settings`;
     default:

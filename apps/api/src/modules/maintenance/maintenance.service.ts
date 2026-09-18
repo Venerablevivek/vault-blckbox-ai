@@ -67,6 +67,7 @@ export function createMaintenanceService(deps: {
           droppedEventPartitions: [] as string[],
           expiredUploads: 0,
           rateLimitRows: 0,
+          requeuedScans: 0,
         };
 
         const step = async (name: string, fn: () => Promise<void>) => {
@@ -135,6 +136,9 @@ export function createMaintenanceService(deps: {
             daysAgo(RETENTION.finishedJobsDays),
             daysAgo(RETENTION.failedJobsDays),
           );
+        });
+        await step('scans', async () => {
+          result.requeuedScans = await documents.requeuePendingScans();
         });
         await step('checksums', async () => {
           const r = await documents.backfillChecksums();

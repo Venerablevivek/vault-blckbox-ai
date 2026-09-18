@@ -91,5 +91,22 @@ export async function uploadText(request: APIRequestContext, workspaceId: string
     multipart: { file: { name, mimeType: 'text/plain', buffer: Buffer.from(`hello from ${name}\n`) } },
   });
   expect(response.status(), await response.text()).toBe(201);
-  return ((await response.json()) as { document: { id: string } }).document.id;
+  const document = ((await response.json()) as { document: { id: string; scanStatus: string } }).document;
+  // When the stack scans uploads, a file can't be shared or downloaded until it's scanned.
+  if (document.scanStatus === 'pending') {
+    await expect
+      .poll(
+        async () => {
+          const listing = (await (
+            await request.get(`/api/workspaces/${workspaceId}/documents?q=${encodeURIComponent(name)}`)
+          ).json()) as {
+            documents: Array<{ id: string; scanStatus: string }>;
+          };
+          return listing.documents.find((d) => d.id === document.id)?.scanStatus;
+        },
+        { timeout: 30_000 },
+      )
+      .not.toBe('pending');
+  }
+  return document.id;
 }

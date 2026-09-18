@@ -12,6 +12,7 @@ import { createOverviewService } from './modules/overview/overview.service';
 import { createSharesService } from './modules/shares/shares.service';
 import { createWorkspacesService } from './modules/workspaces/workspaces.service';
 import { createUploadsService } from './modules/uploads/uploads.service';
+import { ClamdScanner, type Scanner } from './scanning/scanner';
 import type { FileStorage } from './storage/file-storage';
 import type { MultipartStorage } from './storage/multipart-storage';
 import type { Clock } from './types';
@@ -30,10 +31,18 @@ export function createServices(deps: {
   multipartStorage: (FileStorage & MultipartStorage) | null;
   logger: Logger;
   clock: Clock;
+  /** Overrides the scanner built from SCAN_MODE (tests point it at a stand-in clamd). */
+  scanner?: Scanner | null;
 }) {
   const { config, pool, storage, multipartStorage, logger, clock } = deps;
   const directPool = deps.directPool ?? pool;
   const readPool = deps.readPool ?? pool;
+  const scanner =
+    deps.scanner !== undefined
+      ? deps.scanner
+      : config.SCAN_MODE === 'clamav'
+        ? new ClamdScanner(config.CLAMAV_HOST, config.CLAMAV_PORT, config.SCAN_TIMEOUT_MS)
+        : null;
 
   // Cross-cutting services first: the feature modules depend on them.
   const jobs = createJobQueue({ pool, listenPool: directPool, clock, logger });
@@ -75,6 +84,10 @@ export function createServices(deps: {
     trashRetentionDays: config.TRASH_RETENTION_DAYS,
     audit,
     notifications,
+    jobs,
+    scanMode: config.SCAN_MODE,
+    scanMaxBytes: config.SCAN_MAX_BYTES,
+    scanner,
   });
   const shares = createSharesService({
     pool,
@@ -104,6 +117,8 @@ export function createServices(deps: {
         maxDirectUploadBytes: config.MAX_DIRECT_UPLOAD_BYTES,
         sessionTtlHours: config.UPLOAD_SESSION_TTL_HOURS,
         partUrlTtlSeconds: config.UPLOAD_PART_URL_TTL_SECONDS,
+        scanMode: config.SCAN_MODE,
+        scanMaxBytes: config.SCAN_MAX_BYTES,
       })
     : null;
   const maintenance = createMaintenanceService({

@@ -16,6 +16,9 @@ import type { AuditService } from '../audit/audit.service';
 import { foldersRepo } from '../folders/folders.repo';
 import type { NotificationsService } from '../notifications/notifications.service';
 import { sharesRepo } from '../shares/shares.repo';
+import type { JobQueue } from '../../jobs/queue';
+import type { Scanner } from '../../scanning/scanner';
+import { assertScanAllows, initialScanStatus } from './scan-policy';
 import {
   documentsRepo,
   type DocumentFilter,
@@ -37,6 +40,11 @@ export interface DocumentsServiceOptions {
   trashRetentionDays: number;
   audit: AuditService;
   notifications: NotificationsService;
+  jobs: JobQueue;
+  scanMode: 'off' | 'clamav';
+  scanMaxBytes: number;
+  /** Null when scanning is off. */
+  scanner: Scanner | null;
 }
 
 /** Opaque pagination cursor: the last row's sort value and id, base64url-encoded JSON. */
@@ -69,7 +77,7 @@ export function cleanFilename(name: string): string {
 }
 
 export function createDocumentsService(opts: DocumentsServiceOptions) {
-  const { pool, storage, clock, logger, audit, notifications } = opts;
+  const { pool, storage, clock, logger, audit, notifications, jobs } = opts;
 
   /**
    * Resolves a live document addressed by id alone and authorizes the caller against the
@@ -242,7 +250,11 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
             mimeType,
             size,
             sha256,
+            scanStatus: initialScanStatus(opts.scanMode, size, opts.scanMaxBytes),
           });
+          if (row.scan_status === 'pending') {
+            await jobs.enqueue(tx, 'document.scan', { documentId: row.id }, { dedupeKey: row.id, maxAttempts: 8 });
+          }
           await audit.record(
             {
               workspaceId,
@@ -375,6 +387,7 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
      */
     async getPreviewUrl(documentId: string, userId: string): Promise<string> {
       const { document } = await authorizeById(documentId, userId);
+      assertScanAllows(document);
       if (!PREVIEWABLE.has(document.mime_type)) {
         throw Errors.unsupportedMediaType('This type of file cannot be previewed. Download it instead.');
       }
@@ -396,6 +409,7 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
     /** Authorize -> verify not trashed -> return a short-lived signed URL. */
     async getDownloadUrl(documentId: string, userId: string): Promise<string> {
       const { document } = await authorizeById(documentId, userId);
+      assertScanAllows(document);
       audit.recordAsync({
         workspaceId: document.workspace_id,
         actorUserId: userId,
@@ -538,6 +552,69 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
 
     computeChecksum,
     purgeWorkspace,
+
+    /**
+     * Job handler for document.scan: streams the object to the scanner. Clean files become
+     * available; infected ones are quarantined. If the scanner is unreachable this throws and the
+     * job retries with backoff; the file stays blocked meanwhile (fail closed).
+     */
+    async scanDocument(documentId: string): Promise<void> {
+      const row = await documentsRepo.findAnyById(pool, documentId);
+      if (!row) return;
+      if (row.scan_status === 'infected') {
+        // A previous attempt quarantined it but couldn't delete the bytes: finish that.
+        await storage.delete(row.storage_key);
+        return;
+      }
+      if (row.scan_status !== 'pending') return;
+      if (!opts.scanner) throw new Error('scanning is pending but no scanner is configured');
+
+      const result = await opts.scanner.scan(await storage.download(row.storage_key));
+      const now = clock.now();
+      if (!result.infected) {
+        await documentsRepo.setScanResult(pool, row.id, 'clean', null, now);
+        return;
+      }
+
+      const quarantined = await withTransaction(pool, async (tx) => {
+        if (!(await documentsRepo.setScanResult(tx, row.id, 'infected', result.signature, now))) return false;
+        const revoked = await sharesRepo.revokeForDocument(tx, row.id, now);
+        await workspacesRepo.releaseStorage(tx, row.workspace_id, Number(row.size));
+        await audit.record(
+          {
+            workspaceId: row.workspace_id,
+            actorUserId: null,
+            action: 'document.quarantined',
+            resourceType: 'document',
+            resourceId: row.id,
+            metadata: { filename: row.filename, signature: result.signature, revokedLinks: revoked },
+          },
+          tx,
+        );
+        return true;
+      });
+      if (!quarantined) return;
+      notifications.notify({
+        userId: row.uploaded_by,
+        workspaceId: row.workspace_id,
+        type: 'document.quarantined',
+        title: `${row.filename} was removed: malware was found`,
+        body: `The scanner identified ${result.signature}. The file can't be downloaded or shared.`,
+        resourceId: row.id,
+      });
+      logger.warn({ documentId: row.id, signature: result.signature }, 'quarantined an infected upload');
+      // After the commit: if this fails the job retries and the branch at the top finishes it.
+      await storage.delete(row.storage_key);
+    },
+
+    /** Maintenance: re-queues scans for files still pending after their job gave up. */
+    async requeuePendingScans(limit = 100): Promise<number> {
+      const stale = await documentsRepo.pendingWithoutScanJob(pool, 10, limit);
+      for (const { id } of stale) {
+        await jobs.enqueue(pool, 'document.scan', { documentId: id }, { dedupeKey: id, maxAttempts: 8 });
+      }
+      return stale.length;
+    },
 
     async storageUsage(workspaceId: string) {
       return workspacesRepo.storageUsage(pool, workspaceId);

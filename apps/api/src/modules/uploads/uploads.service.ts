@@ -17,6 +17,7 @@ import { foldersRepo } from '../folders/folders.repo';
 import type { NotificationsService } from '../notifications/notifications.service';
 import { workspacesRepo } from '../workspaces/workspaces.repo';
 import { uploadsRepo, type UploadRow } from './uploads.repo';
+import { initialScanStatus } from '../documents/scan-policy';
 
 const MiB = 1024 * 1024;
 /** S3 requires every part but the last to be at least 5 MiB; 8 MiB keeps part counts low. */
@@ -55,6 +56,8 @@ export interface UploadsServiceOptions {
   maxDirectUploadBytes: number;
   sessionTtlHours: number;
   partUrlTtlSeconds: number;
+  scanMode: 'off' | 'clamav';
+  scanMaxBytes: number;
 }
 
 export function createUploadsService(opts: UploadsServiceOptions) {
@@ -283,7 +286,11 @@ export function createUploadsService(opts: UploadsServiceOptions) {
             mimeType,
             size,
             sha256: null,
+            scanStatus: initialScanStatus(opts.scanMode, size, opts.scanMaxBytes),
           });
+          if (row.scan_status === 'pending') {
+            await jobs.enqueue(tx, 'document.scan', { documentId: row.id }, { dedupeKey: row.id, maxAttempts: 8 });
+          }
           await audit.record(
             {
               workspaceId: upload.workspace_id,

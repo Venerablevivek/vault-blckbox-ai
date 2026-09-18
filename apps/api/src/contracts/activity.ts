@@ -28,6 +28,7 @@ export const AuditAction = z
     'member.left',
     'member.role_changed',
     'invitation.revoked',
+    'document.quarantined',
   ])
   .openapi('AuditAction');
 
@@ -68,6 +69,7 @@ export const NotificationType = z
     'member.removed',
     'member.role_changed',
     'workspace.deleted',
+    'document.quarantined',
   ])
   .openapi('NotificationType');
 

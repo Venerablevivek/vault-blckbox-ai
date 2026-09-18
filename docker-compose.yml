@@ -44,6 +44,11 @@ x-api-environment: &api-environment
   MAIL_FROM: ${MAIL_FROM:-Vault <no-reply@vault.local>}
   PASSWORD_RESET_TTL_MINUTES: ${PASSWORD_RESET_TTL_MINUTES:-60}
   EMAIL_VERIFICATION: ${EMAIL_VERIFICATION:-required}
+  # Malware scanning: off unless the antivirus profile is running (see the clamav service).
+  SCAN_MODE: ${SCAN_MODE:-off}
+  CLAMAV_HOST: clamav
+  CLAMAV_PORT: 3310
+  SCAN_MAX_BYTES: ${SCAN_MAX_BYTES:-104857600}
   EXPOSE_INVITE_LINKS: ${EXPOSE_INVITE_LINKS:-true}
   SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
 
@@ -125,6 +130,26 @@ services:
       timeout: 5s
       retries: 10
       start_period: 15s
+
+  # Malware scanning for uploads (optional: needs about 1 GB of memory and downloads virus
+  # signatures on first start). Enable with:
+  #   SCAN_MODE=clamav docker compose --profile antivirus up -d
+  clamav:
+    image: clamav/clamav:1.5.4-debian
+    profiles: ['antivirus']
+    environment:
+      # Must be at least SCAN_MAX_BYTES: clamd rejects longer streams.
+      CLAMD_CONF_StreamMaxLength: 100M
+      CLAMD_CONF_MaxFileSize: 100M
+      CLAMD_CONF_MaxScanSize: 400M
+    volumes:
+      - clamav-data:/var/lib/clamav
+    healthcheck:
+      test: ['CMD', 'clamdcheck.sh']
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 5m
 
   # Applies migrations as the database owner, then creates/updates the vault_app role and its
   # privileges. Runs to completion before the API and worker start; they never see owner credentials.
@@ -224,3 +249,4 @@ networks:
 volumes:
   postgres-data:
   minio-data:
+  clamav-data:

@@ -139,6 +139,17 @@ const schema = z.object({
   EMAIL_VERIFICATION: z.enum(['required', 'off']).default('required'),
   EMAIL_VERIFICATION_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(48),
 
+  /**
+   * clamav: every upload is scanned by clamd before it can be downloaded or shared. off: uploads are
+   * marked 'unscanned' and allowed. Production deployments should scan.
+   */
+  SCAN_MODE: z.enum(['off', 'clamav']).default('off'),
+  CLAMAV_HOST: z.string().min(1).default('clamav'),
+  CLAMAV_PORT: z.coerce.number().int().positive().default(3310),
+  /** Larger files are marked 'unscanned' instead of scanned. Must not exceed clamd's StreamMaxLength. */
+  SCAN_MAX_BYTES: z.coerce.number().int().positive().default(104_857_600),
+  SCAN_TIMEOUT_MS: z.coerce.number().int().positive().default(120_000),
+
   /** How long a password reset link works. */
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(60),
 

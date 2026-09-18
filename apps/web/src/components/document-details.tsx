@@ -41,6 +41,16 @@ export function DocumentDetails({ document, onClose }: { document: DocumentDto |
               {formatDate(document.createdAt)}
               {document.uploadedByEmail ? ` by ${document.uploadedByEmail}` : ''}
             </dd>
+            <dt className="text-ink-muted">Malware scan</dt>
+            <dd>
+              {document.scanStatus === 'clean'
+                ? 'Scanned, nothing found'
+                : document.scanStatus === 'pending'
+                  ? 'Being scanned…'
+                  : document.scanStatus === 'infected'
+                    ? 'Malware found; the file was removed'
+                    : 'Not scanned'}
+            </dd>
             <dt className="text-ink-muted">SHA-256</dt>
             <dd className="min-w-0">
               {document.sha256 ? (

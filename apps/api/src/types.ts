@@ -3,6 +3,7 @@ import type { Logger } from 'pino';
 import type { Config } from './config';
 import type { JobHandlers } from './jobs/queue';
 import type { Mailer } from './mail/mailer';
+import type { Scanner } from './scanning/scanner';
 import type { MaintenanceService } from './modules/maintenance/maintenance.service';
 import type { Services } from './services';
 import type { FileStorage } from './storage/file-storage';
@@ -26,6 +27,8 @@ export interface AppDeps {
   directPool?: Pool;
   /** A read-replica pool for lag-tolerant reads. Defaults to `pool`. */
   readPool?: Pool;
+  /** Overrides the scanner built from SCAN_MODE. */
+  scanner?: Scanner | null;
   /** Defaults to SMTP when SMTP_URL is set, otherwise a logging fallback. */
   mailer?: Mailer;
   clock?: Clock;

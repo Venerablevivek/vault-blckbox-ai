@@ -17,6 +17,7 @@ export interface JobPayloads {
     resourceId: string | null;
   };
   'document.checksum': { documentId: string };
+  'document.scan': { documentId: string };
   'workspace.purge': { workspaceId: string };
   'maintenance.run': Record<string, never>;
 }
