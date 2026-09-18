@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { createHarness, registerUser, uploadDocument, type Harness } from '../helpers/harness';
+import { createHarness, registerUser, TEST_APP_ROLE, uploadDocument, type Harness } from '../helpers/harness';
 
 /**
  * The application connects as vault_app, a least-privilege role. These tests pin what it can and
@@ -25,7 +25,7 @@ describe('database privileges of the application role', () => {
       'SELECT current_user AS name, rolsuper, rolbypassrls, rolcreaterole, rolcreatedb FROM pg_roles WHERE rolname = current_user',
     );
     expect(rows[0]).toEqual({
-      name: 'vault_app',
+      name: TEST_APP_ROLE,
       rolsuper: false,
       rolbypassrls: false,
       rolcreaterole: false,

@@ -70,7 +70,7 @@ describe('account security', () => {
       expect(unknown.statusCode).toBe(known.statusCode);
       expect(unknown.body).toBe(known.body);
       await h.mailer.waitFor((m) => m.to === 'alice@example.com');
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      await h.drainJobs();
       expect(h.mailer.sent.map((m) => m.to)).toEqual(['alice@example.com']);
     });
 
@@ -144,7 +144,10 @@ describe('account security', () => {
         ).toBe(202);
         await new Promise((resolve) => setTimeout(resolve, 60));
       }
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      // Emails go out through the job queue: wait for three, then for the queue to empty, and check
+      // that no more followed (a fixed sleep was too short when the machine was busy).
+      await expect.poll(() => h.mailer.sent.length, { timeout: 5000 }).toBeGreaterThanOrEqual(3);
+      await h.drainJobs();
       expect(h.mailer.sent).toHaveLength(3);
     });
 

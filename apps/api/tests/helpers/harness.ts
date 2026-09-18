@@ -33,6 +33,11 @@ const S3_ENDPOINT = process.env.TEST_S3_ENDPOINT ?? 'http://localhost:9000';
 export const TEST_PASSWORD = 'password123';
 /** The application runs as the least-privilege role, exactly as in Compose. */
 const APP_DB_PASSWORD = 'vault-app-test-password';
+/**
+ * The tests' own application role. Roles belong to the whole PostgreSQL server, so using the
+ * stack's vault_app here would reset the password a running local stack connects with.
+ */
+export const TEST_APP_ROLE = 'vault_app_test';
 
 /** A clock the tests can move forward, so expiry is tested without sleeping. */
 export const TEST_EPOCH = new Date('2026-01-01T12:00:00Z');
@@ -104,7 +109,7 @@ export async function createHarness(options?: {
     API_PORT: '4001',
     WEB_URL: 'http://localhost:3000',
     // The app connects as vault_app, not as the owner: every test exercises its real privileges.
-    DATABASE_URL: databaseUrl.replace(`${PG_USER}:${PG_PASSWORD}@`, `vault_app:${APP_DB_PASSWORD}@`),
+    DATABASE_URL: databaseUrl.replace(`${PG_USER}:${PG_PASSWORD}@`, `${TEST_APP_ROLE}:${APP_DB_PASSWORD}@`),
     S3_ENDPOINT,
     S3_PUBLIC_ENDPOINT: S3_ENDPOINT,
     S3_BUCKET: bucket,
@@ -126,7 +131,7 @@ export async function createHarness(options?: {
   await runMigrations(adminPool, path.resolve(__dirname, '../../migrations'), logger);
   const setupClient = await adminPool.connect();
   try {
-    await ensureAppRole(setupClient, APP_DB_PASSWORD);
+    await ensureAppRole(setupClient, APP_DB_PASSWORD, TEST_APP_ROLE);
   } finally {
     setupClient.release();
   }
