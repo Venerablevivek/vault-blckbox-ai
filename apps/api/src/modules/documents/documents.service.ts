@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import type { Pool } from 'pg';
 import type { Logger } from 'pino';
+import { withTenant } from '../../db/tenant';
 import { withTransaction } from '../../db/tx';
 import { AppError, Errors } from '../../lib/errors';
 import { assertAllowedType } from '../../lib/mime';
@@ -287,39 +288,42 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
       limit: number;
       cursor: string | null;
     }) {
-      const { workspaceId } = input.membership;
-      const searching = Boolean(input.search);
+      // Row-level security narrows every read here to the caller's workspaces (see withTenant).
+      return withTenant(pool, input.userId, async (db) => {
+        const { workspaceId } = input.membership;
+        const searching = Boolean(input.search);
 
-      const path =
-        input.folderId && input.view === 'active' ? await foldersRepo.pathTo(pool, workspaceId, input.folderId) : [];
-      if (input.folderId && input.view === 'active' && path.length === 0) {
-        throw Errors.notFound('Folder');
-      }
+        const path =
+          input.folderId && input.view === 'active' ? await foldersRepo.pathTo(db, workspaceId, input.folderId) : [];
+        if (input.folderId && input.view === 'active' && path.length === 0) {
+          throw Errors.notFound('Folder');
+        }
 
-      // Fetch one extra row to know whether another page exists without a COUNT query.
-      const rows = await documentsRepo.list(pool, {
-        workspaceId,
-        view: input.view,
-        folderId: input.folderId,
-        search: input.search,
-        filter: input.filter,
-        sort: input.sort,
-        ascending: input.ascending,
-        userId: input.userId,
-        limit: input.limit + 1,
-        after: input.cursor ? decodeCursor(input.cursor) : null,
+        // Fetch one extra row to know whether another page exists without a COUNT query.
+        const rows = await documentsRepo.list(db, {
+          workspaceId,
+          view: input.view,
+          folderId: input.folderId,
+          search: input.search,
+          filter: input.filter,
+          sort: input.sort,
+          ascending: input.ascending,
+          userId: input.userId,
+          limit: input.limit + 1,
+          after: input.cursor ? decodeCursor(input.cursor) : null,
+        });
+
+        const page = rows.slice(0, input.limit);
+        const nextCursor = rows.length > input.limit ? encodeCursor(page[page.length - 1]!) : null;
+
+        const showFolders = input.view === 'active' && !searching && input.filter === 'all' && !input.cursor;
+        const folders = showFolders ? await foldersRepo.listChildren(db, workspaceId, input.folderId) : [];
+        // Tab counts cover the whole workspace, so they are computed once, for the first page; the
+        // client keeps them while it scrolls through later pages.
+        const counts = input.cursor ? null : await documentsRepo.counts(db, workspaceId, input.userId);
+
+        return { documents: page, nextCursor, folders, path, counts };
       });
-
-      const page = rows.slice(0, input.limit);
-      const nextCursor = rows.length > input.limit ? encodeCursor(page[page.length - 1]!) : null;
-
-      const showFolders = input.view === 'active' && !searching && input.filter === 'all' && !input.cursor;
-      const folders = showFolders ? await foldersRepo.listChildren(pool, workspaceId, input.folderId) : [];
-      // Tab counts cover the whole workspace, so they are computed once, for the first page; the
-      // client keeps them while it scrolls through later pages.
-      const counts = input.cursor ? null : await documentsRepo.counts(pool, workspaceId, input.userId);
-
-      return { documents: page, nextCursor, folders, path, counts };
     },
 
     /**

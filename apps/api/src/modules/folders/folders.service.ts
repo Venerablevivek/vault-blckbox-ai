@@ -6,6 +6,7 @@ import type { Membership } from '../../types';
 import type { AuditService } from '../audit/audit.service';
 import { foldersRepo, MAX_FOLDER_DEPTH, type FolderRow } from './folders.repo';
 import { stripControlCharacters } from '../../lib/text';
+import { withTenant } from '../../db/tenant';
 
 function cleanName(name: string): string {
   const clean = stripControlCharacters(name).trim();
@@ -45,11 +46,13 @@ export function createFoldersService(deps: { pool: Pool; audit: AuditService }) 
   return {
     requireFolder,
 
-    async list(membership: Membership, parentId: string | null) {
-      const path = parentId ? await foldersRepo.pathTo(pool, membership.workspaceId, parentId) : [];
-      if (parentId && path.length === 0) throw Errors.notFound('Folder');
-      const children = await foldersRepo.listChildren(pool, membership.workspaceId, parentId);
-      return { path, children };
+    async list(membership: Membership, userId: string, parentId: string | null) {
+      return withTenant(pool, userId, async (db) => {
+        const path = parentId ? await foldersRepo.pathTo(db, membership.workspaceId, parentId) : [];
+        if (parentId && path.length === 0) throw Errors.notFound('Folder');
+        const children = await foldersRepo.listChildren(db, membership.workspaceId, parentId);
+        return { path, children };
+      });
     },
 
     async create(membership: Membership, userId: string, input: { name: string; parentId: string | null }) {

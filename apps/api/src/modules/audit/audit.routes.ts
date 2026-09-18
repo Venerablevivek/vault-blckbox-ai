@@ -29,7 +29,7 @@ export function registerAuditRoutes(
       const membership = await workspaces.requireMember(id, user.id);
       requireOwner(membership.role);
 
-      return { events: await audit.list(id, query) };
+      return { events: await audit.list(id, user.id, query) };
     },
   });
 

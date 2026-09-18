@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { Pool } from 'pg';
 import type { Logger } from 'pino';
 import type { Db } from '../../db/pool';
+import { withTenant } from '../../db/tenant';
 import { withTransaction } from '../../db/tx';
 import { chainHash } from './audit-chain';
 import type { Clock } from '../../types';
@@ -131,11 +132,13 @@ export function createAuditService(deps: { pool: Pool; readPool?: Pool; clock: C
       return { valid: true, legacyEvents, chainedEvents, head, brokenAt: null };
     },
 
-    async list(workspaceId: string, options: { limit?: number; before?: Date } = {}) {
-      const rows = await auditRepo.listForWorkspace(readPool, workspaceId, {
-        limit: Math.min(options.limit ?? 50, 200),
-        before: options.before,
-      });
+    async list(workspaceId: string, userId: string, options: { limit?: number; before?: Date } = {}) {
+      const rows = await withTenant(readPool, userId, (db) =>
+        auditRepo.listForWorkspace(db, workspaceId, {
+          limit: Math.min(options.limit ?? 50, 200),
+          before: options.before,
+        }),
+      );
       return rows.map((row) => ({
         id: row.id,
         actorEmail: row.actor_email,

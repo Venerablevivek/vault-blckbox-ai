@@ -5,6 +5,7 @@ import type { Db } from '../../db/pool';
 import type { JobPayloads, JobQueue } from '../../jobs/queue';
 import type { Clock } from '../../types';
 import { notificationsRepo, type NotificationType } from './notifications.repo';
+import { withTenant } from '../../db/tenant';
 
 export interface NotifyInput {
   userId: string;
@@ -85,10 +86,12 @@ export function createNotificationsService(deps: { pool: Pool; clock: Clock; log
     },
 
     async list(userId: string, limit = 30) {
-      const [rows, unread] = await Promise.all([
-        notificationsRepo.listForUser(pool, userId, Math.min(limit, 100)),
-        notificationsRepo.unreadCount(pool, userId),
-      ]);
+      const [rows, unread] = await withTenant(pool, userId, (db) =>
+        Promise.all([
+          notificationsRepo.listForUser(db, userId, Math.min(limit, 100)),
+          notificationsRepo.unreadCount(db, userId),
+        ]),
+      );
       return {
         unread,
         notifications: rows.map((n) => ({

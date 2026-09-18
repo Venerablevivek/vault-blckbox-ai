@@ -28,7 +28,7 @@ export function registerWorkspaceRoutes(
     const user = currentUser(request);
     const membership = await workspaces.requireMember(id, user.id);
     const { tz } = OverviewQuery.parse(request.query);
-    return { role: membership.role, ...(await overview.forWorkspace(id, membership.role, tz)) };
+    return { role: membership.role, ...(await overview.forWorkspace(id, user.id, membership.role, tz)) };
   });
 
   app.patch('/api/workspaces/:id', { preHandler: requireSession }, async (request) => {

@@ -22,7 +22,7 @@ export function registerFolderRoutes(
     const { workspaceId } = WorkspaceDocumentsParams.parse(request.params);
     const membership = await workspaces.requireMember(workspaceId, currentUser(request).id);
     const { parentId } = ListFoldersQuery.parse(request.query);
-    const result = await folders.list(membership, parentId ?? null);
+    const result = await folders.list(membership, currentUser(request).id, parentId ?? null);
     return { path: result.path.map(toFolderDto), folders: result.children.map(toFolderDto) };
   });
 
