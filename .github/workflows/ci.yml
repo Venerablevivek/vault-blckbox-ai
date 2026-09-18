@@ -47,8 +47,8 @@ jobs:
       # Unit, integration, security and contract tests against real Postgres and MinIO. The
       # contract tests also fail if openapi.json is out of date.
       - run: npm test
-      - name: Dependency audit (production)
-        run: npm audit --omit=dev --audit-level=high
+      - name: Dependency audit (all dependencies, including dev tools)
+        run: npm audit --audit-level=moderate
 
   web:
     name: Web · lint, typecheck, build
@@ -72,8 +72,35 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
-      - name: Dependency audit (production)
-        run: npm audit --omit=dev --audit-level=high
+      - name: Dependency audit (all dependencies, including dev tools)
+        run: npm audit --audit-level=moderate
+
+  images:
+    name: Images · build and scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build images
+        run: |
+          docker build -t vault-api:ci apps/api
+          docker build -t vault-web:ci --build-arg API_INTERNAL_URL=http://api:4000 apps/web
+      # Fails on HIGH or CRITICAL vulnerabilities that have a fix available, in OS packages or
+      # bundled dependencies.
+      - name: Scan the API image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: vault-api:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Scan the web image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: vault-web:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
 
   e2e:
     name: End-to-end · full stack in the browser
@@ -90,7 +117,7 @@ jobs:
       - name: Build and start the stack
         run: |
           docker compose up -d --build --wait
-          for i in $(seq 1 60); do curl -sf http://localhost:3000/login -o /dev/null && exit 0; sleep 2; done
+          for _ in $(seq 1 60); do curl -sf http://localhost:3000/login -o /dev/null && exit 0; sleep 2; done
           echo "web did not become ready" && exit 1
       - name: Install Playwright
         working-directory: e2e

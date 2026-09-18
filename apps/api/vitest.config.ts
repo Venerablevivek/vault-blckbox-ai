@@ -3,12 +3,11 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     include: ['tests/**/*.test.ts'],
-    // Integration tests share one Postgres database and one MinIO bucket.
-    // Running files in a single process keeps truncation between tests deterministic.
+    // Integration tests share one Postgres database and one MinIO bucket, so test files run one
+    // at a time; truncation between tests is then deterministic.
     pool: 'forks',
-    poolOptions: { forks: { singleFork: true } },
+    fileParallelism: false,
     testTimeout: 30_000,
     hookTimeout: 30_000,
-    setupFiles: [],
   },
 });

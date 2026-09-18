@@ -1,0 +1,23 @@
+# Weekly dependency updates. Minor and patch versions are grouped into one pull request per
+# ecosystem so they are easy to review; majors arrive separately, since they may need code changes.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directories: ['/', '/apps/api', '/apps/web', '/e2e']
+    schedule: { interval: weekly }
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: docker
+    directories: ['/apps/api', '/apps/web']
+    schedule: { interval: weekly }
+
+  - package-ecosystem: docker-compose
+    directory: '/'
+    schedule: { interval: weekly }
+
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule: { interval: weekly }
