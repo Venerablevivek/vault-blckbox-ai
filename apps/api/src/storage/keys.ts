@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 /**
  * The only place object keys are constructed.
  *
@@ -19,4 +21,9 @@ export function documentObjectKey(workspaceId: string, documentId: string): stri
  */
 export function documentVersionObjectKey(workspaceId: string, documentId: string, versionId: string): string {
   return `workspaces/${workspaceId}/versions/${documentId}/${versionId}`;
+}
+
+/** Something derived from a document (a thumbnail, an Office file's PDF preview). A new key each time. */
+export function derivedObjectKey(workspaceId: string, documentId: string, extension: 'webp' | 'pdf'): string {
+  return `workspaces/${workspaceId}/derived/${documentId}/${randomUUID()}.${extension}`;
 }

@@ -16,7 +16,7 @@ import { currentUser, requireSession } from '../../plugins/session';
 import { toFolderDto } from '../folders/folders.service';
 import type { WorkspacesService } from '../workspaces/workspaces.service';
 import type { SharesService } from '../shares/shares.service';
-import type { DocumentsService } from './documents.service';
+import { PREVIEWABLE, type DocumentsService } from './documents.service';
 import type { FileStorage } from '../../storage/file-storage';
 import { createArchiveStream } from './archive';
 import type { DocumentListRow, DocumentRow } from './documents.repo';
@@ -30,6 +30,9 @@ export function toDocumentDto(row: DocumentRow & Partial<DocumentListRow>) {
     sha256: row.sha256 ? row.sha256.toString('hex') : null,
     scanStatus: row.scan_status,
     version: row.version,
+    thumbnail: row.thumbnail_key !== null && row.processed_key === row.storage_key,
+    previewable: PREVIEWABLE.has(row.mime_type) || (row.preview_key !== null && row.processed_key === row.storage_key),
+    ...(row.match_snippet !== undefined ? { matchSnippet: row.match_snippet } : {}),
     ...(row.starred !== undefined ? { starred: row.starred } : {}),
     folderId: row.folder_id,
     uploadedBy: row.uploaded_by,
@@ -172,6 +175,21 @@ export function registerDocumentRoutes(
     handler: async (request, reply) => {
       const { id } = DocumentParams.parse(request.params);
       return reply.redirect(await documents.getDownloadUrl(id, currentUser(request).id), 302);
+    },
+  });
+
+  // A small picture of the document, streamed (it's tiny) and cached by the browser: the web app
+  // adds the version to the URL, so a new version gets a new picture.
+  app.get('/api/documents/:id/thumbnail', {
+    preHandler: requireSession,
+    handler: async (request, reply) => {
+      const { id } = DocumentParams.parse(request.params);
+      const thumbnail = await documents.thumbnail(id, currentUser(request).id);
+      if (!thumbnail) throw Errors.notFound('Thumbnail');
+      return reply
+        .header('Content-Type', 'image/webp')
+        .header('Cache-Control', 'private, max-age=86400')
+        .send(thumbnail);
     },
   });
 

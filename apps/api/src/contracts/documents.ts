@@ -63,6 +63,13 @@ export const Document = obj({
   deletedByEmail: z.string().nullable(),
   starred: z.boolean().optional().openapi({ description: 'Whether you starred it. Present in listings.' }),
   version: z.number().int().min(1).openapi({ description: 'The current version; earlier ones are in /versions.' }),
+  thumbnail: z.boolean().openapi({ description: 'GET /api/documents/{id}/thumbnail has a picture of it.' }),
+  previewable: z.boolean().openapi({
+    description: 'GET /api/documents/{id}/preview can show it (PDFs, images, and converted Office files).',
+  }),
+  matchSnippet: z.string().nullable().optional().openapi({
+    description: 'When searching and the text matched: a passage around the match, with the matched terms in ⟦ ⟧.',
+  }),
   links: obj({ count: z.number().int(), opens: z.number().int(), lastAccessedAt: timestamp.nullable() })
     .optional()
     .openapi({ description: 'Rollup of live share links. Present in listings.' }),

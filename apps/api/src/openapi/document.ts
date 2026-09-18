@@ -498,6 +498,17 @@ export const operations: Operation[] = [
   },
   {
     method: 'get',
+    path: '/api/documents/:id/thumbnail',
+    tag: 'Documents',
+    summary: 'A small WebP picture of the document',
+    description: 'Present when the document says thumbnail: true. Made by the worker once the file has been scanned.',
+    auth: S,
+    params: documents.DocumentParams,
+    success: { file: ['image/webp'] },
+    errors: [401, 404],
+  },
+  {
+    method: 'get',
     path: '/api/documents/:id/preview',
     tag: 'Documents',
     summary: 'Inline preview (PDF and images)',

@@ -2858,6 +2858,65 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/documents/{id}/thumbnail': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * A small WebP picture of the document
+     * @description Present when the document says thumbnail: true. Made by the worker once the file has been scanned.
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description The file, streamed as an attachment. */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'image/webp': string;
+          };
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/documents/{id}/preview': {
     parameters: {
       query?: never;
@@ -6071,6 +6130,12 @@ export interface components {
       starred?: boolean;
       /** @description The current version; earlier ones are in /versions. */
       version: number;
+      /** @description GET /api/documents/{id}/thumbnail has a picture of it. */
+      thumbnail: boolean;
+      /** @description GET /api/documents/{id}/preview can show it (PDFs, images, and converted Office files). */
+      previewable: boolean;
+      /** @description When searching and the text matched: a passage around the match, with the matched terms in ⟦ ⟧. */
+      matchSnippet?: string | null;
       /** @description Rollup of live share links. Present in listings. */
       links?: {
         count: number;

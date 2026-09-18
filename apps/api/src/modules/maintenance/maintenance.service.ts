@@ -71,6 +71,7 @@ export function createMaintenanceService(deps: {
           rateLimitRows: 0,
           requeuedScans: 0,
           shareCodes: 0,
+          queuedProcessing: 0,
         };
 
         const step = async (name: string, fn: () => Promise<void>) => {
@@ -148,6 +149,11 @@ export function createMaintenanceService(deps: {
         });
         await step('scans', async () => {
           result.requeuedScans = await documents.requeuePendingScans();
+        });
+        await step('processing', async () => {
+          // Thumbnails and search text for documents stored before processing existed, or whose
+          // job never ran.
+          result.queuedProcessing = await documents.enqueuePendingProcessing();
         });
         await step('checksums', async () => {
           const r = await documents.backfillChecksums();

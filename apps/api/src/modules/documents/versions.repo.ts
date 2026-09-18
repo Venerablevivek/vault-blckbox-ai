@@ -68,7 +68,10 @@ export const versionsRepo = {
     const { rows } = await db.query<DocumentRow>(
       `UPDATE documents
           SET storage_key = $2, size = $3, sha256 = $4, scan_status = $5, scanned_at = NULL, scan_signature = NULL,
-              version = $6, version_uploaded_by = $7, version_created_at = $8
+              version = $6, version_uploaded_by = $7, version_created_at = $8,
+              -- What was derived from the previous content no longer applies.
+              thumbnail_key = NULL, preview_key = NULL, processed_key = NULL, processing_status = 'pending',
+              processed_at = NULL
         WHERE id = $1
         RETURNING *`,
       [

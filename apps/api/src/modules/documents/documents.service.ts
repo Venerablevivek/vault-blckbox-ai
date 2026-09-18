@@ -2,13 +2,17 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import type { Pool } from 'pg';
 import type { Logger } from 'pino';
+import type { Db } from '../../db/pool';
 import { withTenant } from '../../db/tenant';
 import { withTransaction } from '../../db/tx';
 import { AppError, Errors } from '../../lib/errors';
 import { assertAllowedType } from '../../lib/mime';
 import { stripControlCharacters } from '../../lib/text';
 import { Permissions, requireContributor } from '../../policy';
-import { documentObjectKey, documentVersionObjectKey } from '../../storage/keys';
+import { derivedObjectKey, documentObjectKey, documentVersionObjectKey } from '../../storage/keys';
+import { extractText } from '../../processing/text';
+import { makeThumbnail } from '../../processing/thumbnail';
+import { OFFICE_TYPES, officeExtension, type OfficeConverter } from '../../processing/office';
 import type { FileStorage } from '../../storage/file-storage';
 import type { Clock, Membership, Role } from '../../types';
 import { workspacesRepo } from '../workspaces/workspaces.repo';
@@ -51,6 +55,10 @@ export interface DocumentsServiceOptions {
   archiveMaxBytes: number;
   /** Earlier versions kept per document; older ones are removed when a new version arrives. */
   maxVersions: number;
+  /** Largest file the worker reads for a thumbnail and search text; each is held in memory. */
+  processingMaxBytes: number;
+  /** Converts Office files to PDF for previews; null when office previews are off. */
+  officeConverter: OfficeConverter | null;
 }
 
 /** Opaque pagination cursor: the last row's sort value and id, base64url-encoded JSON. */
@@ -122,6 +130,22 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
    */
   async function deleteVersionObjects(documentId: string): Promise<void> {
     for (const key of await versionsRepo.storageKeys(pool, documentId)) await storage.delete(key);
+    for (const key of await documentsRepo.derivedKeys(pool, documentId)) await storage.delete(key);
+  }
+
+  /** Deletes objects nothing points at any more (old thumbnails and previews). Best effort. */
+  function deleteQuietly(keys: Array<string | null>): void {
+    for (const key of keys) {
+      if (!key) continue;
+      void storage.delete(key).catch((error: unknown) => {
+        logger.warn({ err: error, storageKey: key }, 'failed to delete a derived object');
+      });
+    }
+  }
+
+  /** Queues the worker to derive a thumbnail and search text, once the file may be read. */
+  async function enqueueProcessing(db: Db, documentId: string): Promise<void> {
+    await jobs.enqueue(db, 'document.process', { documentId }, { dedupeKey: documentId, maxAttempts: 3 });
   }
 
   /** Removes an earlier version: its row and quota first, then its object. */
@@ -159,6 +183,7 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
   }): Promise<DocumentRow> {
     const now = clock.now();
     let updated: DocumentRow;
+    let staleDerived: Array<string | null> = [];
     try {
       updated = await withTransaction(pool, async (tx) => {
         const current = await versionsRepo.lockLive(tx, input.document.id);
@@ -171,6 +196,8 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
           throw Errors.quotaExceeded(latest.usedBytes, latest.quotaBytes);
         }
         if (current.scan_status !== 'infected') await versionsRepo.archiveCurrent(tx, randomUUID(), current);
+        staleDerived = [current.thumbnail_key, current.preview_key];
+        await documentsRepo.deleteContents(tx, current.id);
         const row = await versionsRepo.setCurrent(tx, current.id, {
           storageKey: input.storageKey,
           size: input.size,
@@ -182,6 +209,8 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
         });
         if (row.scan_status === 'pending') {
           await jobs.enqueue(tx, 'document.scan', { documentId: row.id }, { dedupeKey: row.id, maxAttempts: 8 });
+        } else {
+          await enqueueProcessing(tx, row.id);
         }
         await audit.record(
           {
@@ -211,6 +240,7 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
       throw error;
     }
 
+    deleteQuietly(staleDerived);
     for (const old of await versionsRepo.beyond(pool, updated.id, opts.maxVersions)) {
       await removeVersion(old).catch((error: unknown) => {
         logger.error({ err: error, versionId: old.id }, 'failed to prune an old version');
@@ -392,6 +422,8 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
           });
           if (row.scan_status === 'pending') {
             await jobs.enqueue(tx, 'document.scan', { documentId: row.id }, { dedupeKey: row.id, maxAttempts: 8 });
+          } else {
+            await enqueueProcessing(tx, row.id);
           }
           await audit.record(
             {
@@ -528,7 +560,8 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
       const { document } = await authorizeById(documentId, userId);
       assertScanAllows(document);
       touchRecent(userId, document.id);
-      if (!PREVIEWABLE.has(document.mime_type)) {
+      const officePreview = !PREVIEWABLE.has(document.mime_type) && document.preview_key !== null;
+      if (!PREVIEWABLE.has(document.mime_type) && !officePreview) {
         throw Errors.unsupportedMediaType('This type of file cannot be previewed. Download it instead.');
       }
       audit.recordAsync({
@@ -539,11 +572,18 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
         resourceId: document.id,
         metadata: { filename: document.filename },
       });
-      return storage.getSignedUrl(document.storage_key, opts.signedUrlTtlSeconds, {
-        filename: document.filename,
-        contentType: document.mime_type,
-        disposition: 'inline',
-      });
+      // An Office file is shown as the PDF the converter made of it.
+      return officePreview
+        ? storage.getSignedUrl(document.preview_key!, opts.signedUrlTtlSeconds, {
+            filename: `${document.filename.replace(/\.[^.]+$/, '')}.pdf`,
+            contentType: 'application/pdf',
+            disposition: 'inline',
+          })
+        : storage.getSignedUrl(document.storage_key, opts.signedUrlTtlSeconds, {
+            filename: document.filename,
+            contentType: document.mime_type,
+            disposition: 'inline',
+          });
     },
 
     /** Authorize -> verify not trashed -> return a short-lived signed URL. */
@@ -959,6 +999,106 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
       });
     },
 
+    /**
+     * Worker: derives a thumbnail, search text and (for Office files, when a converter is set) a
+     * PDF preview from a document's current version. Only files the scan has cleared are read.
+     * A file that can't be parsed is recorded as failed, not retried; storage and database errors
+     * throw so the job retries. If a new version arrives meanwhile, the work is thrown away and
+     * done again for it.
+     */
+    async processDocument(documentId: string): Promise<void> {
+      for (let round = 0; round < 3; round += 1) {
+        const row = await documentsRepo.findAnyById(pool, documentId);
+        if (!row || row.processed_key === row.storage_key) return;
+        if (row.scan_status === 'pending') return; // the scan queues this again when it clears the file
+        const now = clock.now();
+        if (row.scan_status === 'infected' || Number(row.size) > opts.processingMaxBytes) {
+          await documentsRepo.setProcessed(pool, row.id, row.storage_key, {
+            thumbnailKey: null,
+            previewKey: null,
+            status: 'skipped',
+            at: now,
+          });
+          return;
+        }
+
+        const chunks: Buffer[] = [];
+        for await (const chunk of await storage.download(row.storage_key)) chunks.push(chunk as Buffer);
+        const body = Buffer.concat(chunks);
+        let failed = false;
+        const attempt = async <T>(what: string, work: () => Promise<T>): Promise<T | null> => {
+          try {
+            return await work();
+          } catch (error) {
+            failed = true;
+            logger.warn({ err: error, documentId, what }, 'could not process a document');
+            return null;
+          }
+        };
+
+        const converter = opts.officeConverter;
+        const preview =
+          converter && OFFICE_TYPES.has(row.mime_type)
+            ? await attempt('office preview', () =>
+                converter.toPdf(`document.${officeExtension(row.mime_type) ?? 'bin'}`, body),
+              )
+            : null;
+        const text =
+          (await attempt('text', () => extractText(row.mime_type, body))) ??
+          (preview ? await attempt('preview text', () => extractText('application/pdf', preview)) : null);
+        const thumbnail =
+          (await attempt('thumbnail', () => makeThumbnail(row.mime_type, body))) ??
+          (preview ? await attempt('preview thumbnail', () => makeThumbnail('application/pdf', preview)) : null);
+
+        const thumbnailKey = thumbnail ? derivedObjectKey(row.workspace_id, row.id, 'webp') : null;
+        const previewKey = preview ? derivedObjectKey(row.workspace_id, row.id, 'pdf') : null;
+        if (thumbnail) await storage.upload(thumbnailKey!, Readable.from(thumbnail), 'image/webp');
+        if (preview) await storage.upload(previewKey!, Readable.from(preview), 'application/pdf');
+
+        const outcome = await withTransaction(pool, async (tx) => {
+          const current = await documentsRepo.lockAny(tx, row.id);
+          if (!current || current.storage_key !== row.storage_key) return null;
+          await documentsRepo.setProcessed(tx, row.id, row.storage_key, {
+            thumbnailKey,
+            previewKey,
+            status: failed ? 'failed' : 'done',
+            at: now,
+          });
+          if (text) {
+            await documentsRepo.saveContents(tx, {
+              documentId: row.id,
+              workspaceId: row.workspace_id,
+              storageKey: row.storage_key,
+              body: text,
+            });
+          } else {
+            await documentsRepo.deleteContents(tx, row.id);
+          }
+          return { replaced: [current.thumbnail_key, current.preview_key] };
+        });
+        if (outcome) {
+          deleteQuietly(outcome.replaced.filter((key) => key !== thumbnailKey && key !== previewKey));
+          return;
+        }
+        // A new version arrived while this one was being read: discard, and go again.
+        deleteQuietly([thumbnailKey, previewKey]);
+      }
+    },
+
+    /** Maintenance: queues processing for documents that were cleared but never processed. */
+    async enqueuePendingProcessing(limit = 100): Promise<number> {
+      const rows = await documentsRepo.pendingProcessing(pool, limit);
+      for (const row of rows) await enqueueProcessing(pool, row.id);
+      return rows.length;
+    },
+
+    /** A document's thumbnail, for any member of its workspace; null when it has none (yet). */
+    async thumbnail(documentId: string, userId: string) {
+      const { document } = await authorizeById(documentId, userId);
+      if (!document.thumbnail_key || document.processed_key !== document.storage_key) return null;
+      return storage.download(document.thumbnail_key);
+    },
+
     async setStar(documentId: string, userId: string, starred: boolean): Promise<void> {
       await authorizeById(documentId, userId);
       await documentsRepo.setStar(pool, userId, documentId, starred);
@@ -983,7 +1123,9 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
       const result = await opts.scanner.scan(await storage.download(row.storage_key));
       const now = clock.now();
       if (!result.infected) {
-        await documentsRepo.setScanResult(pool, row.id, row.storage_key, 'clean', null, now);
+        if (await documentsRepo.setScanResult(pool, row.id, row.storage_key, 'clean', null, now)) {
+          await enqueueProcessing(pool, row.id);
+        }
         return;
       }
 

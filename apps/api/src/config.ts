@@ -161,6 +161,16 @@ const schema = z.object({
   SCAN_MAX_BYTES: z.coerce.number().int().positive().default(104_857_600),
   SCAN_TIMEOUT_MS: z.coerce.number().int().positive().default(120_000),
 
+  /** Largest file the worker reads for a thumbnail and search text (each is held in memory). */
+  PROCESSING_MAX_BYTES: z.coerce.number().int().positive().default(52_428_800),
+  /**
+   * gotenberg: Office files are converted to PDF (by LibreOffice, in the Gotenberg container) so
+   * they can be previewed, get a thumbnail, and legacy .doc/.xls/.ppt become searchable.
+   */
+  OFFICE_PREVIEWS: z.enum(['off', 'gotenberg']).default('off'),
+  GOTENBERG_URL: z.string().url().default('http://gotenberg:3000'),
+  OFFICE_CONVERSION_TIMEOUT_MS: z.coerce.number().int().positive().default(60_000),
+
   /** How long a password reset link works. */
   PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(60),
 

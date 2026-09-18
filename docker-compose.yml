@@ -54,6 +54,11 @@ x-api-environment: &api-environment
   CLAMAV_HOST: clamav
   CLAMAV_PORT: 3310
   SCAN_MAX_BYTES: ${SCAN_MAX_BYTES:-104857600}
+  # Thumbnails and search text are made by the worker. Office previews: off unless the office
+  # profile is running (see the gotenberg service).
+  PROCESSING_MAX_BYTES: ${PROCESSING_MAX_BYTES:-52428800}
+  OFFICE_PREVIEWS: ${OFFICE_PREVIEWS:-off}
+  GOTENBERG_URL: http://gotenberg:3000
   EXPOSE_INVITE_LINKS: ${EXPOSE_INVITE_LINKS:-true}
   SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
 
@@ -155,6 +160,26 @@ services:
       timeout: 10s
       retries: 20
       start_period: 5m
+
+  # Office previews (optional): LibreOffice in its own container turns Office files into PDFs the
+  # worker can preview, thumbnail and index. Its browser and webhook features are switched off,
+  # so it can't be made to fetch anything. Enable with:
+  #   OFFICE_PREVIEWS=gotenberg docker compose --profile office up -d
+  gotenberg:
+    image: gotenberg/gotenberg:8.24.0@sha256:b116a40a1c24917e2bf3e153692da5acd2e78e7cd67e1b2d243b47c178f31c90
+    profiles: ['office']
+    command:
+      - gotenberg
+      - --chromium-disable-routes=true
+      - --webhook-disable=true
+      - --api-timeout=60s
+      - --libreoffice-auto-start=true
+    healthcheck:
+      test: ['CMD', 'curl', '-sf', 'http://localhost:3000/health']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   # Applies migrations as the database owner, then creates/updates the vault_app role and its
   # privileges. Runs to completion before the API and worker start; they never see owner credentials.

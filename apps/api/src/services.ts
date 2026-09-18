@@ -14,6 +14,7 @@ import { createFolderSharesService } from './modules/folder-shares/folder-shares
 import { createWorkspacesService } from './modules/workspaces/workspaces.service';
 import { createUploadsService } from './modules/uploads/uploads.service';
 import { ClamdScanner, type Scanner } from './scanning/scanner';
+import { GotenbergConverter, type OfficeConverter } from './processing/office';
 import type { FileStorage } from './storage/file-storage';
 import type { MultipartStorage } from './storage/multipart-storage';
 import type { Clock } from './types';
@@ -34,6 +35,8 @@ export function createServices(deps: {
   clock: Clock;
   /** Overrides the scanner built from SCAN_MODE (tests point it at a stand-in clamd). */
   scanner?: Scanner | null;
+  /** Overrides the Office converter built from OFFICE_PREVIEWS (tests use a stand-in). */
+  officeConverter?: OfficeConverter | null;
 }) {
   const { config, pool, storage, multipartStorage, logger, clock } = deps;
   const directPool = deps.directPool ?? pool;
@@ -43,6 +46,12 @@ export function createServices(deps: {
       ? deps.scanner
       : config.SCAN_MODE === 'clamav'
         ? new ClamdScanner(config.CLAMAV_HOST, config.CLAMAV_PORT, config.SCAN_TIMEOUT_MS)
+        : null;
+  const officeConverter =
+    deps.officeConverter !== undefined
+      ? deps.officeConverter
+      : config.OFFICE_PREVIEWS === 'gotenberg'
+        ? new GotenbergConverter(config.GOTENBERG_URL, config.OFFICE_CONVERSION_TIMEOUT_MS)
         : null;
 
   // Cross-cutting services first: the feature modules depend on them.
@@ -92,6 +101,8 @@ export function createServices(deps: {
     archiveMaxFiles: config.ARCHIVE_MAX_FILES,
     archiveMaxBytes: config.ARCHIVE_MAX_BYTES,
     maxVersions: config.DOCUMENT_MAX_VERSIONS,
+    processingMaxBytes: config.PROCESSING_MAX_BYTES,
+    officeConverter,
   });
   const shares = createSharesService({
     pool,

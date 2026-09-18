@@ -824,6 +824,21 @@
             "minimum": 1,
             "description": "The current version; earlier ones are in /versions."
           },
+          "thumbnail": {
+            "type": "boolean",
+            "description": "GET /api/documents/{id}/thumbnail has a picture of it."
+          },
+          "previewable": {
+            "type": "boolean",
+            "description": "GET /api/documents/{id}/preview can show it (PDFs, images, and converted Office files)."
+          },
+          "matchSnippet": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "When searching and the text matched: a passage around the match, with the matched terms in ⟦ ⟧."
+          },
           "links": {
             "type": "object",
             "properties": {
@@ -863,7 +878,9 @@
           "createdAt",
           "deletedAt",
           "deletedByEmail",
-          "version"
+          "version",
+          "thumbnail",
+          "previewable"
         ],
         "additionalProperties": false
       },
@@ -5471,6 +5488,64 @@
                 "schema": {
                   "type": "string",
                   "format": "uri"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{id}/thumbnail": {
+      "get": {
+        "summary": "A small WebP picture of the document",
+        "description": "Present when the document says thumbnail: true. Made by the worker once the file has been scanned.",
+        "tags": [
+          "Documents"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The file, streamed as an attachment.",
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
                 }
               }
             }

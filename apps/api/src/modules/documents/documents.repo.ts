@@ -23,7 +23,15 @@ export interface DocumentRow {
   /** Who uploaded the current version, and when; null for the original upload. */
   version_uploaded_by: string | null;
   version_created_at: Date | null;
+  /** Derived by the worker from `processed_key` (see migration 031). */
+  thumbnail_key: string | null;
+  preview_key: string | null;
+  processed_key: string | null;
+  processing_status: ProcessingStatus;
+  processed_at: Date | null;
 }
+
+export type ProcessingStatus = 'pending' | 'done' | 'skipped' | 'failed';
 
 export interface DocumentListRow extends DocumentRow {
   uploaded_by_email: string;
@@ -35,6 +43,8 @@ export interface DocumentListRow extends DocumentRow {
   last_accessed_at: Date | null;
   /** Whether the person listing has starred it. */
   starred: boolean;
+  /** When searching: a passage of the document's text around the match, terms marked ⟦like this⟧. */
+  match_snippet: string | null;
   /**
    * The value the list is sorted by, as PostgreSQL's own text form, echoed back to build the
    * next cursor. Text, not a JS Date: timestamps have microsecond precision and a Date keeps
@@ -240,8 +250,17 @@ export const documentsRepo = {
 
     where.push(trash ? 'd.deleted_at IS NOT NULL' : 'd.deleted_at IS NULL');
 
+    let snippet = 'NULL::text';
     if (q.search) {
-      where.push(`d.filename ILIKE ${bind(`%${escapeLike(q.search)}%`)}`);
+      // A name containing the words, or a document whose text matches them (English stemming, so
+      // "invoices" finds "invoice"). Only text matches get a highlighted snippet.
+      const pattern = bind(`%${escapeLike(q.search)}%`);
+      const query = `websearch_to_tsquery('english', ${bind(q.search)})`;
+      where.push(`(d.filename ILIKE ${pattern} OR EXISTS (
+        SELECT 1 FROM document_contents c WHERE c.document_id = d.id AND c.tsv @@ ${query}))`);
+      snippet = `(SELECT ts_headline('english', left(c.body, 20000), ${query},
+                   'MaxFragments=1, MaxWords=24, MinWords=10, StartSel=⟦, StopSel=⟧')
+                   FROM document_contents c WHERE c.document_id = d.id AND c.tsv @@ ${query})`;
     } else if (!trash && q.filter === 'all') {
       // Only the plain view is per folder; search and the filters (shared, mine, starred,
       // recent) cover the whole workspace, matching their tab counts.
@@ -271,7 +290,8 @@ export const documentsRepo = {
               COALESCE(l.link_count, 0) AS link_count,
               COALESCE(l.opens, 0)      AS opens,
               l.last_accessed_at,
-              EXISTS (SELECT 1 FROM document_stars st WHERE st.document_id = d.id AND st.user_id = $2) AS starred
+              EXISTS (SELECT 1 FROM document_stars st WHERE st.document_id = d.id AND st.user_id = $2) AS starred,
+              ${snippet} AS match_snippet
          FROM documents d
          ${recent ? 'JOIN document_recents r ON r.document_id = d.id AND r.user_id = $2' : ''}
          JOIN users u ON u.id = d.uploaded_by
@@ -373,6 +393,64 @@ export const documentsRepo = {
       [workspaceId, folderId, limit],
     );
     return rows;
+  },
+
+  /** Locks a document's row for the rest of the transaction, trashed or not. */
+  async lockAny(db: Db, id: string): Promise<DocumentRow | null> {
+    const { rows } = await db.query<DocumentRow>('SELECT * FROM documents WHERE id = $1 FOR UPDATE', [id]);
+    return rows[0] ?? null;
+  },
+
+  /** Records what was derived from one stored object; a no-op if the document has moved on. */
+  async setProcessed(
+    db: Db,
+    id: string,
+    storageKey: string,
+    result: { thumbnailKey: string | null; previewKey: string | null; status: ProcessingStatus; at: Date },
+  ): Promise<boolean> {
+    const { rowCount } = await db.query(
+      `UPDATE documents
+          SET thumbnail_key = $3, preview_key = $4, processing_status = $5, processed_at = $6, processed_key = $2
+        WHERE id = $1 AND storage_key = $2`,
+      [id, storageKey, result.thumbnailKey, result.previewKey, result.status, result.at],
+    );
+    return (rowCount ?? 0) > 0;
+  },
+
+  async saveContents(
+    db: Db,
+    contents: { documentId: string; workspaceId: string; storageKey: string; body: string },
+  ): Promise<void> {
+    await db.query(
+      `INSERT INTO document_contents (document_id, workspace_id, storage_key, body)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (document_id) DO UPDATE SET storage_key = EXCLUDED.storage_key, body = EXCLUDED.body`,
+      [contents.documentId, contents.workspaceId, contents.storageKey, contents.body],
+    );
+  },
+
+  async deleteContents(db: Db, documentId: string): Promise<void> {
+    await db.query('DELETE FROM document_contents WHERE document_id = $1', [documentId]);
+  },
+
+  /** Documents cleared by the scan but not processed yet, for the backfill. */
+  async pendingProcessing(db: Db, limit: number): Promise<Array<{ id: string }>> {
+    const { rows } = await db.query<{ id: string }>(
+      `SELECT id FROM documents
+        WHERE processing_status = 'pending' AND scan_status IN ('clean', 'unscanned')
+        ORDER BY created_at LIMIT $1`,
+      [limit],
+    );
+    return rows;
+  },
+
+  /** Object keys derived from a document, for deleting them with it. */
+  async derivedKeys(db: Db, id: string): Promise<string[]> {
+    const { rows } = await db.query<{ thumbnail_key: string | null; preview_key: string | null }>(
+      'SELECT thumbnail_key, preview_key FROM documents WHERE id = $1',
+      [id],
+    );
+    return rows.flatMap((r) => [r.thumbnail_key, r.preview_key].filter((k): k is string => k !== null));
   },
 
   async findLiveById(db: Db, id: string): Promise<DocumentRow | null> {

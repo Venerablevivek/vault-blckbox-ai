@@ -274,6 +274,18 @@ describe('API contract', () => {
       '/api/documents/bulk',
       await send('POST', '/api/documents/bulk', owner, { action: 'move', ids: [documentId], folderId: null }),
     );
+    // A picture gets a thumbnail from the worker.
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+      'base64',
+    );
+    const picture = await uploadDocument(h.app, owner, workspaceId, 'pixel.png', png, 'image/png');
+    await h.drainJobs();
+    ok(
+      'GET',
+      '/api/documents/:id/thumbnail',
+      await send('GET', `/api/documents/${picture.json().document.id}/thumbnail`, owner),
+    );
     ok('PUT', '/api/documents/:id/star', await send('PUT', `/api/documents/${documentId}/star`, owner));
     ok('DELETE', '/api/documents/:id/star', await send('DELETE', `/api/documents/${documentId}/star`, owner));
     ok('GET', '/api/documents/:id/download', await send('GET', `/api/documents/${documentId}/download`, owner));

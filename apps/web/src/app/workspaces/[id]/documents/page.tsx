@@ -47,7 +47,7 @@ import { useDialogs } from '@/components/dialog';
 import { DocumentDetails } from '@/components/document-details';
 import { FolderPicker } from '@/components/folder-picker';
 import { FolderSharePanel } from '@/components/folder-share-panel';
-import { PreviewModal, PREVIEWABLE } from '@/components/preview-modal';
+import { PreviewModal } from '@/components/preview-modal';
 import { SharePanel } from '@/components/share-panel';
 import { VersionHistory } from '@/components/version-history';
 import { toast } from '@/components/toast';
@@ -80,6 +80,26 @@ function useDebounced<T>(value: T, ms: number): T {
 
 type MoveTarget =
   { kind: 'document'; doc: DocumentDto } | { kind: 'folder'; folder: FolderDto } | { kind: 'bulk'; ids: string[] };
+
+/** A passage of a document's text around a search match; the API marks matched words ⟦like this⟧. */
+function MatchSnippet({ text }: { text: string }) {
+  const parts = text.split(/⟦|⟧/);
+  return (
+    <p className="mt-0.5 line-clamp-2 text-xs text-ink-muted" data-testid="match-snippet">
+      …
+      {parts.map((part, i) =>
+        i % 2 === 1 ? (
+          <mark key={i} className="rounded bg-amber-100 px-0.5 text-ink">
+            {part}
+          </mark>
+        ) : (
+          <span key={i}>{part}</span>
+        ),
+      )}
+      …
+    </p>
+  );
+}
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -713,7 +733,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
         </div>
       );
     }
-    const previewable = PREVIEWABLE.has(doc.mimeType);
+    const previewable = doc.previewable;
     return (
       <div className="flex items-center gap-1">
         {previewable ? (
@@ -1329,6 +1349,15 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                       <ScanChip doc={doc} />
                       <LinkChip doc={doc} />
                     </div>
+                    {doc.thumbnail ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`/api/documents/${doc.id}/thumbnail?v=${doc.version}`}
+                        alt=""
+                        loading="lazy"
+                        className="mt-3 h-32 w-full rounded-lg border border-line bg-slate-50 object-cover object-top"
+                      />
+                    ) : null}
                     <p className="mt-3 truncate text-sm font-semibold" title={doc.filename}>
                       {doc.filename}
                     </p>
@@ -1346,24 +1375,31 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                   <li key={doc.id} className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-slate-50/70">
                     <SelectBox doc={doc} />
                     <span className="hidden shrink-0 sm:block">
-                      <FileGlyph filename={doc.filename} mimeType={doc.mimeType} />
+                      {doc.thumbnail ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={`/api/documents/${doc.id}/thumbnail?v=${doc.version}`}
+                          alt=""
+                          loading="lazy"
+                          className="h-10 w-10 rounded-lg border border-line bg-slate-50 object-cover object-top"
+                        />
+                      ) : (
+                        <FileGlyph filename={doc.filename} mimeType={doc.mimeType} />
+                      )}
                     </span>
                     <StarButton doc={doc} />
                     <div className="min-w-0 flex-1">
                       <button
                         className="block max-w-full truncate text-left text-sm font-medium hover:text-brand-700 disabled:hover:text-ink"
                         onClick={() =>
-                          PREVIEWABLE.has(doc.mimeType)
-                            ? setPreviewFor(doc)
-                            : contributor
-                              ? setShareFor(doc)
-                              : undefined
+                          doc.previewable ? setPreviewFor(doc) : contributor ? setShareFor(doc) : undefined
                         }
                         disabled={trash || doc.scanStatus === 'pending' || doc.scanStatus === 'infected'}
                         title={doc.filename}
                       >
                         {doc.filename}
                       </button>
+                      {doc.matchSnippet ? <MatchSnippet text={doc.matchSnippet} /> : null}
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
                         {trash ? (
                           <>
