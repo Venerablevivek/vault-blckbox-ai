@@ -38,7 +38,7 @@ describe('API contract', () => {
     }
     if (typeof op!.success === 'object' && !Array.isArray(op!.success)) {
       expect(response.statusCode, response.body).toBe(200);
-      expect(response.headers['content-type']).toBe(op!.success.file);
+      expect(op!.success.file).toContain(String(response.headers['content-type']).split(';')[0]);
       return;
     }
     if (op!.success === 'redirect') {
@@ -250,6 +250,9 @@ describe('API contract', () => {
     const token = share.json().share.url.split('/s/')[1];
     ok('GET', '/api/shares/:token', await send('GET', `/api/shares/${token}`));
     ok('POST', '/api/shares/:token/view', await send('POST', `/api/shares/${token}/view`));
+    const unlimited = await send('POST', '/api/shares', owner, { documentId });
+    const unlimitedToken = unlimited.json().share.url.split('/s/')[1];
+    ok('GET', '/api/shares/:token/content', await send('GET', `/api/shares/${unlimitedToken}/content`));
     ok('GET', '/api/shares/:token/download', await send('GET', `/api/shares/${token}/download`));
     ok('PATCH', '/api/shares/:id', await send('PATCH', `/api/shares/${shareId}`, owner, { password: 'open-sesame' }));
     const locked = await send('GET', `/api/shares/${token}`);
@@ -260,6 +263,23 @@ describe('API contract', () => {
       '/api/shares/:token/unlock',
       await send('POST', `/api/shares/${token}/unlock`, undefined, { password: 'open-sesame' }),
     );
+
+    // A link restricted to one person: a code is emailed, and entering it unlocks the link.
+    const restricted = await send('POST', '/api/shares', owner, { documentId, allowedEmails: ['guest@example.com'] });
+    const restrictedToken = restricted.json().share.url.split('/s/')[1];
+    ok(
+      'POST',
+      '/api/shares/:token/code',
+      await send('POST', `/api/shares/${restrictedToken}/code`, undefined, { email: 'guest@example.com' }),
+    );
+    const codeMail = await h.mailer.waitFor((m) => m.to === 'guest@example.com');
+    const code = /\b(\d{6})\b/.exec(codeMail.text)![1];
+    ok(
+      'POST',
+      '/api/shares/:token/verify',
+      await send('POST', `/api/shares/${restrictedToken}/verify`, undefined, { email: 'guest@example.com', code }),
+    );
+
     await new Promise((resolve) => setTimeout(resolve, 100));
     ok('GET', '/api/documents/:id/shares', await send('GET', `/api/documents/${documentId}/shares`, owner));
     ok('GET', '/api/shares/:id/events', await send('GET', `/api/shares/${shareId}/events`, owner));

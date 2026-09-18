@@ -3333,6 +3333,8 @@ export interface paths {
                 createdAt: string;
                 hasPassword: boolean;
                 maxDownloads: number | null;
+                allowDownload: boolean;
+                allowedEmails: string[];
               };
             };
           };
@@ -3475,6 +3477,8 @@ export interface paths {
                 hasPassword: boolean;
                 maxDownloads: number | null;
                 downloadCount: number;
+                allowDownload: boolean;
+                allowedEmails: string[];
               };
             };
           };
@@ -3564,6 +3568,8 @@ export interface paths {
                 userAgent: string | null;
                 /** @description Opaque marker for "the same viewer". Never an address. */
                 viewer: string;
+                /** @description The address the viewer proved, on a link restricted to named people. */
+                email: string | null;
               }[];
             };
           };
@@ -3746,6 +3752,294 @@ export interface paths {
         };
       };
     };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/shares/{token}/code': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Email a one-time code to open a link restricted to named people
+     * @description Always 202, whether or not the address is on the link. A code is sent only to addresses on the link, at most 3 per 15 minutes.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          token: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ShareCodeRequest'];
+        };
+      };
+      responses: {
+        /** @description Success */
+        202: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              message: string;
+            };
+          };
+        };
+        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Gone: revoked, expired, used up, or already used. */
+        410: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Rate limited or locked out. See Retry-After. */
+        429: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/shares/{token}/verify': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Enter the one-time code
+     * @description Sets an HttpOnly cookie naming the verified address, for one hour. Only the newest code works, for 10 minutes and 5 tries.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          token: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['ShareCodeVerifyRequest'];
+        };
+      };
+      responses: {
+        /** @description Success, no content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Gone: revoked, expired, used up, or already used. */
+        410: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Rate limited or locked out. See Retry-After. */
+        429: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/shares/{token}/content': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The shared file, for showing in the page (PDFs and images)
+     * @description Inline, never cached, frameable only by this site. On a view-only link a PDF carries the viewer's watermark on every page.
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          token: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description The file, streamed as an attachment. */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/pdf': string;
+            'image/png': string;
+            'image/jpeg': string;
+            'image/gif': string;
+            'image/webp': string;
+          };
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Signed in and a member, but the role does not allow this. */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Gone: revoked, expired, used up, or already used. */
+        410: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
+        413: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description File type not allowed. */
+        415: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Well-formed but not allowed (e.g. moving a folder into itself). */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Rate limited or locked out. See Retry-After. */
+        429: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -4738,6 +5032,8 @@ export interface components {
       hasPassword: boolean;
       maxDownloads: number | null;
       downloadCount: number;
+      allowDownload: boolean;
+      allowedEmails: string[];
       activity: components['schemas']['ShareActivity'];
     };
     Upload: {
@@ -4816,6 +5112,10 @@ export interface components {
       password?: string | null;
       /** @description null = unlimited; 1 = one-time link. */
       maxDownloads?: number | null;
+      /** @description false = view only: the file is shown in the page (watermarked) and cannot be downloaded. PDFs and images only. */
+      allowDownload?: boolean;
+      /** @description Only these people can open the link, each proving their address with a one-time emailed code. Empty = anyone with the link. */
+      allowedEmails?: string[];
     };
     UpdateShareRequest: {
       /** @description null = never expires; omitted = the default (create) or unchanged (edit). */
@@ -4824,13 +5124,28 @@ export interface components {
       password?: string | null;
       /** @description null = unlimited; 1 = one-time link. */
       maxDownloads?: number | null;
+      /** @description false = view only: the file is shown in the page (watermarked) and cannot be downloaded. PDFs and images only. */
+      allowDownload?: boolean;
+      /** @description Only these people can open the link, each proving their address with a one-time emailed code. Empty = anyone with the link. */
+      allowedEmails?: string[];
     };
     /** @enum {string} */
-    ShareOutcome: 'resolved' | 'downloaded' | 'expired' | 'revoked' | 'document_deleted' | 'exhausted' | 'bad_password';
+    ShareOutcome:
+      | 'resolved'
+      | 'downloaded'
+      | 'expired'
+      | 'revoked'
+      | 'document_deleted'
+      | 'exhausted'
+      | 'bad_password'
+      | 'bad_code';
     PublicShare:
       | {
           /** @enum {boolean} */
-          requiresPassword: true;
+          locked: true;
+          /** @description Confirm an address on the link with a one-time code. */
+          requiresEmail: boolean;
+          requiresPassword: boolean;
           /**
            * Format: date-time
            * @example 2026-09-17T10:15:00.000Z
@@ -4839,8 +5154,15 @@ export interface components {
         }
       | {
           /** @enum {boolean} */
-          requiresPassword: false;
+          locked: false;
           passwordProtected: boolean;
+          restricted: boolean;
+          viewerEmail: string | null;
+          allowDownload: boolean;
+          /** @description GET /api/shares/{token}/content can show it in the page. */
+          previewable: boolean;
+          /** @description On a view-only link: the text stamped on the file, to overlay on images. */
+          watermark: string | null;
           filename: string;
           mimeType: string;
           size: number;
@@ -4853,6 +5175,15 @@ export interface components {
         };
     UnlockRequest: {
       password: string;
+    };
+    ShareCodeRequest: {
+      /** Format: email */
+      email: string;
+    };
+    ShareCodeVerifyRequest: {
+      /** Format: email */
+      email: string;
+      code: string;
     };
     AuditVerification: {
       valid: boolean;

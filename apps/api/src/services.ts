@@ -103,6 +103,8 @@ export function createServices(deps: {
     signedUrlTtlSeconds: config.SIGNED_URL_TTL_SECONDS,
     audit,
     notifications,
+    jobs,
+    watermarkMaxBytes: config.SHARE_WATERMARK_MAX_BYTES,
   });
   // The dashboard is all aggregate reads: fine to serve from a replica.
   const overview = createOverviewService({ pool: readPool, clock, audit });

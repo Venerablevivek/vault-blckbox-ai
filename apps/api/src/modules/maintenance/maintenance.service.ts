@@ -12,6 +12,8 @@ export const RETENTION = {
   expiredSessionsDays: 1,
   /** Login failures only matter inside the lockout window. */
   loginFailuresDays: 1,
+  /** One-time share codes last ten minutes; a day covers any clock skew and debugging. */
+  shareCodesDays: 1,
   /** Read notifications are clutter after a month; unread ones are kept longer. */
   readNotificationsDays: 30,
   anyNotificationsDays: 90,
@@ -68,6 +70,7 @@ export function createMaintenanceService(deps: {
           expiredUploads: 0,
           rateLimitRows: 0,
           requeuedScans: 0,
+          shareCodes: 0,
         };
 
         const step = async (name: string, fn: () => Promise<void>) => {
@@ -83,6 +86,12 @@ export function createMaintenanceService(deps: {
             daysAgo(RETENTION.expiredSessionsDays),
           ]);
           result.expiredSessions = r.rowCount ?? 0;
+        });
+        await step('share_codes', async () => {
+          const r = await client.query('DELETE FROM share_email_codes WHERE expires_at < $1', [
+            daysAgo(RETENTION.shareCodesDays),
+          ]);
+          result.shareCodes = r.rowCount ?? 0;
         });
         await step('login_failures', async () => {
           const r = await client.query('DELETE FROM login_failures WHERE failed_at < $1', [

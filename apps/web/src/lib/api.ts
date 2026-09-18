@@ -77,6 +77,8 @@ export interface ShareEvent {
   userAgent: string | null;
   /** Opaque, stable marker for "the same viewer". Never an address. */
   viewer: string;
+  /** The address the viewer proved, on a link restricted to named people. */
+  email: string | null;
 }
 export type Overview = Schemas['Overview'];
 export type AuditEvent = Schemas['AuditEvent'];

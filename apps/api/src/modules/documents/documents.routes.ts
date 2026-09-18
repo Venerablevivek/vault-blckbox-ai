@@ -48,16 +48,16 @@ export function toDocumentDto(row: DocumentRow & Partial<DocumentListRow>) {
 }
 
 /**
- * Content-Disposition for a download: a plain-ASCII filename for old clients, and the real
+ * Content-Disposition for a response: a plain-ASCII filename for old clients, and the real
  * one in RFC 5987 form for everything else.
  */
-export function attachmentDisposition(filename: string): string {
+export function attachmentDisposition(filename: string, disposition: 'attachment' | 'inline' = 'attachment'): string {
   const ascii = filename.replace(/[^\x20-\x7e]|["\\]/g, '_');
   const encoded = encodeURIComponent(filename).replace(
     /['()*]/g,
     (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
   );
-  return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
+  return `${disposition}; filename="${ascii}"; filename*=UTF-8''${encoded}`;
 }
 
 function archiveSelection(ids: string[] | undefined, folderId: string | undefined) {
@@ -317,6 +317,8 @@ export function registerDocumentRoutes(
           hasPassword: share.password_hash !== null,
           maxDownloads: share.max_downloads,
           downloadCount: share.download_count,
+          allowDownload: share.allow_download,
+          allowedEmails: share.allowed_emails,
           activity,
         })),
       };

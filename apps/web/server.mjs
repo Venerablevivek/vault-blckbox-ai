@@ -33,7 +33,8 @@ const SECURITY_HEADERS = {
     "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: ${storageOrigin}`,
-    `frame-src ${storageOrigin}`,
+    // 'self': the share page shows a shared file from /api/shares/<token>/content.
+    `frame-src 'self' ${storageOrigin}`,
     // Direct uploads PUT file parts straight to object storage.
     `connect-src 'self' ${storageOrigin}`,
     "font-src 'self' data:",
@@ -57,6 +58,8 @@ if (process.env.ENABLE_HSTS === 'true') {
 }
 
 const SHARE_PAGE = /^\/s\/([A-Za-z0-9_-]{10,200})\/?$/;
+/** A shared file shown inside the share page: the one response this site may frame (itself only). */
+const SHARE_CONTENT = /^\/api\/shares\/[A-Za-z0-9_-]{10,200}\/content$/;
 
 /** Asks the API whether a share token is live, forwarding the visitor's address and cookies. */
 async function shareStatus(token, req) {
@@ -91,6 +94,12 @@ createServer(async (req, res) => {
   req.headers['x-forwarded-for'] = req.socket.remoteAddress ?? '';
 
   for (const [name, value] of Object.entries(SECURITY_HEADERS)) res.setHeader(name, value);
+  if (req.url && SHARE_CONTENT.test(req.url.split('?')[0])) {
+    // Only ever a PDF or an image (sent with nosniff), so the page policy has nothing to guard.
+    // A default-src here would also block the browser's own PDF viewer, which runs as an embed.
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  }
 
   const share =
     (req.method === 'GET' || req.method === 'HEAD') && req.url ? SHARE_PAGE.exec(req.url.split('?')[0]) : null;

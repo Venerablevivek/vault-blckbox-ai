@@ -39,7 +39,7 @@ interface Operation {
   body?: ZodSchema;
   multipart?: boolean;
   /** Success status and body; null body means no content. */
-  success: [number, ZodSchema | null] | 'redirect' | 'stream' | { file: string };
+  success: [number, ZodSchema | null] | 'redirect' | 'stream' | { file: string[] };
   errors?: ErrorStatus[];
 }
 
@@ -376,7 +376,7 @@ export const operations: Operation[] = [
     auth: S,
     params: documents.WorkspaceDocumentsParams,
     query: documents.ArchiveQuery,
-    success: { file: 'application/zip' },
+    success: { file: ['application/zip'] },
     errors: [400, 401, 404, 409, 413, 429, 503],
   },
   {
@@ -632,6 +632,44 @@ export const operations: Operation[] = [
   },
   {
     method: 'post',
+    path: '/api/shares/:token/code',
+    tag: 'Public sharing',
+    summary: 'Email a one-time code to open a link restricted to named people',
+    auth: P,
+    params: shares.ShareTokenParams,
+    body: shares.RequestCodeBody,
+    success: [202, auth.MessageResponse],
+    errors: [400, 404, 410, 429],
+    description:
+      'Always 202, whether or not the address is on the link. A code is sent only to addresses on the link, at most 3 per 15 minutes.',
+  },
+  {
+    method: 'post',
+    path: '/api/shares/:token/verify',
+    tag: 'Public sharing',
+    summary: 'Enter the one-time code',
+    auth: P,
+    params: shares.ShareTokenParams,
+    body: shares.VerifyCodeBody,
+    success: [204, null],
+    errors: [400, 401, 404, 410, 429],
+    description:
+      'Sets an HttpOnly cookie naming the verified address, for one hour. Only the newest code works, for 10 minutes and 5 tries.',
+  },
+  {
+    method: 'get',
+    path: '/api/shares/:token/content',
+    tag: 'Public sharing',
+    summary: 'The shared file, for showing in the page (PDFs and images)',
+    auth: P,
+    params: shares.ShareTokenParams,
+    success: { file: ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'] },
+    errors: [401, 403, 404, 410, 413, 415, 422, 429],
+    description:
+      "Inline, never cached, frameable only by this site. On a view-only link a PDF carries the viewer's watermark on every page.",
+  },
+  {
+    method: 'post',
     path: '/api/shares/:token/view',
     tag: 'Public sharing',
     summary: 'Record a page view',
@@ -758,7 +796,9 @@ export function buildOpenApiDocument() {
     } else if (typeof op.success === 'object' && !Array.isArray(op.success)) {
       responses[200] = {
         description: 'The file, streamed as an attachment.',
-        content: { [op.success.file]: { schema: { type: 'string', format: 'binary' } } },
+        content: Object.fromEntries(
+          op.success.file.map((type) => [type, { schema: { type: 'string' as const, format: 'binary' } }]),
+        ),
       };
     } else if (op.success === 'redirect') {
       responses[302] = {

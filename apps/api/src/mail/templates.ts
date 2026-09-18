@@ -128,3 +128,24 @@ export function verificationEmail(input: { to: string; url: string; ttlHours: nu
     ),
   };
 }
+
+export function shareCodeEmail(input: { to: string; code: string; ttlMinutes: number }): MailMessage {
+  return {
+    to: input.to,
+    subject: `${input.code} is your code to open a shared file`,
+    text: [
+      'Someone shared a file with you on Vault. Enter this code to open it:',
+      '',
+      input.code,
+      '',
+      `The code works once and expires in ${input.ttlMinutes} minutes.`,
+      "If you didn't ask for it, you can ignore this email: nobody can open the file without the code.",
+    ].join('\n'),
+    html: layout('Your code to open a shared file', [
+      'Someone shared a file with you on Vault. Enter this code to open it:',
+      `<span style="font-size:28px;font-weight:700;letter-spacing:6px">${escapeHtml(input.code)}</span>`,
+      `The code works once and expires in ${input.ttlMinutes} minutes.`,
+      "If you didn't ask for it, you can ignore this email: nobody can open the file without the code.",
+    ]),
+  };
+}

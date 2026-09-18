@@ -111,6 +111,9 @@ const schema = z.object({
   ARCHIVE_MAX_BYTES: z.coerce.number().int().positive().default(5_368_709_120),
   MAX_CONCURRENT_ARCHIVES: z.coerce.number().int().min(1).max(64).default(4),
 
+  /** Largest PDF a view-only link will show; each one is held in memory while it is watermarked. */
+  SHARE_WATERMARK_MAX_BYTES: z.coerce.number().int().positive().default(52_428_800),
+
   /** Days a deleted document stays restorable before it is purged. */
   TRASH_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(30),
 

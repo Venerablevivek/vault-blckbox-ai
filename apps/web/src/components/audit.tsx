@@ -88,7 +88,7 @@ export function describeAuditEvent(event: AuditEvent): string {
     case 'share.revoked':
       return `${who} revoked a share link`;
     case 'share.accessed':
-      return `${file} was opened through a share link`;
+      return m.email ? `${email} opened ${file} through a share link` : `${file} was opened through a share link`;
     case 'share.blocked':
       return `A share link for ${file} was used after it stopped working`;
     case 'member.invited':

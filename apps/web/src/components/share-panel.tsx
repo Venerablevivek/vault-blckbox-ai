@@ -1,7 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Activity, Check, Copy, Download, KeyRound, Link2, Pencil, ShieldAlert, Trash2 } from 'lucide-react';
+import {
+  Activity,
+  Check,
+  Copy,
+  Download,
+  Eye,
+  KeyRound,
+  Link2,
+  Pencil,
+  ShieldAlert,
+  Trash2,
+  Users,
+} from 'lucide-react';
 import {
   api,
   ApiRequestError,
@@ -18,6 +30,21 @@ import {
 import { Modal, useDialogs } from './dialog';
 import { toast } from './toast';
 import { ErrorNote, Stat } from './ui';
+import { PREVIEWABLE } from './preview-modal';
+
+/** Addresses typed into a box, separated by commas, semicolons, spaces or new lines. */
+function parseEmails(text: string): string[] {
+  return [
+    ...new Set(
+      text
+        .split(/[\s,;]+/)
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  ];
+}
+
+const looksLikeEmail = (e: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e);
 
 const EXPIRY_CHOICES: Array<{ label: string; hours: number | null }> = [
   { label: '1 hour', hours: 1 },
@@ -44,6 +71,8 @@ interface CreatedLink {
   expiresAt: string | null;
   hasPassword: boolean;
   maxDownloads: number | null;
+  allowDownload: boolean;
+  allowedEmails: string[];
 }
 
 function limitLabel(link: { maxDownloads: number | null; downloadCount: number }): string | null {
@@ -81,6 +110,10 @@ export function SharePanel({
   const [usePassword, setUsePassword] = useState(false);
   const [password, setPassword] = useState('');
   const [limit, setLimit] = useState<number | null>(null);
+  const [viewOnly, setViewOnly] = useState(false);
+  const [restrict, setRestrict] = useState(false);
+  const [people, setPeople] = useState('');
+  const previewable = PREVIEWABLE.has(doc.mimeType);
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<CreatedLink | null>(null);
   const [copied, setCopied] = useState(false);
@@ -113,19 +146,29 @@ export function SharePanel({
       setError('The link password must be at least 6 characters.');
       return;
     }
+    const allowedEmails = restrict ? parseEmails(people) : [];
+    if (restrict && (allowedEmails.length === 0 || !allowedEmails.every(looksLikeEmail))) {
+      setError('Enter the email address of each person who may open the link.');
+      return;
+    }
     setCreating(true);
     setError(null);
     try {
       const result = await api.post<{ share: CreatedLink }>('/api/shares', {
         documentId: doc.id,
         expiresInHours: hours,
-        maxDownloads: limit,
+        maxDownloads: viewOnly ? null : limit,
         ...(usePassword ? { password } : {}),
+        ...(viewOnly ? { allowDownload: false } : {}),
+        ...(restrict ? { allowedEmails } : {}),
       });
       setCreated(result.share);
       setCopied(false);
       setPassword('');
       setUsePassword(false);
+      setViewOnly(false);
+      setRestrict(false);
+      setPeople('');
       await load();
       onChanged();
     } catch (err) {
@@ -236,6 +279,7 @@ export function SharePanel({
                     await load();
                   }}
                   onRevoke={() => void revoke(link)}
+                  previewable={previewable}
                 />
               ))}
             </ul>
@@ -270,7 +314,8 @@ export function SharePanel({
                 <select
                   id="new-limit"
                   className="input"
-                  value={String(limit)}
+                  disabled={viewOnly}
+                  value={String(viewOnly ? null : limit)}
                   onChange={(e) => setLimit(e.target.value === 'null' ? null : Number(e.target.value))}
                 >
                   {LIMIT_CHOICES.map((c) => (
@@ -305,6 +350,53 @@ export function SharePanel({
                 />
               ) : null}
             </div>
+            <div>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={restrict}
+                  onChange={(e) => setRestrict(e.target.checked)}
+                  className="h-4 w-4 rounded border-line-strong"
+                />
+                Only specific people
+              </label>
+              {restrict ? (
+                <>
+                  <textarea
+                    className="input mt-2 min-h-[64px]"
+                    placeholder="alex@example.com, sam@example.com"
+                    value={people}
+                    onChange={(e) => setPeople(e.target.value)}
+                    aria-label="Email addresses allowed to open the link"
+                  />
+                  <p className="mt-1 text-[11px] text-ink-subtle">
+                    Each person confirms their address with a one-time code before the file opens, and you see who
+                    opened it.
+                  </p>
+                </>
+              ) : null}
+            </div>
+            <div>
+              <label
+                className={`flex items-center gap-2 text-sm ${previewable ? '' : 'text-ink-subtle'}`}
+                title={previewable ? undefined : 'Only PDFs and images can be shared view-only'}
+              >
+                <input
+                  type="checkbox"
+                  checked={viewOnly}
+                  disabled={!previewable}
+                  onChange={(e) => setViewOnly(e.target.checked)}
+                  className="h-4 w-4 rounded border-line-strong"
+                />
+                View only (no downloads)
+              </label>
+              {viewOnly ? (
+                <p className="mt-1 text-[11px] text-ink-subtle">
+                  The file is shown in the page, marked with the viewer&rsquo;s address or ID and the time. This
+                  discourages copying; it can&rsquo;t stop a screenshot or a photo of the screen.
+                </p>
+              ) : null}
+            </div>
             <div className="flex justify-end">
               <button type="submit" className="btn-primary" disabled={creating}>
                 <Link2 className="h-4 w-4" aria-hidden /> {creating ? 'Creating…' : 'Create link'}
@@ -331,7 +423,9 @@ function LinkRow({
   onEdit,
   onSaved,
   onRevoke,
+  previewable,
 }: {
+  previewable: boolean;
   link: ShareSummary;
   canManage: boolean;
   expanded: boolean;
@@ -359,9 +453,20 @@ function LinkRow({
                 <KeyRound className="h-3 w-3" aria-hidden /> Password
               </span>
             ) : null}
-            {limit ? (
+            {limit && link.allowDownload ? (
               <span className="chip">
                 <Download className="h-3 w-3" aria-hidden /> {limit}
+              </span>
+            ) : null}
+            {!link.allowDownload ? (
+              <span className="chip-brand">
+                <Eye className="h-3 w-3" aria-hidden /> View only
+              </span>
+            ) : null}
+            {link.allowedEmails.length > 0 ? (
+              <span className="chip-brand" title={link.allowedEmails.join(', ')}>
+                <Users className="h-3 w-3" aria-hidden />{' '}
+                {link.allowedEmails.length === 1 ? link.allowedEmails[0] : `${link.allowedEmails.length} people`}
               </span>
             ) : null}
           </div>
@@ -383,7 +488,7 @@ function LinkRow({
         </div>
       </div>
 
-      {editing ? <EditLink link={link} onSaved={onSaved} onCancel={onEdit} /> : null}
+      {editing ? <EditLink link={link} previewable={previewable} onSaved={onSaved} onCancel={onEdit} /> : null}
 
       <div className="mt-3 rounded-lg bg-slate-50 px-4 py-3">
         {opened ? (
@@ -416,8 +521,8 @@ function LinkRow({
         ) : null}
         {activity.blockedAttempts > 0 ? (
           <p className="mt-2 text-xs text-ink-muted">
-            {activity.blockedAttempts} blocked attempt{activity.blockedAttempts === 1 ? '' : 's'} (wrong password,
-            expired or used up).
+            {activity.blockedAttempts} blocked attempt{activity.blockedAttempts === 1 ? '' : 's'} (wrong password or
+            code, expired or used up).
           </p>
         ) : null}
       </div>
@@ -434,14 +539,18 @@ function LinkRow({
                     className={
                       event.outcome === 'downloaded'
                         ? 'chip-ok'
-                        : event.outcome === 'bad_password'
+                        : event.outcome === 'bad_password' || event.outcome === 'bad_code'
                           ? 'chip-warn'
                           : 'chip'
                     }
                   >
-                    {event.outcome.replace('_', ' ')}
+                    {event.outcome === 'bad_code' ? 'wrong code' : event.outcome.replace('_', ' ')}
                   </span>
-                  <span className="font-mono text-ink-subtle">viewer {event.viewer}</span>
+                  {event.email ? (
+                    <span className="text-ink">{event.email}</span>
+                  ) : (
+                    <span className="font-mono text-ink-subtle">viewer {event.viewer}</span>
+                  )}
                 </span>
                 <span className="shrink-0 text-ink-muted">{timeAgo(event.accessedAt)}</span>
               </li>
@@ -459,13 +568,17 @@ function LinkRow({
  */
 function EditLink({
   link,
+  previewable,
   onSaved,
   onCancel,
 }: {
   link: ShareSummary;
+  previewable: boolean;
   onSaved: () => Promise<void>;
   onCancel: () => void;
 }) {
+  const [access, setAccess] = useState<'keep' | 'download' | 'view'>('keep');
+  const [people, setPeople] = useState(link.allowedEmails.join(', '));
   const [expiry, setExpiry] = useState<string>('keep');
   const [passwordMode, setPasswordMode] = useState<'keep' | 'set' | 'remove'>('keep');
   const [password, setPassword] = useState('');
@@ -486,6 +599,15 @@ function EditLink({
       changes.password = password;
     }
     if (limit !== 'keep') changes.maxDownloads = limit === 'null' ? null : Number(limit);
+    if (access !== 'keep') changes.allowDownload = access === 'download';
+    const allowedEmails = parseEmails(people);
+    if (!allowedEmails.every(looksLikeEmail)) {
+      setError('Check the email addresses: one of them is not valid.');
+      return;
+    }
+    if ([...allowedEmails].sort().join() !== [...link.allowedEmails].sort().join()) {
+      changes.allowedEmails = allowedEmails;
+    }
     if (Object.keys(changes).length === 0) {
       onCancel();
       return;
@@ -567,6 +689,37 @@ function EditLink({
             Anyone who already unlocked the link will need the new password.
           </p>
         ) : null}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className="label" htmlFor={`access-${link.id}`}>
+            Access
+          </label>
+          <select
+            id={`access-${link.id}`}
+            className="input"
+            value={access}
+            onChange={(e) => setAccess(e.target.value as 'keep' | 'download' | 'view')}
+          >
+            <option value="keep">Keep ({link.allowDownload ? 'can download' : 'view only'})</option>
+            <option value="download">Can download</option>
+            <option value="view" disabled={!previewable}>
+              View only{previewable ? '' : ' (PDFs and images)'}
+            </option>
+          </select>
+        </div>
+        <div>
+          <label className="label" htmlFor={`people-${link.id}`}>
+            Only these people
+          </label>
+          <input
+            id={`people-${link.id}`}
+            className="input"
+            placeholder="Anyone with the link"
+            value={people}
+            onChange={(e) => setPeople(e.target.value)}
+          />
+        </div>
       </div>
       <div className="flex justify-end gap-2">
         <button type="button" className="btn-secondary btn-sm" onClick={onCancel}>

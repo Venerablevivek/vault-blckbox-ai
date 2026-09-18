@@ -74,7 +74,7 @@ describe('protected share links', () => {
       expect(String(response.headers['set-cookie'])).toContain('HttpOnly');
 
       const metadata = await publicGet(`/api/shares/${first.token}`, cookie);
-      expect(metadata.json()).toMatchObject({ requiresPassword: false, filename: 'salary-bands.pdf' });
+      expect(metadata.json()).toMatchObject({ locked: false, filename: 'salary-bands.pdf' });
       expect((await publicGet(`/api/shares/${first.token}/download`, cookie)).statusCode).toBe(302);
 
       // Each link has its own grant cookie; unlocking one does not unlock another.
@@ -113,7 +113,7 @@ describe('protected share links', () => {
     it('invalidates existing unlocks when the password is changed', async () => {
       const { id, token } = await createLink({ password: 'correct-horse' });
       const { cookie } = await unlock(token, 'correct-horse');
-      expect((await publicGet(`/api/shares/${token}`, cookie)).json().requiresPassword).toBe(false);
+      expect((await publicGet(`/api/shares/${token}`, cookie)).json().locked).toBe(false);
 
       await h.app.inject({
         method: 'PATCH',
@@ -193,7 +193,7 @@ describe('protected share links', () => {
         payload: { password: null, maxDownloads: null },
       });
       const metadata = (await publicGet(`/api/shares/${token}`)).json();
-      expect(metadata).toMatchObject({ requiresPassword: false, downloadsRemaining: null });
+      expect(metadata).toMatchObject({ locked: false, downloadsRemaining: null });
     });
 
     it('refuses a limit at or below downloads already made', async () => {
