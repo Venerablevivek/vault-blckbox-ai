@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { ThemeSwitch } from './theme';
+import { CommandMenu } from './command-menu';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import {
@@ -12,12 +13,13 @@ import {
   History,
   LayoutDashboard,
   LogOut,
+  type LucideIcon,
   Menu,
   Plus,
+  Search,
   Settings,
   Users,
   X,
-  type LucideIcon,
 } from 'lucide-react';
 import { api, ApiRequestError, formatBytes, type Role, type Schemas, type Workspace } from '@/lib/api';
 import { useDialogs } from './dialog';
@@ -230,6 +232,19 @@ export function Shell({
   const dialogs = useDialogs();
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [commandsOpen, setCommandsOpen] = useState(false);
+
+  // ⌘K (Ctrl+K elsewhere) opens the command menu from anywhere in the app, even while typing.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setCommandsOpen((open) => !open);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   // Close the mobile drawer on navigation.
   useEffect(() => setDrawerOpen(false), [pathname]);
@@ -426,12 +441,31 @@ export function Shell({
             </div>
             <div className="ml-auto flex items-center gap-2">
               {actions}
+              <button
+                className="btn-ghost h-9 gap-2 px-2.5"
+                onClick={() => setCommandsOpen(true)}
+                aria-label="Open the command menu"
+                aria-keyshortcuts="Meta+K Control+K"
+                title="Command menu (⌘K)"
+              >
+                <Search className="h-4 w-4" aria-hidden />
+                <kbd className="hidden rounded border border-line-strong px-1.5 text-[10px] text-ink-subtle md:inline">
+                  ⌘K
+                </kbd>
+              </button>
               <NotificationBell />
             </div>
           </div>
         </header>
 
         <main className="flex-1">{children}</main>
+        <CommandMenu
+          open={commandsOpen}
+          onClose={() => setCommandsOpen(false)}
+          workspaceId={activeId}
+          workspaces={workspaces}
+          signOut={() => void signOut()}
+        />
 
         <footer className="border-t border-line/80 px-6 py-4 text-xs text-ink-subtle">
           <div className="flex flex-wrap items-center justify-between gap-2">

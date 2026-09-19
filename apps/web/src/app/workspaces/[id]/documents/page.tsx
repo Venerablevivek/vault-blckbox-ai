@@ -112,7 +112,13 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
   const folderId = params.get('folder');
 
   const [tab, setTab] = useState<Tab>('all');
-  const [query, setQuery] = useState('');
+  // ?q= arrives from the command menu: start with that search.
+  const [query, setQuery] = useState(() => params.get('q') ?? '');
+  const requestedSearch = params.get('q');
+  useEffect(() => {
+    // Also when the menu is used while already on this page.
+    if (requestedSearch !== null) setQuery(requestedSearch);
+  }, [requestedSearch]);
   const search = useDebounced(query.trim(), 250);
   const [sort, setSort] = useState<SortChoice>('date-desc');
   const [view, setView] = useState<'list' | 'grid'>('list');
@@ -896,6 +902,8 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
               type="file"
               multiple
               className="sr-only"
+              aria-label="Upload files"
+              tabIndex={-1}
               onChange={(e) => e.target.files && void uploadFiles(e.target.files)}
             />
             <button

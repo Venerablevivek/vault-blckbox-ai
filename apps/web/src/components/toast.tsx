@@ -39,9 +39,10 @@ export function toast(message: string, tone: ToastTone = 'info'): void {
 }
 
 const TONES: Record<ToastTone, string> = {
-  info: 'bg-ink text-white',
-  success: 'bg-ok text-white',
-  error: 'bg-danger text-white',
+  info: 'bg-ink text-canvas',
+  // In the dark theme the state colours are light (for text), so toasts use deep ones.
+  success: 'bg-ok text-white dark:bg-emerald-700',
+  error: 'bg-danger text-white dark:bg-rose-700',
 };
 
 export function Toaster() {

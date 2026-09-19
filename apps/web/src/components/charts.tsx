@@ -85,7 +85,9 @@ export function DailyBars({
         <button
           className="text-xs text-ink-muted hover:text-ink"
           onClick={() => setAsTable((v) => !v)}
-          aria-controls={tableId}
+          // Only point at the table while it exists; it is rendered only when shown.
+          aria-controls={asTable ? tableId : undefined}
+          aria-pressed={asTable}
         >
           {asTable ? 'View chart' : 'View table'}
         </button>

@@ -26,11 +26,30 @@ function apply(choice: ThemeChoice) {
   document.documentElement.classList.toggle('dark', dark);
 }
 
+const THEME_EVENT = 'vault:theme-change';
+
+/** Stores and applies a theme from anywhere (the sidebar switch, the command menu). */
+export function setTheme(next: ThemeChoice): void {
+  try {
+    if (next === 'system') localStorage.removeItem(THEME_KEY);
+    else localStorage.setItem(THEME_KEY, next);
+  } catch {
+    // Storage blocked: the choice still applies to this page.
+  }
+  apply(next);
+  window.dispatchEvent(new CustomEvent<ThemeChoice>(THEME_EVENT, { detail: next }));
+}
+
 /** System, light or dark. "System" follows the operating system, including when it changes. */
 export function ThemeSwitch() {
   const [choice, setChoice] = useState<ThemeChoice>('system');
 
-  useEffect(() => setChoice(readChoice()), []);
+  useEffect(() => {
+    setChoice(readChoice());
+    const onChange = (event: Event) => setChoice((event as CustomEvent<ThemeChoice>).detail);
+    window.addEventListener(THEME_EVENT, onChange);
+    return () => window.removeEventListener(THEME_EVENT, onChange);
+  }, []);
 
   useEffect(() => {
     apply(choice);
@@ -43,12 +62,7 @@ export function ThemeSwitch() {
 
   function choose(next: ThemeChoice) {
     setChoice(next);
-    try {
-      if (next === 'system') localStorage.removeItem(THEME_KEY);
-      else localStorage.setItem(THEME_KEY, next);
-    } catch {
-      // Storage blocked: the choice still applies to this page.
-    }
+    setTheme(next);
   }
 
   const options: Array<{ value: ThemeChoice; label: string; icon: typeof Sun }> = [

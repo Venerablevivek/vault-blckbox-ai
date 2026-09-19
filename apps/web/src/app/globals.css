@@ -11,8 +11,9 @@
     --surface-sunken: 248 250 252;
     --surface-muted: 241 245 249;
     --ink: 15 23 42;
-    --ink-muted: 100 116 139;
-    --ink-subtle: 148 163 184;
+    /* Both text greys meet WCAG AA (4.5:1) on every surface, including the brand tint. */
+    --ink-muted: 71 85 105;
+    --ink-subtle: 94 106 126;
     --line: 230 233 240;
     --line-strong: 211 216 227;
     --brand-50: 238 242 255;
@@ -24,7 +25,7 @@
     --brand-700: 67 56 202;
     --brand-800: 55 48 163;
     --brand-900: 49 46 129;
-    --ok: 5 150 105;
+    --ok: 4 120 87;
     --ok-soft: 236 253 245;
     --warn: 180 83 9;
     --warn-soft: 255 251 235;
@@ -44,8 +45,8 @@
     --surface-sunken: 14 18 29;
     --surface-muted: 30 37 53;
     --ink: 226 232 240;
-    --ink-muted: 148 163 184;
-    --ink-subtle: 113 128 150;
+    --ink-muted: 170 182 200;
+    --ink-subtle: 140 153 174;
     --line: 36 44 61;
     --line-strong: 52 63 84;
     --brand-50: 30 31 68;

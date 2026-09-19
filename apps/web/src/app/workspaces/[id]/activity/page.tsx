@@ -281,7 +281,7 @@ function ActivityView({ workspaceId }: { workspaceId: string }) {
                   role="tab"
                   aria-selected={category === f.key}
                   onClick={() => setCategory(f.key)}
-                  className={`rounded-full px-3.5 py-1.5 text-sm transition-colors ${category === f.key ? 'bg-ink text-white' : 'border border-line bg-surface text-ink-muted hover:text-ink'}`}
+                  className={`rounded-full px-3.5 py-1.5 text-sm transition-colors ${category === f.key ? 'bg-ink text-canvas' : 'border border-line bg-surface text-ink-muted hover:text-ink'}`}
                 >
                   {f.label}
                 </button>
