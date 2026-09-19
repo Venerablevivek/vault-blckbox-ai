@@ -202,7 +202,7 @@ services:
       - '127.0.0.1:9090:9090'
 
   jaeger:
-    image: jaegertracing/jaeger:2.9.0@sha256:e128b9adbb29c7146ac0b43e26be9dec794fee3478f2f05c4ef7a5b14ddba9a4
+    image: jaegertracing/jaeger:2.21.0@sha256:3d0ac795ff98aa04d1be04311d2dac6c25b4bfc8322dc02e53bc5b170c5018c3
     profiles: ['observability']
     ports:
       - '127.0.0.1:16686:16686'
