@@ -129,6 +129,10 @@ describe('API contract', () => {
     const other = sessions.json().sessions.find((s: { current: boolean }) => !s.current);
     ok('DELETE', '/api/auth/sessions/:sessionId', await send('DELETE', `/api/auth/sessions/${other.id}`, cookie));
     ok('DELETE', '/api/auth/sessions', await send('DELETE', '/api/auth/sessions', cookie));
+    const apiToken = await send('POST', '/api/auth/tokens', cookie, { name: 'contract', scopes: ['read'] });
+    ok('POST', '/api/auth/tokens', apiToken);
+    ok('GET', '/api/auth/tokens', await send('GET', '/api/auth/tokens', cookie));
+    ok('DELETE', '/api/auth/tokens/:id', await send('DELETE', `/api/auth/tokens/${apiToken.json().token.id}`, cookie));
     ok(
       'POST',
       '/api/auth/password',

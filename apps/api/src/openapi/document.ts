@@ -5,6 +5,7 @@ import { ErrorBody, z } from '../contracts/common';
 import * as documents from '../contracts/documents';
 import * as shares from '../contracts/shares';
 import * as folderShares from '../contracts/folder-shares';
+import * as tokens from '../contracts/tokens';
 import * as uploads from '../contracts/uploads';
 import * as workspaces from '../contracts/workspaces';
 
@@ -35,6 +36,8 @@ interface Operation {
   tag: string;
   description?: string;
   auth?: 'session' | 'public';
+  /** A signed-in browser only: API tokens are refused (403) even with write access. */
+  browserOnly?: boolean;
   params?: z.AnyZodObject;
   query?: z.AnyZodObject;
   body?: ZodSchema;
@@ -112,8 +115,42 @@ export const operations: Operation[] = [
     description: 'Ends every session, then signs this browser in.',
   },
   {
+    method: 'get',
+    path: '/api/auth/tokens',
+    browserOnly: true,
+    tag: 'Auth',
+    summary: 'Your API tokens',
+    auth: S,
+    success: [200, tokens.TokensResponse],
+    errors: [401, 403],
+  },
+  {
+    method: 'post',
+    path: '/api/auth/tokens',
+    browserOnly: true,
+    tag: 'Auth',
+    summary: 'Create an API token',
+    description: 'The secret is returned once. The account is emailed a notice. At most 25 live tokens.',
+    auth: S,
+    body: tokens.CreateTokenBody,
+    success: [201, tokens.TokenCreatedResponse],
+    errors: [400, 401, 403, 409, 429],
+  },
+  {
+    method: 'delete',
+    path: '/api/auth/tokens/:id',
+    browserOnly: true,
+    tag: 'Auth',
+    summary: 'Revoke an API token',
+    auth: S,
+    params: tokens.TokenParams,
+    success: [204, null],
+    errors: [401, 403, 404],
+  },
+  {
     method: 'post',
     path: '/api/auth/password',
+    browserOnly: true,
     tag: 'Auth',
     summary: 'Change password',
     auth: S,
@@ -136,6 +173,7 @@ export const operations: Operation[] = [
   {
     method: 'post',
     path: '/api/auth/email/resend',
+    browserOnly: true,
     tag: 'Auth',
     summary: 'Send another confirmation email',
     auth: S,
@@ -145,6 +183,7 @@ export const operations: Operation[] = [
   {
     method: 'get',
     path: '/api/auth/sessions',
+    browserOnly: true,
     tag: 'Auth',
     summary: 'List your sessions',
     auth: S,
@@ -154,6 +193,7 @@ export const operations: Operation[] = [
   {
     method: 'delete',
     path: '/api/auth/sessions',
+    browserOnly: true,
     tag: 'Auth',
     summary: 'Sign out every other session',
     auth: S,
@@ -163,6 +203,7 @@ export const operations: Operation[] = [
   {
     method: 'delete',
     path: '/api/auth/sessions/:sessionId',
+    browserOnly: true,
     tag: 'Auth',
     summary: 'Sign out one session',
     auth: S,
@@ -205,6 +246,7 @@ export const operations: Operation[] = [
   {
     method: 'delete',
     path: '/api/workspaces/:id',
+    browserOnly: true,
     tag: 'Workspaces',
     summary: 'Delete a workspace',
     auth: S,
@@ -994,6 +1036,12 @@ export function buildOpenApiDocument() {
     name: 'fs_session',
     description: 'Session cookie set by /api/auth/login or /api/auth/register.',
   });
+  registry.registerComponent('securitySchemes', 'apiToken', {
+    type: 'http',
+    scheme: 'bearer',
+    description:
+      'A personal API token (vlt_...) from /api/auth/tokens. A read token may only make GET requests. Account security routes need a session.',
+  });
 
   for (const op of allOperations) {
     const responses: RouteConfig['responses'] = {};
@@ -1026,7 +1074,7 @@ export function buildOpenApiDocument() {
       summary: op.summary,
       description: op.description,
       tags: [op.tag],
-      security: op.auth === 'session' ? [{ session: [] }] : [],
+      security: op.auth === 'session' ? (op.browserOnly ? [{ session: [] }] : [{ session: [] }, { apiToken: [] }]) : [],
       request: {
         ...(op.params ? { params: op.params } : {}),
         ...(op.query ? { query: op.query } : {}),

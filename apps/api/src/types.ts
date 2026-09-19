@@ -64,5 +64,9 @@ declare module 'fastify' {
     sessionId: string | null;
     /** Set by requireMember() for routes scoped to a workspace. */
     membership: Membership | null;
+    /** Set when the request authenticated with an API token rather than a session. */
+    apiToken: { id: string; scopes: Array<'read' | 'write'> } | null;
+    /** An Authorization header was sent but named no usable token. */
+    badToken: boolean;
   }
 }

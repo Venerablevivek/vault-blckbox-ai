@@ -6,6 +6,7 @@ import { api, ApiRequestError, formatDate, timeAgo, type Session } from '@/lib/a
 import { describeUserAgent } from '@/lib/user-agent';
 import { useDialogs } from '@/components/dialog';
 import { NotificationSettings } from '@/components/notification-settings';
+import { ApiTokens } from '@/components/api-tokens';
 import { toast } from '@/components/toast';
 import { ErrorNote, Shell, Skeleton, useSession } from '@/components/ui';
 
@@ -131,7 +132,7 @@ export default function AccountPage({ params }: { params: Promise<{ id: string }
                 Password
               </h2>
               <p className="mt-0.5 text-xs text-ink-muted">
-                Changing it signs out every other session and emails you a notice.
+                Changing it signs out every other session, revokes your API tokens and emails you a notice.
               </p>
             </div>
           </div>
@@ -248,6 +249,8 @@ export default function AccountPage({ params }: { params: Promise<{ id: string }
         </section>
 
         <NotificationSettings />
+
+        <ApiTokens />
       </div>
     </Shell>
   );

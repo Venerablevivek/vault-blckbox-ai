@@ -207,3 +207,31 @@ export function digestEmail(input: {
 
 const UNSUBSCRIBE_TEXT =
   'You get this email because of your notification settings. Change them on your account page in Vault.';
+
+export function apiTokenCreatedEmail(input: {
+  to: string;
+  name: string;
+  scopes: string[];
+  webUrl: string;
+}): MailMessage {
+  const access = input.scopes.includes('write') ? 'read and change' : 'read';
+  return {
+    to: input.to,
+    subject: 'A new API token was created for your Vault account',
+    text: [
+      `An API token named "${input.name}" was just created for your Vault account. It can ${access} everything your account can.`,
+      '',
+      "If this was you, there's nothing to do. If it wasn't, revoke it on your account page and reset your password.",
+      '',
+      `Vault: ${input.webUrl}`,
+    ].join('\n'),
+    html: layout(
+      'A new API token was created',
+      [
+        `An API token named <strong>${escapeHtml(input.name)}</strong> was just created for your Vault account. It can ${access} everything your account can.`,
+        "If this was you, there's nothing to do. If it wasn't, revoke it on your account page and reset your password.",
+      ],
+      { label: 'Open Vault', url: input.webUrl },
+    ),
+  };
+}

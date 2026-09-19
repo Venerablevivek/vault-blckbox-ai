@@ -17,6 +17,11 @@
         "in": "cookie",
         "name": "fs_session",
         "description": "Session cookie set by /api/auth/login or /api/auth/register."
+      },
+      "apiToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "A personal API token (vlt_...) from /api/auth/tokens. A read token may only make GET requests. Account security routes need a session."
       }
     },
     "schemas": {
@@ -201,6 +206,100 @@
         "required": [
           "token",
           "password"
+        ]
+      },
+      "ApiToken": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "prefix": {
+            "type": "string",
+            "description": "The first characters of the token, to tell tokens apart."
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "read",
+                "write"
+              ]
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-09-17T10:15:00.000Z"
+          },
+          "lastUsedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-09-17T10:15:00.000Z"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-09-17T10:15:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "prefix",
+          "scopes",
+          "createdAt",
+          "lastUsedAt",
+          "expiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "CreateTokenRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "description": "What the token is for, e.g. \"backup script\"."
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "read",
+                "write"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 2,
+            "description": "read: GET requests only. write: everything the account can do (write includes read)."
+          },
+          "expiresInDays": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 365,
+            "description": "null = never."
+          }
+        },
+        "required": [
+          "name",
+          "scopes"
         ]
       },
       "ChangePasswordRequest": {
@@ -2486,6 +2585,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "responses": {
@@ -2638,6 +2740,232 @@
           },
           "429": {
             "description": "Rate limited or locked out. See Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/tokens": {
+      "get": {
+        "summary": "Your API tokens",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tokens": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ApiToken"
+                      }
+                    }
+                  },
+                  "required": [
+                    "tokens"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create an API token",
+        "description": "The secret is returned once. The account is emailed a notice. At most 25 live tokens.",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/ApiToken"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "secret": {
+                              "type": "string",
+                              "description": "Send as \"Authorization: Bearer <secret>\". Returned only here, once."
+                            }
+                          },
+                          "required": [
+                            "secret"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "token"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limited or locked out. See Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/tokens/{id}": {
+      "delete": {
+        "summary": "Revoke an API token",
+        "tags": [
+          "Auth"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success, no content"
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Signed in and a member, but the role does not allow this.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not a member (deliberately identical).",
             "content": {
               "application/json": {
                 "schema": {
@@ -2992,6 +3320,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "responses": {
@@ -3055,6 +3386,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "requestBody": {
@@ -3137,6 +3471,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -3324,6 +3661,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -3391,6 +3731,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -3456,6 +3799,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -3537,6 +3883,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -3633,6 +3982,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -3711,6 +4063,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -3817,6 +4172,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -3948,6 +4306,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -4039,6 +4400,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -4200,6 +4564,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -4341,6 +4708,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -4435,6 +4805,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -4518,6 +4891,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "requestBody": {
@@ -4584,6 +4960,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -4712,6 +5091,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -4819,6 +5201,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -4968,6 +5353,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -5024,6 +5412,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -5112,6 +5503,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -5227,6 +5621,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -5306,6 +5703,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -5353,6 +5753,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -5402,6 +5805,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -5487,6 +5893,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -5546,6 +5955,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -5604,6 +6016,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -5661,6 +6076,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -5728,6 +6146,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -5797,6 +6218,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -5913,6 +6337,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -6019,6 +6446,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -6083,6 +6513,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -6153,6 +6586,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -6249,6 +6685,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -6331,6 +6770,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -6446,6 +6888,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -6568,6 +7013,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -6646,6 +7094,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "requestBody": {
@@ -6783,6 +7234,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -6931,6 +7385,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -6990,6 +7447,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -7095,6 +7555,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -7772,6 +8235,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "requestBody": {
@@ -7891,6 +8357,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -7968,6 +8437,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -8584,6 +9056,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -8774,6 +9249,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -8915,6 +9393,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "parameters": [
@@ -8991,6 +9472,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "responses": {
@@ -9066,6 +9550,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "responses": {
@@ -9111,6 +9598,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "responses": {
@@ -9145,6 +9635,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "requestBody": {
@@ -9200,6 +9693,9 @@
         "security": [
           {
             "session": []
+          },
+          {
+            "apiToken": []
           }
         ],
         "requestBody": {

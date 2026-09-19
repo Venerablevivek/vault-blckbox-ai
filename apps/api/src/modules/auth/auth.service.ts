@@ -13,6 +13,7 @@ import type { AuditService } from '../audit/audit.service';
 import type { JobQueue } from '../../jobs/queue';
 import { passwordChangedEmail, passwordResetEmail, verificationEmail } from '../../mail/templates';
 import { authRepo } from './auth.repo';
+import { tokensRepo } from '../tokens/tokens.repo';
 import { burnVerifyTime, hashPassword, verifyPassword } from './password';
 
 export interface AuthServiceOptions {
@@ -352,6 +353,8 @@ export function createAuthService({
         await authRepo.updatePassword(tx, user.id, passwordHash, now);
         await authRepo.invalidatePasswordResets(tx, user.id, now);
         const signedOut = await authRepo.deleteOtherSessions(tx, user.id, null);
+        // A reset usually means the account may be in someone else's hands: API tokens go too.
+        await tokensRepo.revokeAll(tx, user.id, now);
         // Whoever was guessing this password no longer matters: it has changed.
         await authRepo.clearLoginFailures(tx, loginKey(user.email));
         const session = await issueSession(tx, user.id, input.userAgent);
@@ -395,6 +398,7 @@ export function createAuthService({
         await authRepo.invalidatePasswordResets(tx, user.id, now);
         await authRepo.clearLoginFailures(tx, loginKey(email));
         await jobs.enqueue(tx, 'email.send', passwordChangedEmail({ to: user.email, webUrl, via: 'settings' }));
+        await tokensRepo.revokeAll(tx, user.id, now);
         return authRepo.deleteOtherSessions(tx, user.id, input.sessionId);
       });
       return { signedOutSessions };

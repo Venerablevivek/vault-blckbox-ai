@@ -11,6 +11,7 @@ import { registerInvitationRoutes, registerWorkspaceRoutes } from './modules/wor
 import { registerDocumentRoutes } from './modules/documents/documents.routes';
 import { registerShareRoutes } from './modules/shares/shares.routes';
 import { registerFolderShareRoutes } from './modules/folder-shares/folder-shares.routes';
+import { registerTokenRoutes } from './modules/tokens/tokens.routes';
 import { registerAuditRoutes } from './modules/audit/audit.routes';
 import { createNotificationStreamHub } from './modules/notifications/notification-stream';
 import { registerNotificationRoutes } from './modules/notifications/notifications.routes';
@@ -106,7 +107,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   app.decorate('jobHandlers', createJobHandlers(services, mailer));
   void jobs;
 
-  registerSession(app, config, auth);
+  registerSession(app, config, auth, services.tokens);
 
   app.get('/health', async () => ({ status: 'ok' }));
 
@@ -127,6 +128,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   });
 
   registerAuthRoutes(app, { config, auth });
+  registerTokenRoutes(app, { tokens: services.tokens });
   registerWorkspaceRoutes(app, { workspaces, overview });
   registerInvitationRoutes(app, { workspaces });
   registerDocumentRoutes(app, { config, documents, workspaces, shares, storage });

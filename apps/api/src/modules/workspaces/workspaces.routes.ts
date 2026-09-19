@@ -12,7 +12,7 @@ import {
   WorkspaceParams,
 } from '../../contracts/workspaces';
 import { Errors } from '../../lib/errors';
-import { currentUser, requireSession } from '../../plugins/session';
+import { currentUser, requireBrowserSession, requireSession } from '../../plugins/session';
 import { requireOwner } from '../../policy';
 import type { OverviewService } from '../overview/overview.service';
 import type { WorkspacesService } from './workspaces.service';
@@ -50,7 +50,7 @@ export function registerWorkspaceRoutes(
   });
 
   // Deletes the workspace. Body: { confirmName } — the workspace's exact current name.
-  app.delete('/api/workspaces/:id', { preHandler: requireSession }, async (request, reply) => {
+  app.delete('/api/workspaces/:id', { preHandler: requireBrowserSession }, async (request, reply) => {
     const { id } = WorkspaceParams.parse(request.params);
     const user = currentUser(request);
     const membership = await workspaces.requireMember(id, user.id);

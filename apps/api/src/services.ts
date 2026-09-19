@@ -11,6 +11,7 @@ import { createNotificationsService } from './modules/notifications/notification
 import { createOverviewService } from './modules/overview/overview.service';
 import { createSharesService } from './modules/shares/shares.service';
 import { createFolderSharesService } from './modules/folder-shares/folder-shares.service';
+import { createTokensService } from './modules/tokens/tokens.service';
 import { createWorkspacesService } from './modules/workspaces/workspaces.service';
 import { createUploadsService } from './modules/uploads/uploads.service';
 import { ClamdScanner, type Scanner } from './scanning/scanner';
@@ -119,6 +120,7 @@ export function createServices(deps: {
     jobs,
     watermarkMaxBytes: config.SHARE_WATERMARK_MAX_BYTES,
   });
+  const tokens = createTokensService({ pool, clock, logger, jobs, webUrl: config.WEB_URL });
   const folderShares = createFolderSharesService({
     pool,
     storage,
@@ -172,6 +174,7 @@ export function createServices(deps: {
     documents,
     shares,
     folderShares,
+    tokens,
     overview,
     folders,
     uploads,

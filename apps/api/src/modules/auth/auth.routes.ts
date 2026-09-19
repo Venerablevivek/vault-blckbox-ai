@@ -13,6 +13,7 @@ import {
   clearSessionCookie,
   currentSessionId,
   currentUser,
+  requireBrowserSession,
   requireSession,
   setSessionCookie,
 } from '../../plugins/session';
@@ -91,7 +92,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: { config: Config;
   });
 
   app.post('/api/auth/password', {
-    preHandler: requireSession,
+    preHandler: requireBrowserSession,
     config: { rateLimit: { max: 10, timeWindow: '15 minutes' } },
     handler: async (request) => {
       const body = ChangePasswordBody.parse(request.body);
@@ -115,7 +116,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: { config: Config;
   });
 
   app.post('/api/auth/email/resend', {
-    preHandler: requireSession,
+    preHandler: requireBrowserSession,
     config: { rateLimit: { max: 5, timeWindow: '1 hour' } },
     handler: async (request, reply) => {
       await auth.resendVerification(currentUser(request));
@@ -123,17 +124,17 @@ export function registerAuthRoutes(app: FastifyInstance, deps: { config: Config;
     },
   });
 
-  app.get('/api/auth/sessions', { preHandler: requireSession }, async (request) => {
+  app.get('/api/auth/sessions', { preHandler: requireBrowserSession }, async (request) => {
     return { sessions: await auth.listSessions(currentUser(request).id, currentSessionId(request)) };
   });
 
   // Signs out every session except this one.
-  app.delete('/api/auth/sessions', { preHandler: requireSession }, async (request) => {
+  app.delete('/api/auth/sessions', { preHandler: requireBrowserSession }, async (request) => {
     const signedOut = await auth.revokeOtherSessions(currentUser(request).id, currentSessionId(request));
     return { signedOutSessions: signedOut };
   });
 
-  app.delete('/api/auth/sessions/:sessionId', { preHandler: requireSession }, async (request, reply) => {
+  app.delete('/api/auth/sessions/:sessionId', { preHandler: requireBrowserSession }, async (request, reply) => {
     const { sessionId } = SessionParams.parse(request.params);
     const { current } = await auth.revokeSession(currentUser(request).id, sessionId, currentSessionId(request));
     // Ending the session you're using is signing out.
