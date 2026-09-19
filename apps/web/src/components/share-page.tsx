@@ -41,7 +41,7 @@ export function Frame({ children, wide = false }: { children: React.ReactNode; w
 export function DeadLink({ gone, usedUp }: { gone: boolean; usedUp: boolean }) {
   return (
     <div className="panel p-8 text-center">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-surface-muted text-slate-400">
         <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" aria-hidden>
           <path
             d="M10 13a4 4 0 0 0 5.66 0l2.5-2.5a4 4 0 1 0-5.66-5.66l-1 1M14 11a4 4 0 0 0-5.66 0l-2.5 2.5a4 4 0 1 0 5.66 5.66l1-1"

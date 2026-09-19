@@ -103,7 +103,7 @@ function LoginForm() {
               key={account.email}
               type="button"
               onClick={() => fillDemo(account.email)}
-              className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-slate-50"
+              className="flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-surface-sunken"
             >
               <span className="font-mono text-xs">{account.email}</span>
               <span className="text-[11px] text-ink-subtle">{account.note}</span>

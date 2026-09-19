@@ -28,7 +28,10 @@ const ICONS: Record<NotificationDto['type'], { icon: LucideIcon; tone: string }>
   'document.uploaded': { icon: FilePlus2, tone: 'bg-brand-50 text-brand-600' },
   'member.joined': { icon: UserCheck, tone: 'bg-ok-soft text-ok' },
   'member.removed': { icon: UserMinus, tone: 'bg-danger-soft text-danger' },
-  'member.role_changed': { icon: UserCog, tone: 'bg-violet-50 text-violet-600' },
+  'member.role_changed': {
+    icon: UserCog,
+    tone: 'bg-violet-50 dark:bg-violet-500/15 text-violet-600 dark:text-violet-300',
+  },
   'workspace.deleted': { icon: Trash2, tone: 'bg-danger-soft text-danger' },
   'document.quarantined': { icon: AlertTriangle, tone: 'bg-danger-soft text-danger' },
 };
@@ -112,7 +115,7 @@ export function NotificationBell() {
   return (
     <div className="relative">
       <button
-        className="relative flex h-9 w-9 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-slate-100 hover:text-ink"
+        className="relative flex h-9 w-9 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink"
         onClick={() => {
           setOpen((value) => !value);
           if (!open) void load();
@@ -123,7 +126,7 @@ export function NotificationBell() {
       >
         <Bell className="h-5 w-5" aria-hidden />
         {unread > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-semibold text-white ring-2 ring-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-600 dark:bg-indigo-600 px-1 text-[10px] font-semibold text-white ring-2 ring-surface">
             {unread > 9 ? '9+' : unread}
           </span>
         ) : null}
@@ -169,7 +172,7 @@ export function NotificationBell() {
                       <li key={item.id} className={item.read ? '' : 'bg-brand-50/50'}>
                         <Link
                           href={href}
-                          className="flex gap-3 px-4 py-3 transition-colors hover:bg-slate-50"
+                          className="flex gap-3 px-4 py-3 transition-colors hover:bg-surface-sunken"
                           onClick={() => setOpen(false)}
                         >
                           {(() => {

@@ -151,7 +151,7 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
                 {storage ? (
                   <StorageMeter usedBytes={storage.usedBytes} quotaBytes={storage.quotaBytes} />
                 ) : (
-                  <div className="h-8 animate-pulse rounded bg-slate-100" />
+                  <div className="h-8 animate-pulse rounded bg-surface-muted" />
                 )}
               </div>
             </div>

@@ -106,7 +106,7 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
         {error ? <ErrorNote message={error} /> : null}
 
         {/* Welcome banner */}
-        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600 via-indigo-600 to-violet-600 p-6 text-white shadow-lift sm:p-7">
+        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600 dark:from-indigo-600 via-indigo-600 to-violet-600 p-6 text-white shadow-lift sm:p-7">
           <div
             className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-2xl"
             aria-hidden
@@ -117,13 +117,13 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
           />
           <div className="relative flex flex-wrap items-end justify-between gap-5">
             <div>
-              <p className="text-sm text-brand-100">
+              <p className="text-sm text-indigo-100">
                 {hello}, {firstName}
               </p>
               <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
                 {workspace?.name ?? 'Your workspace'}
               </h2>
-              <p className="mt-2 max-w-xl text-sm text-brand-100">
+              <p className="mt-2 max-w-xl text-sm text-indigo-100">
                 {data
                   ? `${data.totals.documents} documents · ${data.totals.members} member${data.totals.members === 1 ? '' : 's'} · ${data.totals.liveLinks} live share link${data.totals.liveLinks === 1 ? '' : 's'}`
                   : 'Loading your workspace…'}
@@ -133,14 +133,14 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
               {data?.role !== 'VIEWER' ? (
                 <Link
                   href={`/workspaces/${workspaceId}/documents?upload=1`}
-                  className="btn h-10 bg-white text-brand-700 hover:bg-brand-50"
+                  className="btn h-10 bg-white text-indigo-700 hover:bg-indigo-50"
                 >
                   <Upload className="h-4 w-4" aria-hidden /> Upload file
                 </Link>
               ) : (
                 <Link
                   href={`/workspaces/${workspaceId}/documents`}
-                  className="btn h-10 bg-white text-brand-700 hover:bg-brand-50"
+                  className="btn h-10 bg-white text-indigo-700 hover:bg-indigo-50"
                 >
                   Browse documents
                 </Link>
@@ -174,27 +174,32 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
                 ? `of ${formatBytes(data.storage.quotaBytes)} (${Math.round((data.storage.usedBytes / data.storage.quotaBytes) * 100)}%)`
                 : undefined
             }
-            tone="bg-sky-50 text-sky-600"
+            tone="bg-sky-50 dark:bg-sky-500/15 text-sky-600 dark:text-sky-300"
           />
-          <Tile icon={Users} label="Members" value={data?.totals.members ?? '—'} tone="bg-violet-50 text-violet-600" />
+          <Tile
+            icon={Users}
+            label="Members"
+            value={data?.totals.members ?? '—'}
+            tone="bg-violet-50 dark:bg-violet-500/15 text-violet-600 dark:text-violet-300"
+          />
           <Tile
             icon={Link2}
             label="Live share links"
             value={data?.totals.liveLinks ?? '—'}
-            tone="bg-emerald-50 text-emerald-600"
+            tone="bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-300"
           />
           <Tile
             icon={Eye}
             label="Link opens"
             value={data?.totals.opens ?? '—'}
             hint="all time"
-            tone="bg-amber-50 text-amber-600"
+            tone="bg-amber-50 dark:bg-amber-500/15 text-amber-600 dark:text-amber-300"
           />
           <Tile
             icon={Mail}
             label="Pending invites"
             value={data?.totals.pendingInvites ?? '—'}
-            tone="bg-rose-50 text-rose-600"
+            tone="bg-rose-50 dark:bg-rose-500/15 text-rose-600 dark:text-rose-300"
           />
         </section>
 
@@ -248,7 +253,7 @@ export default function OverviewPage({ params }: { params: Promise<{ id: string 
                       <FileGlyph filename={doc.filename} mimeType={doc.mimeType} size="sm" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{doc.filename}</p>
-                        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface-muted">
                           <div
                             className="h-full rounded-full bg-brand-500"
                             style={{ width: `${(doc.opens / peak) * 100}%` }}

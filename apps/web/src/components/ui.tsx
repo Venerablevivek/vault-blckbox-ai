@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { ThemeSwitch } from './theme';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import {
@@ -65,9 +66,9 @@ export function Skeleton({ rows = 3 }: { rows?: number }) {
     <div className="divide-y divide-line">
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className="flex items-center gap-4 px-5 py-4">
-          <div className="h-9 w-9 shrink-0 animate-pulse rounded-lg bg-slate-100" />
-          <div className="h-3 w-1/3 animate-pulse rounded bg-slate-100" />
-          <div className="ml-auto h-3 w-20 animate-pulse rounded bg-slate-100" />
+          <div className="h-9 w-9 shrink-0 animate-pulse rounded-lg bg-surface-muted" />
+          <div className="h-3 w-1/3 animate-pulse rounded bg-surface-muted" />
+          <div className="ml-auto h-3 w-20 animate-pulse rounded bg-surface-muted" />
         </div>
       ))}
     </div>
@@ -139,7 +140,7 @@ export function StorageMeter({
   const ratio = quotaBytes > 0 ? Math.min(1, usedBytes / quotaBytes) : 0;
   const percent = Math.round(ratio * 100);
   const state = ratio >= 0.95 ? 'full' : ratio >= 0.8 ? 'high' : 'ok';
-  const bar = state === 'full' ? 'bg-danger' : state === 'high' ? 'bg-warn' : 'bg-brand-600';
+  const bar = state === 'full' ? 'bg-danger' : state === 'high' ? 'bg-warn' : 'bg-brand-600 dark:bg-indigo-600';
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3 text-xs">
@@ -155,7 +156,7 @@ export function StorageMeter({
         </span>
       </div>
       <div
-        className={`mt-1.5 overflow-hidden rounded-full bg-slate-100 ${compact ? 'h-1.5' : 'h-2'}`}
+        className={`mt-1.5 overflow-hidden rounded-full bg-surface-muted ${compact ? 'h-1.5' : 'h-2'}`}
         role="meter"
         aria-label="Storage used"
         aria-valuemin={0}
@@ -279,7 +280,7 @@ export function Shell({
       {/* Workspace switcher */}
       <div className="relative px-3">
         <button
-          className="flex w-full items-center gap-2.5 rounded-xl border border-line bg-white px-2.5 py-2 text-left shadow-card transition-colors hover:border-line-strong"
+          className="flex w-full items-center gap-2.5 rounded-xl border border-line bg-surface px-2.5 py-2 text-left shadow-card transition-colors hover:border-line-strong"
           onClick={() => setSwitcherOpen((open) => !open)}
           aria-haspopup="listbox"
           aria-expanded={switcherOpen}
@@ -311,7 +312,7 @@ export function Shell({
                   key={w.id}
                   href={`/workspaces/${w.id}`}
                   onClick={() => setSwitcherOpen(false)}
-                  className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm hover:bg-slate-100"
+                  className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm hover:bg-surface-muted"
                   role="option"
                   aria-selected={w.id === activeId}
                 >
@@ -322,7 +323,7 @@ export function Shell({
               ))}
               <div className="my-1 h-px bg-line" />
               <button
-                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-ink-muted hover:bg-slate-100 hover:text-ink"
+                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-ink-muted hover:bg-surface-muted hover:text-ink"
                 onClick={() => void createWorkspace()}
               >
                 <span className="flex h-6 w-6 items-center justify-center rounded-md border border-dashed border-line-strong">
@@ -349,8 +350,8 @@ export function Shell({
                 aria-current={selected ? 'page' : undefined}
                 className={`group flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm transition-colors ${
                   selected
-                    ? 'bg-brand-600 font-medium text-white shadow-sm'
-                    : 'text-ink-muted hover:bg-slate-100 hover:text-ink'
+                    ? 'bg-brand-600 dark:bg-indigo-600 font-medium text-white shadow-sm'
+                    : 'text-ink-muted hover:bg-surface-muted hover:text-ink'
                 }`}
               >
                 <Icon
@@ -363,17 +364,20 @@ export function Shell({
           })}
       </nav>
 
-      <div className="m-3 rounded-xl bg-gradient-to-br from-brand-600 to-violet-600 p-4 text-white">
+      <div className="m-3 rounded-xl bg-gradient-to-br from-brand-600 dark:from-indigo-600 to-violet-600 p-4 text-white">
         <p className="text-sm font-semibold">Share with confidence</p>
-        <p className="mt-1 text-xs leading-relaxed text-brand-100">
+        <p className="mt-1 text-xs leading-relaxed text-indigo-100">
           Every link is revocable, can expire, and tells you when it&rsquo;s opened.
         </p>
       </div>
 
-      <div className="flex items-center gap-2.5 border-t border-line px-4 py-3">
+      <div className="border-t border-line px-4 pt-3">
+        <ThemeSwitch />
+      </div>
+      <div className="flex items-center gap-2.5 px-4 py-3">
         <Link
           href={`/workspaces/${activeId}/account`}
-          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1 -m-1 hover:bg-slate-100"
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1 -m-1 hover:bg-surface-muted"
           aria-current={pathname.endsWith('/account') ? 'page' : undefined}
           title="Account: password and sessions"
         >
@@ -397,7 +401,7 @@ export function Shell({
   return (
     <div className="flex min-h-screen bg-canvas">
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-line bg-white/70 backdrop-blur lg:block">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-line bg-surface/70 backdrop-blur lg:block">
         {sidebar}
       </aside>
 
@@ -405,13 +409,13 @@ export function Shell({
       {drawerOpen ? (
         <div className="fixed inset-0 z-40 lg:hidden">
           <button className="absolute inset-0 bg-ink/30" aria-label="Close menu" onClick={() => setDrawerOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 w-72 animate-rise bg-white shadow-lift">{sidebar}</aside>
+          <aside className="absolute inset-y-0 left-0 w-72 animate-rise bg-surface shadow-lift">{sidebar}</aside>
         </div>
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
         {emailVerified === false && email ? <VerifyEmailBanner email={email} /> : null}
-        <header className="sticky top-0 z-20 border-b border-line/80 bg-white/80 backdrop-blur">
+        <header className="sticky top-0 z-20 border-b border-line/80 bg-surface/80 backdrop-blur">
           <div className="flex h-16 items-center gap-3 px-4 sm:px-6">
             <button className="btn-ghost lg:hidden" onClick={() => setDrawerOpen(true)} aria-label="Open menu">
               <Menu className="h-5 w-5" />

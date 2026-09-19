@@ -55,7 +55,7 @@ export function DocumentDetails({ document, onClose }: { document: DocumentDto |
             <dd className="min-w-0">
               {document.sha256 ? (
                 <div className="flex items-start gap-2">
-                  <code className="min-w-0 flex-1 break-all rounded-md bg-slate-50 px-2 py-1 font-mono text-[11px] leading-relaxed">
+                  <code className="min-w-0 flex-1 break-all rounded-md bg-surface-sunken px-2 py-1 font-mono text-[11px] leading-relaxed">
                     {document.sha256}
                   </code>
                   <button

@@ -75,7 +75,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
     return (
       <Frame>
         <div className="panel overflow-hidden">
-          <div className="bg-gradient-to-br from-brand-600 to-brand-700 px-8 py-9 text-center">
+          <div className="bg-gradient-to-br from-brand-600 dark:from-indigo-600 to-brand-700 dark:to-indigo-800 px-8 py-9 text-center">
             <span
               className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 text-white ring-1 ring-white/25"
               aria-hidden
@@ -86,7 +86,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
               </svg>
             </span>
             <h1 className="mt-4 text-lg font-semibold text-white">This file was shared with specific people</h1>
-            <p className="mt-1 text-sm text-brand-100">Confirm your email address to open it.</p>
+            <p className="mt-1 text-sm text-indigo-100">Confirm your email address to open it.</p>
           </div>
           <ShareEmailForm token={token} />
           <p className="border-t border-line px-8 py-4 text-center text-[11px] leading-relaxed text-ink-subtle">
@@ -103,7 +103,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
     return (
       <Frame>
         <div className="panel overflow-hidden">
-          <div className="bg-gradient-to-br from-brand-600 to-brand-700 px-8 py-9 text-center">
+          <div className="bg-gradient-to-br from-brand-600 dark:from-indigo-600 to-brand-700 dark:to-indigo-800 px-8 py-9 text-center">
             <span
               className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 text-white ring-1 ring-white/25"
               aria-hidden
@@ -114,7 +114,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
               </svg>
             </span>
             <h1 className="mt-4 text-lg font-semibold text-white">This file is password protected</h1>
-            <p className="mt-1 text-sm text-brand-100">Enter the password the sender gave you.</p>
+            <p className="mt-1 text-sm text-indigo-100">Enter the password the sender gave you.</p>
           </div>
           <SharePasswordForm token={token} />
           <p className="border-t border-line px-8 py-4 text-center text-[11px] leading-relaxed text-ink-subtle">
@@ -131,12 +131,12 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
 
   const details = (
     <div className="panel overflow-hidden">
-      <div className="bg-gradient-to-br from-brand-600 to-brand-700 px-8 py-9 text-center">
+      <div className="bg-gradient-to-br from-brand-600 dark:from-indigo-600 to-brand-700 dark:to-indigo-800 px-8 py-9 text-center">
         <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 text-sm font-bold tracking-tight text-white ring-1 ring-white/25 backdrop-blur">
           {extension}
         </span>
         <h1 className="mt-4 break-words text-lg font-semibold text-white">{meta.filename}</h1>
-        <p className="mt-1 text-sm text-brand-100">
+        <p className="mt-1 text-sm text-indigo-100">
           {formatBytes(meta.size)} · {kindOf(meta.mimeType)}
         </p>
       </div>
@@ -147,7 +147,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
             Download
           </a>
         ) : (
-          <p className="rounded-lg bg-slate-50 px-4 py-3 text-center text-sm text-ink-muted">
+          <p className="rounded-lg bg-surface-sunken px-4 py-3 text-center text-sm text-ink-muted">
             <span className="font-medium text-ink">View only.</span> The sender turned off downloading. What you see is
             marked with your {meta.viewerEmail ? 'address' : 'viewer ID'} and the time.
           </p>
@@ -189,7 +189,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         <section
           aria-label={`Preview of ${meta.filename}`}
-          className="panel relative flex min-h-[240px] items-center justify-center overflow-hidden bg-slate-50"
+          className="panel relative flex min-h-[240px] items-center justify-center overflow-hidden bg-surface-sunken"
         >
           {isImage ? (
             // Served from the API, never cached; the overlay repeats the watermark over the picture.

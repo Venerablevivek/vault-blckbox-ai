@@ -151,13 +151,13 @@ export function VersionHistory({
         ) : null}
 
         {loading ? (
-          <div className="h-24 animate-pulse rounded-xl bg-slate-100" />
+          <div className="h-24 animate-pulse rounded-xl bg-surface-muted" />
         ) : (
           <ol className="divide-y divide-line rounded-xl border border-line" aria-label="Versions">
             {versions.map((v) => (
               <li key={v.version} className="flex flex-wrap items-center gap-3 px-4 py-3">
                 <span
-                  className={`inline-flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-xs font-semibold ${v.current ? 'bg-brand-600 text-white' : 'bg-slate-100 text-ink-muted'}`}
+                  className={`inline-flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-xs font-semibold ${v.current ? 'bg-brand-600 dark:bg-indigo-600 text-white' : 'bg-surface-muted text-ink-muted'}`}
                 >
                   v{v.version}
                 </span>

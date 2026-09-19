@@ -70,7 +70,7 @@ export default async function FolderSharePage({
     return (
       <Frame>
         <div className="panel overflow-hidden">
-          <div className="bg-gradient-to-br from-brand-600 to-brand-700 px-8 py-9 text-center">
+          <div className="bg-gradient-to-br from-brand-600 dark:from-indigo-600 to-brand-700 dark:to-indigo-800 px-8 py-9 text-center">
             <span
               className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15 text-white ring-1 ring-white/25"
               aria-hidden
@@ -78,7 +78,7 @@ export default async function FolderSharePage({
               <Folder className="h-6 w-6" />
             </span>
             <h1 className="mt-4 text-lg font-semibold text-white">This folder is password protected</h1>
-            <p className="mt-1 text-sm text-brand-100">Enter the password the sender gave you.</p>
+            <p className="mt-1 text-sm text-indigo-100">Enter the password the sender gave you.</p>
           </div>
           <SharePasswordForm token={token} kind="folder-shares" />
           <p className="border-t border-line px-8 py-4 text-center text-[11px] leading-relaxed text-ink-subtle">
@@ -140,7 +140,7 @@ export default async function FolderSharePage({
               <li key={sub.id}>
                 <Link
                   href={`${pagePath}?folder=${sub.id}`}
-                  className="flex items-center gap-3 px-6 py-3 hover:bg-slate-50/70"
+                  className="flex items-center gap-3 px-6 py-3 hover:bg-surface-sunken/70"
                 >
                   <span
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600"
@@ -162,7 +162,7 @@ export default async function FolderSharePage({
             {meta.documents.map((doc) => (
               <li key={doc.id} className="flex items-center gap-3 px-6 py-3">
                 <span
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-[10px] font-bold text-ink-muted"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-[10px] font-bold text-ink-muted"
                   aria-hidden
                 >
                   {(doc.filename.split('.').pop() ?? '?').slice(0, 4).toUpperCase()}

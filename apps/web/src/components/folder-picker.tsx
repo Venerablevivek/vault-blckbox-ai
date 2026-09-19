@@ -68,7 +68,7 @@ export function FolderPicker({
 
       <nav aria-label="Folder path" className="flex flex-wrap items-center gap-1 text-sm">
         <button
-          className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-ink-muted hover:bg-slate-100 hover:text-ink"
+          className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-ink-muted hover:bg-surface-muted hover:text-ink"
           onClick={() => setParentId(null)}
         >
           <Home className="h-3.5 w-3.5" aria-hidden /> Workspace
@@ -77,7 +77,7 @@ export function FolderPicker({
           <span key={f.id} className="inline-flex items-center gap-1">
             <ChevronRight className="h-3.5 w-3.5 text-ink-subtle" aria-hidden />
             <button
-              className="rounded px-1.5 py-1 text-ink-muted hover:bg-slate-100 hover:text-ink"
+              className="rounded px-1.5 py-1 text-ink-muted hover:bg-surface-muted hover:text-ink"
               onClick={() => setParentId(f.id)}
             >
               {f.name}
@@ -95,7 +95,7 @@ export function FolderPicker({
           folders.map((f) => (
             <li key={f.id}>
               <button
-                className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-slate-50"
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-surface-sunken"
                 onClick={() => setParentId(f.id)}
               >
                 <Folder className="h-4 w-4 text-brand-600" aria-hidden />

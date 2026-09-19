@@ -127,7 +127,7 @@ export function DailyBars({
                     x2={width - pad.right}
                     y1={y}
                     y2={y}
-                    stroke={f === 0 ? '#d3d8e3' : '#eef0f5'}
+                    className={f === 0 ? 'stroke-line-strong' : 'stroke-line'}
                     strokeWidth={1}
                   />
                   <text x={pad.left - 6} y={y + 3} textAnchor="end" className="fill-slate-400 text-[10px] tabular-nums">
@@ -148,7 +148,7 @@ export function DailyBars({
                       width={slot - 2}
                       height={plotH}
                       rx={6}
-                      fill="#f1f3f9"
+                      className="fill-surface-muted"
                     />
                   ) : null}
                   <path d={barPath(x, base, barW, h)} fill={color} opacity={hover === null || hover === i ? 1 : 0.45} />
@@ -243,7 +243,7 @@ export function StorageBreakdown({ items }: { items: Array<{ category: string; c
             {ordered.map((item) => (
               <li
                 key={item.category}
-                className={`flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors ${hover === item.category ? 'bg-slate-50' : ''}`}
+                className={`flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors ${hover === item.category ? 'bg-surface-sunken' : ''}`}
                 onMouseEnter={() => setHover(item.category)}
                 onMouseLeave={() => setHover(null)}
               >

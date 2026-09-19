@@ -4,7 +4,7 @@ import { Brand } from './brand';
 /** Header for the signed-out pages: sign-in, register, invitation landing. */
 export function SiteHeader({ action }: { action?: React.ReactNode }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-line/80 bg-white/80 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b border-line/80 bg-surface/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         <Brand />
         {action}
@@ -19,7 +19,7 @@ export function SiteHeader({ action }: { action?: React.ReactNode }) {
  */
 export function SiteFooter() {
   return (
-    <footer className="border-t border-line/80 bg-white/60">
+    <footer className="border-t border-line/80 bg-surface/60">
       <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-6 text-xs text-ink-muted sm:flex-row sm:items-center sm:justify-between">
         <p>
           <span className="font-medium text-ink">Vault</span> — documents, workspaces and revocable share links.

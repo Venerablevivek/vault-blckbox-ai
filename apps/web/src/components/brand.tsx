@@ -7,7 +7,7 @@ import Link from 'next/link';
 export function Brand({ href = '/', compact = false }: { href?: string; compact?: boolean }) {
   return (
     <Link href={href} className="inline-flex items-center gap-2.5 group">
-      <span className="relative inline-flex h-8 w-8 items-center justify-center rounded-[10px] bg-gradient-to-br from-brand-500 to-brand-700 shadow-sm">
+      <span className="relative inline-flex h-8 w-8 items-center justify-center rounded-[10px] bg-gradient-to-br from-brand-500 to-brand-700 dark:to-indigo-800 shadow-sm">
         <svg viewBox="0 0 24 24" className="h-4 w-4 text-white" fill="none" aria-hidden="true">
           <path
             d="M4 7.5A2.5 2.5 0 0 1 6.5 5h3.2c.5 0 .98.2 1.33.55l1.1 1.1c.35.35.83.55 1.33.55h3.04A2.5 2.5 0 0 1 19 9.7v6.8a2.5 2.5 0 0 1-2.5 2.5h-10A2.5 2.5 0 0 1 4 16.5v-9Z"

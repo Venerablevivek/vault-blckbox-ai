@@ -1,33 +1,40 @@
 import type { Config } from 'tailwindcss';
 
+/** A theme colour: an RGB triple from a CSS variable, so opacity modifiers (bg-line/50) still work. */
+const v = (name: string) => `rgb(var(--${name}) / <alpha-value>)`;
+
 /**
  * A small, deliberate palette rather than a design system.
  *
  * One primary (indigo) carries every primary action; emerald, amber and rose are reserved
- * for state (active, warning, destructive) and never used decoratively. Light theme only:
- * one palette executed properly beats two executed at seventy percent.
+ * for state (active, warning, destructive) and never used decoratively. Every colour is a CSS
+ * variable (see globals.css), defined once for the light theme and once for the dark one, so
+ * components name what a colour is for (surface, ink, line) rather than what it looks like.
  */
 export default {
   content: ['./src/**/*.{ts,tsx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        canvas: '#f7f8fc',
-        ink: { DEFAULT: '#0f172a', muted: '#64748b', subtle: '#94a3b8' },
-        line: { DEFAULT: '#e6e9f0', strong: '#d3d8e3' },
+        canvas: v('canvas'),
+        surface: { DEFAULT: v('surface'), sunken: v('surface-sunken'), muted: v('surface-muted') },
+        ink: { DEFAULT: v('ink'), muted: v('ink-muted'), subtle: v('ink-subtle') },
+        line: { DEFAULT: v('line'), strong: v('line-strong') },
         brand: {
-          50: '#eef2ff',
-          100: '#e0e7ff',
-          200: '#c7d2fe',
-          400: '#818cf8',
-          500: '#6366f1',
-          600: '#4f46e5',
-          700: '#4338ca',
-          900: '#312e81',
+          50: v('brand-50'),
+          100: v('brand-100'),
+          200: v('brand-200'),
+          400: v('brand-400'),
+          500: v('brand-500'),
+          600: v('brand-600'),
+          700: v('brand-700'),
+          800: v('brand-800'),
+          900: v('brand-900'),
         },
-        ok: { DEFAULT: '#059669', soft: '#ecfdf5' },
-        warn: { DEFAULT: '#b45309', soft: '#fffbeb' },
-        danger: { DEFAULT: '#e11d48', soft: '#fff1f2' },
+        ok: { DEFAULT: v('ok'), soft: v('ok-soft') },
+        warn: { DEFAULT: v('warn'), soft: v('warn-soft') },
+        danger: { DEFAULT: v('danger'), soft: v('danger-soft') },
       },
       fontFamily: {
         sans: ['ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],

@@ -138,7 +138,7 @@ export function FolderSharePanel({
             <p className="flex items-center gap-2 text-sm font-medium text-brand-900">
               <Check className="h-4 w-4" aria-hidden /> Your folder link is ready
             </p>
-            <p className="mt-2 break-all rounded-lg border border-brand-200 bg-white px-3 py-2 font-mono text-xs">
+            <p className="mt-2 break-all rounded-lg border border-brand-200 bg-surface px-3 py-2 font-mono text-xs">
               {created.url}
             </p>
             <div className="mt-3 flex gap-2">
@@ -167,7 +167,7 @@ export function FolderSharePanel({
             Active links{links.length ? ` (${links.length})` : ''}
           </h3>
           {loading ? (
-            <div className="mt-3 h-16 animate-pulse rounded-xl bg-slate-100" />
+            <div className="mt-3 h-16 animate-pulse rounded-xl bg-surface-muted" />
           ) : links.length === 0 ? (
             <p className="mt-3 rounded-xl border border-dashed border-line-strong px-4 py-6 text-center text-sm text-ink-muted">
               No links to this folder yet.{mayShare ? ' Create one below.' : ''}
@@ -177,7 +177,7 @@ export function FolderSharePanel({
               {links.map((link) => (
                 <li
                   key={link.id}
-                  className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-white p-4"
+                  className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface p-4"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">Created {formatDate(link.createdAt)}</p>
@@ -259,7 +259,7 @@ export function FolderSharePanel({
             </div>
           </form>
         ) : (
-          <p className="rounded-lg border border-line bg-slate-50 px-3 py-2 text-xs text-ink-muted">
+          <p className="rounded-lg border border-line bg-surface-sunken px-3 py-2 text-xs text-ink-muted">
             Viewers can&rsquo;t create share links. Ask a workspace owner for member access.
           </p>
         )}

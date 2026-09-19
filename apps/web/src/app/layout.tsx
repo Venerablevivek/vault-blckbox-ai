@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Providers } from '@/components/providers';
+import { THEME_SCRIPT } from '@/components/theme';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -9,7 +10,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    // The theme class is set by THEME_SCRIPT before React hydrates, hence the warning suppression.
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body>
         <Providers>{children}</Providers>
       </body>

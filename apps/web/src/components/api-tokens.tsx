@@ -74,7 +74,7 @@ export function ApiTokens() {
   return (
     <section className="card overflow-hidden" aria-labelledby="tokens-heading">
       <div className="flex items-start gap-3 p-6 pb-4">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-ink-muted">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-ink-muted">
           <KeySquare className="h-5 w-5" aria-hidden />
         </span>
         <div>
@@ -97,7 +97,7 @@ export function ApiTokens() {
               Copy your new token now. It won&rsquo;t be shown again.
             </p>
             <p
-              className="mt-2 break-all rounded-lg border border-brand-200 bg-white px-3 py-2 font-mono text-xs"
+              className="mt-2 break-all rounded-lg border border-brand-200 bg-surface px-3 py-2 font-mono text-xs"
               data-testid="token-secret"
             >
               {secret}

@@ -3,6 +3,70 @@
 @tailwind utilities;
 
 @layer base {
+  /* Colours as RGB triples; tailwind.config.ts turns them into utilities. */
+  :root {
+    color-scheme: light;
+    --canvas: 247 248 252;
+    --surface: 255 255 255;
+    --surface-sunken: 248 250 252;
+    --surface-muted: 241 245 249;
+    --ink: 15 23 42;
+    --ink-muted: 100 116 139;
+    --ink-subtle: 148 163 184;
+    --line: 230 233 240;
+    --line-strong: 211 216 227;
+    --brand-50: 238 242 255;
+    --brand-100: 224 231 255;
+    --brand-200: 199 210 254;
+    --brand-400: 129 140 248;
+    --brand-500: 99 102 241;
+    --brand-600: 79 70 229;
+    --brand-700: 67 56 202;
+    --brand-800: 55 48 163;
+    --brand-900: 49 46 129;
+    --ok: 5 150 105;
+    --ok-soft: 236 253 245;
+    --warn: 180 83 9;
+    --warn-soft: 255 251 235;
+    --danger: 225 29 72;
+    --danger-soft: 255 241 242;
+  }
+
+  /*
+   * The dark theme. Surfaces step up in lightness the way a light theme's step down; text keeps
+   * at least WCAG AA contrast on every surface; the soft state colours become deep tints, and the
+   * strong ones lighter so they still read as text.
+   */
+  .dark {
+    color-scheme: dark;
+    --canvas: 10 13 22;
+    --surface: 18 23 35;
+    --surface-sunken: 14 18 29;
+    --surface-muted: 30 37 53;
+    --ink: 226 232 240;
+    --ink-muted: 148 163 184;
+    --ink-subtle: 113 128 150;
+    --line: 36 44 61;
+    --line-strong: 52 63 84;
+    --brand-50: 30 31 68;
+    --brand-100: 40 41 92;
+    --brand-200: 67 70 150;
+    --brand-400: 129 140 248;
+    --brand-500: 129 140 248;
+    /* As text, brand 600/700 must be light on dark surfaces; brand backgrounds use deep
+       indigo explicitly (dark:bg-indigo-600) so white text on them keeps its contrast. */
+    --brand-600: 165 180 252;
+    --brand-700: 199 210 254;
+    --brand-800: 199 210 254;
+    --brand-900: 224 231 255;
+    --ok: 52 211 153;
+    --ok-soft: 6 44 33;
+    --warn: 251 191 36;
+    --warn-soft: 51 36 8;
+    --danger: 251 113 133;
+    --danger-soft: 62 16 28;
+  }
+
   html {
     -webkit-font-smoothing: antialiased;
   }
@@ -12,7 +76,7 @@
 
   /* Focus is always visible. Never remove an outline without replacing it. */
   :focus-visible {
-    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-white;
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-surface;
   }
 
   /* Motion is feedback, not personality — and it is opt-out. */
@@ -32,40 +96,41 @@
            transition-all disabled:opacity-45 disabled:cursor-not-allowed;
   }
   .btn-primary {
-    @apply btn bg-brand-600 text-white shadow-sm hover:bg-brand-700 active:translate-y-px;
+    @apply btn bg-brand-600 text-white shadow-sm hover:bg-brand-700 active:translate-y-px
+           dark:bg-indigo-600 dark:hover:bg-indigo-500;
   }
   .btn-secondary {
-    @apply btn bg-white border border-line-strong text-ink hover:bg-slate-50 active:translate-y-px;
+    @apply btn bg-surface border border-line-strong text-ink hover:bg-surface-sunken active:translate-y-px;
   }
   .btn-ghost {
-    @apply btn px-2.5 text-ink-muted hover:bg-slate-100 hover:text-ink;
+    @apply btn px-2.5 text-ink-muted hover:bg-surface-muted hover:text-ink;
   }
   .btn-danger {
-    @apply btn bg-danger text-white hover:brightness-95 active:translate-y-px;
+    @apply btn bg-danger text-white hover:brightness-95 active:translate-y-px dark:bg-rose-600;
   }
   .btn-sm {
     @apply h-8 px-3 text-[13px];
   }
 
   .input {
-    @apply w-full h-10 rounded-lg border border-line-strong bg-white px-3 text-sm
+    @apply w-full h-10 rounded-lg border border-line-strong bg-surface px-3 text-sm text-ink
            placeholder:text-ink-subtle transition-colors
-           focus:border-brand-500 disabled:bg-slate-50 read-only:bg-slate-50;
+           focus:border-brand-500 disabled:bg-surface-sunken read-only:bg-surface-sunken;
   }
   .label {
     @apply block text-sm font-medium text-ink mb-1.5;
   }
 
   .card {
-    @apply bg-white border border-line rounded-xl shadow-card;
+    @apply bg-surface border border-line rounded-xl shadow-card;
   }
   .panel {
-    @apply bg-white border border-line rounded-2xl shadow-lift;
+    @apply bg-surface border border-line rounded-2xl shadow-lift;
   }
 
   .chip {
     @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium
-           bg-slate-100 text-ink-muted;
+           bg-surface-muted text-ink-muted;
   }
   .chip-brand {
     @apply chip bg-brand-50 text-brand-700;
@@ -79,6 +144,7 @@
 
   /* The page background: a very soft brand wash that keeps white cards feeling lifted. */
   .aurora {
+    @apply bg-canvas;
     background-image:
       radial-gradient(60rem 30rem at 12% -8%, rgb(99 102 241 / 0.1), transparent 60%),
       radial-gradient(48rem 26rem at 92% 4%, rgb(56 189 248 / 0.1), transparent 60%);

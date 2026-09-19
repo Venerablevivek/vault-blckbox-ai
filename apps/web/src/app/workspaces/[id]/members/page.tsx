@@ -293,7 +293,7 @@ export default function MembersPage({ params }: { params: Promise<{ id: string }
                   <p className="text-xs font-medium text-brand-900">
                     Invitation email on its way. You can also share the link directly:
                   </p>
-                  <p className="mt-2 break-all rounded-lg border border-brand-200 bg-white px-2.5 py-2 font-mono text-[11px]">
+                  <p className="mt-2 break-all rounded-lg border border-brand-200 bg-surface px-2.5 py-2 font-mono text-[11px]">
                     {lastInviteUrl}
                   </p>
                   <button

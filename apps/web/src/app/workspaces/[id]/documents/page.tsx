@@ -90,7 +90,7 @@ function MatchSnippet({ text }: { text: string }) {
       …
       {parts.map((part, i) =>
         i % 2 === 1 ? (
-          <mark key={i} className="rounded bg-amber-100 px-0.5 text-ink">
+          <mark key={i} className="rounded bg-amber-100 dark:bg-amber-500/25 px-0.5 text-ink">
             {part}
           </mark>
         ) : (
@@ -644,7 +644,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
     title?: string;
   }) {
     const className = `flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm disabled:cursor-not-allowed disabled:opacity-40 ${
-      danger ? 'text-danger hover:bg-danger-soft' : 'hover:bg-slate-100'
+      danger ? 'text-danger hover:bg-danger-soft' : 'hover:bg-surface-muted'
     }`;
     return href ? (
       <a role="menuitem" href={href} className={className} onClick={() => setMenuFor(null)}>
@@ -957,7 +957,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
 
         <div className="flex flex-wrap items-center gap-3">
           <div
-            className="flex max-w-full overflow-x-auto rounded-lg border border-line bg-white p-0.5 shadow-card"
+            className="flex max-w-full overflow-x-auto rounded-lg border border-line bg-surface p-0.5 shadow-card"
             role="tablist"
             aria-label="Filter documents"
           >
@@ -970,14 +970,14 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                   setTab(t.key);
                   setMenuFor(null);
                 }}
-                className={`shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm transition-colors ${tab === t.key ? 'bg-brand-600 font-medium text-white' : 'text-ink-muted hover:text-ink'}`}
+                className={`shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm transition-colors ${tab === t.key ? 'bg-brand-600 dark:bg-indigo-600 font-medium text-white' : 'text-ink-muted hover:text-ink'}`}
               >
                 {t.key === 'trash' ? <Trash2 className="mr-1 inline h-3.5 w-3.5" aria-hidden /> : null}
                 {t.key === 'starred' ? <Star className="mr-1 inline h-3.5 w-3.5" aria-hidden /> : null}
                 {t.key === 'recent' ? <History className="mr-1 inline h-3.5 w-3.5" aria-hidden /> : null}
                 {t.label}
                 {t.count !== undefined ? (
-                  <span className={`ml-1.5 text-xs ${tab === t.key ? 'text-brand-100' : 'text-ink-subtle'}`}>
+                  <span className={`ml-1.5 text-xs ${tab === t.key ? 'text-indigo-100' : 'text-ink-subtle'}`}>
                     {t.count}
                   </span>
                 ) : null}
@@ -999,7 +999,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
               onChange={(e) => setQuery(e.target.value)}
               aria-label="Search documents"
             />
-            <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-line-strong bg-white px-1.5 text-[10px] text-ink-subtle">
+            <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-line-strong bg-surface px-1.5 text-[10px] text-ink-subtle">
               /
             </kbd>
           </div>
@@ -1019,9 +1019,9 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
             </select>
           ) : null}
 
-          <div className="flex rounded-lg border border-line bg-white p-0.5 shadow-card">
+          <div className="flex rounded-lg border border-line bg-surface p-0.5 shadow-card">
             <button
-              className={`rounded-md p-1.5 ${view === 'list' ? 'bg-slate-100 text-ink' : 'text-ink-subtle'}`}
+              className={`rounded-md p-1.5 ${view === 'list' ? 'bg-surface-muted text-ink' : 'text-ink-subtle'}`}
               onClick={() => setView('list')}
               aria-label="List view"
               aria-pressed={view === 'list'}
@@ -1029,7 +1029,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
               <List className="h-4 w-4" />
             </button>
             <button
-              className={`rounded-md p-1.5 ${view === 'grid' ? 'bg-slate-100 text-ink' : 'text-ink-subtle'}`}
+              className={`rounded-md p-1.5 ${view === 'grid' ? 'bg-surface-muted text-ink' : 'text-ink-subtle'}`}
               onClick={() => setView('grid')}
               aria-label="Grid view"
               aria-pressed={view === 'grid'}
@@ -1105,7 +1105,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
               <>
                 <button
                   onClick={() => openFolder(null)}
-                  className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 ${path.length ? 'text-ink-muted hover:bg-slate-100 hover:text-ink' : 'font-medium text-ink'}`}
+                  className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 ${path.length ? 'text-ink-muted hover:bg-surface-muted hover:text-ink' : 'font-medium text-ink'}`}
                 >
                   <Home className="h-3.5 w-3.5" aria-hidden /> All documents
                 </button>
@@ -1115,7 +1115,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                     <button
                       onClick={() => openFolder(f.id)}
                       aria-current={i === path.length - 1 ? 'page' : undefined}
-                      className={`rounded-md px-2 py-1 ${i === path.length - 1 ? 'font-medium text-ink' : 'text-ink-muted hover:bg-slate-100 hover:text-ink'}`}
+                      className={`rounded-md px-2 py-1 ${i === path.length - 1 ? 'font-medium text-ink' : 'text-ink-muted hover:bg-surface-muted hover:text-ink'}`}
                     >
                       {f.name}
                     </button>
@@ -1136,9 +1136,9 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
             <UploadCloud className="h-5 w-5 text-brand-600" aria-hidden />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{uploadingName}</p>
-              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface-muted">
                 <div
-                  className="h-full rounded-full bg-brand-600 transition-[width] duration-150"
+                  className="h-full rounded-full bg-brand-600 dark:bg-indigo-600 transition-[width] duration-150"
                   style={{ width: `${uploadPercent}%` }}
                 />
               </div>
@@ -1228,7 +1228,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
         ) : (
           <div className={view === 'grid' ? 'space-y-3' : 'card'}>
             {view === 'list' ? (
-              <div className="flex items-center gap-4 border-b border-line bg-slate-50/70 px-5 py-2.5 text-xs font-medium text-ink-muted">
+              <div className="flex items-center gap-4 border-b border-line bg-surface-sunken/70 px-5 py-2.5 text-xs font-medium text-ink-muted">
                 {selectAllBox}
                 <span className="flex-1">Name</span>
                 {!trash ? (
@@ -1261,7 +1261,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                     className={
                       view === 'grid'
                         ? 'card flex items-center gap-3 p-4'
-                        : 'flex items-center gap-4 px-5 py-3 hover:bg-slate-50/70'
+                        : 'flex items-center gap-4 px-5 py-3 hover:bg-surface-sunken/70'
                     }
                   >
                     {view === 'list' && documents.length > 0 ? <span className="w-4 shrink-0" aria-hidden /> : null}
@@ -1363,7 +1363,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                         src={`/api/documents/${doc.id}/thumbnail?v=${doc.version}`}
                         alt=""
                         loading="lazy"
-                        className="mt-3 h-32 w-full rounded-lg border border-line bg-slate-50 object-cover object-top"
+                        className="mt-3 h-32 w-full rounded-lg border border-line bg-surface-sunken object-cover object-top"
                       />
                     ) : null}
                     <p className="mt-3 truncate text-sm font-semibold" title={doc.filename}>
@@ -1380,7 +1380,10 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                     </div>
                   </li>
                 ) : (
-                  <li key={doc.id} className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-slate-50/70">
+                  <li
+                    key={doc.id}
+                    className="flex items-center gap-4 px-5 py-3 transition-colors hover:bg-surface-sunken/70"
+                  >
                     <SelectBox doc={doc} />
                     <span className="hidden shrink-0 sm:block">
                       {doc.thumbnail ? (
@@ -1389,7 +1392,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
                           src={`/api/documents/${doc.id}/thumbnail?v=${doc.version}`}
                           alt=""
                           loading="lazy"
-                          className="h-10 w-10 rounded-lg border border-line bg-slate-50 object-cover object-top"
+                          className="h-10 w-10 rounded-lg border border-line bg-surface-sunken object-cover object-top"
                         />
                       ) : (
                         <FileGlyph filename={doc.filename} mimeType={doc.mimeType} />

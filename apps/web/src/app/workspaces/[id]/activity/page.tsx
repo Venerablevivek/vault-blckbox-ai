@@ -281,7 +281,7 @@ function ActivityView({ workspaceId }: { workspaceId: string }) {
                   role="tab"
                   aria-selected={category === f.key}
                   onClick={() => setCategory(f.key)}
-                  className={`rounded-full px-3.5 py-1.5 text-sm transition-colors ${category === f.key ? 'bg-ink text-white' : 'border border-line bg-white text-ink-muted hover:text-ink'}`}
+                  className={`rounded-full px-3.5 py-1.5 text-sm transition-colors ${category === f.key ? 'bg-ink text-white' : 'border border-line bg-surface text-ink-muted hover:text-ink'}`}
                 >
                   {f.label}
                 </button>
@@ -315,7 +315,7 @@ function ActivityView({ workspaceId }: { workspaceId: string }) {
                             />
                           ) : null}
                           <span
-                            className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-4 ring-white ${style.tone}`}
+                            className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-4 ring-surface ${style.tone}`}
                             aria-hidden
                           >
                             <Icon className="h-4 w-4" />

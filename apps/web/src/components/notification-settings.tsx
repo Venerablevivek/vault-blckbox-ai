@@ -117,7 +117,7 @@ export function NotificationSettings() {
             </select>
           </div>
           <table className="w-full text-sm">
-            <thead className="border-y border-line bg-slate-50/70 text-xs text-ink-muted">
+            <thead className="border-y border-line bg-surface-sunken/70 text-xs text-ink-muted">
               <tr>
                 <th scope="col" className="px-6 py-2 text-left font-medium">
                   When
