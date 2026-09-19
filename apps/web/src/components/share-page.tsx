@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Brand } from '@/components/brand';
 import { SiteFooter } from '@/components/site-chrome';
 
@@ -26,8 +27,20 @@ export function kindOf(mimeType: string): string {
 export function Frame({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) {
   return (
     <div className="aurora flex min-h-screen flex-col">
-      <header className="flex h-16 items-center justify-center px-6">
-        <Brand href="#" />
+      <header className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
+        <Brand href="/" />
+        <Link href="/" className="btn-secondary h-9 px-3 text-sm">
+          <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" aria-hidden="true">
+            <path
+              d="M3.5 9 10 3.5 16.5 9M5.5 7.5V16h9V7.5"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          Go to home
+        </Link>
       </header>
       <main className="flex flex-1 items-start justify-center px-6 pb-16 pt-6 sm:items-center sm:pt-0">
         <div className={`w-full ${wide ? 'max-w-4xl' : 'max-w-[420px]'}`}>{children}</div>

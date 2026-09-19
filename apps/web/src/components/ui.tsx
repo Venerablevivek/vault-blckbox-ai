@@ -24,6 +24,7 @@ import {
 import { api, ApiRequestError, formatBytes, type Role, type Schemas, type Workspace } from '@/lib/api';
 import { useDialogs } from './dialog';
 import { Brand } from './brand';
+import { SiteFooter } from './site-chrome';
 import { NotificationBell } from './notification-bell';
 import { Toaster, toast } from './toast';
 import { VerifyEmailBanner } from './verify-email-banner';
@@ -467,22 +468,7 @@ export function Shell({
           signOut={() => void signOut()}
         />
 
-        <footer className="border-t border-line/80 px-6 py-4 text-xs text-ink-subtle">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span>
-              <span className="font-medium text-ink-muted">Vault</span> · documents, workspaces and revocable share
-              links
-            </span>
-            <span className="flex gap-4">
-              <a className="hover:text-ink" href="http://localhost:4000/health" target="_blank" rel="noreferrer">
-                API status
-              </a>
-              <a className="hover:text-ink" href="http://localhost:9001" target="_blank" rel="noreferrer">
-                Object storage
-              </a>
-            </span>
-          </div>
-        </footer>
+        <SiteFooter compact />
       </div>
 
       <Toaster />
