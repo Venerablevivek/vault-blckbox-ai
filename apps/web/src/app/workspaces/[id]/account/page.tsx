@@ -5,6 +5,7 @@ import { KeyRound, Laptop, LogOut, ShieldCheck, Smartphone } from 'lucide-react'
 import { api, ApiRequestError, formatDate, timeAgo, type Session } from '@/lib/api';
 import { describeUserAgent } from '@/lib/user-agent';
 import { useDialogs } from '@/components/dialog';
+import { NotificationSettings } from '@/components/notification-settings';
 import { toast } from '@/components/toast';
 import { ErrorNote, Shell, Skeleton, useSession } from '@/components/ui';
 
@@ -245,6 +246,8 @@ export default function AccountPage({ params }: { params: Promise<{ id: string }
             </ul>
           ) : null}
         </section>
+
+        <NotificationSettings />
       </div>
     </Shell>
   );

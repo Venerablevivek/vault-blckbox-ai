@@ -11,6 +11,29 @@ export type NotificationType =
   | 'workspace.deleted'
   | 'document.quarantined';
 
+/**
+ * Types that can't be muted: each tells someone about their own access or their own files
+ * (malware found, removed from a workspace, a role change, a workspace deleted, a link that
+ * looks forwarded), which they must not miss.
+ */
+export const ESSENTIAL_TYPES: readonly NotificationType[] = [
+  'share.forwarding_suspected',
+  'member.removed',
+  'member.role_changed',
+  'workspace.deleted',
+  'document.quarantined',
+];
+
+export type DigestFrequency = 'off' | 'daily' | 'weekly';
+
+export interface Preferences {
+  digest: DigestFrequency;
+  instant: NotificationType[];
+  muted: NotificationType[];
+}
+
+export const DEFAULT_PREFERENCES: Preferences = { digest: 'off', instant: [], muted: [] };
+
 export interface NotificationRow {
   id: string;
   workspace_id: string | null;
@@ -98,6 +121,81 @@ export const notificationsRepo = {
   },
 
   /** Everyone in a workspace except the person who caused the event. */
+  async preferences(db: Db, userId: string): Promise<Preferences> {
+    const { rows } = await db.query<Preferences>(
+      'SELECT digest, instant, muted FROM notification_preferences WHERE user_id = $1',
+      [userId],
+    );
+    return rows[0] ?? DEFAULT_PREFERENCES;
+  },
+
+  async savePreferences(db: Db, userId: string, preferences: Preferences, now: Date): Promise<void> {
+    await db.query(
+      `INSERT INTO notification_preferences (user_id, digest, instant, muted, updated_at)
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (user_id) DO UPDATE
+         SET digest = EXCLUDED.digest, instant = EXCLUDED.instant, muted = EXCLUDED.muted,
+             updated_at = EXCLUDED.updated_at`,
+      [userId, preferences.digest, preferences.instant, preferences.muted, now],
+    );
+  },
+
+  /**
+   * For each recipient: whether a notification of `type` is muted, and the verified address to
+   * email it to when they asked for it right away (null otherwise). Unverified addresses are
+   * never emailed.
+   */
+  async deliveryFor(
+    db: Db,
+    userIds: string[],
+    type: NotificationType,
+  ): Promise<Map<string, { muted: boolean; email: string | null }>> {
+    const { rows } = await db.query<{ id: string; muted: boolean; email: string | null }>(
+      `SELECT u.id,
+              COALESCE($2 = ANY (p.muted), false) AS muted,
+              CASE WHEN $2 = ANY (p.instant) AND u.email_verified_at IS NOT NULL THEN u.email END AS email
+         FROM users u LEFT JOIN notification_preferences p ON p.user_id = u.id
+        WHERE u.id = ANY ($1::uuid[])`,
+      [userIds, type],
+    );
+    return new Map(rows.map((r) => [r.id, { muted: r.muted, email: r.email }]));
+  },
+
+  /** People due a digest: their frequency's interval has passed since the last one, and their address is verified. */
+  async dueDigests(db: Db, now: Date, limit: number) {
+    const { rows } = await db.query<{ user_id: string; email: string; digest: 'daily' | 'weekly' }>(
+      `SELECT p.user_id, u.email, p.digest
+         FROM notification_preferences p JOIN users u ON u.id = p.user_id
+        WHERE p.digest <> 'off'
+          AND u.email_verified_at IS NOT NULL
+          AND (p.last_digest_at IS NULL OR p.last_digest_at <= $1::timestamptz -
+                 (CASE p.digest WHEN 'daily' THEN interval '1 day' ELSE interval '7 days' END))
+        LIMIT $2`,
+      [now, limit],
+    );
+    return rows;
+  },
+
+  /**
+   * Marks every unread, visible notification not yet in a digest as digested, and returns exactly
+   * those rows (newest first): what is marked is what is reported, with no gap for a notification
+   * written in between.
+   */
+  async takeForDigest(db: Db, userId: string, now: Date) {
+    const { rows } = await db.query<NotificationRow & { workspace_name: string | null }>(
+      `UPDATE notifications n SET digested_at = $2
+        WHERE n.user_id = $1 AND n.read_at IS NULL AND n.digested_at IS NULL AND ${VISIBLE}
+        RETURNING n.id, n.workspace_id, n.type, n.title, n.body, n.resource_id, n.read_at, n.created_at,
+                  (SELECT w.name FROM workspaces w WHERE w.id = n.workspace_id) AS workspace_name`,
+      [userId, now],
+    );
+    return rows.sort((a, b) => b.created_at.getTime() - a.created_at.getTime() || b.id.localeCompare(a.id));
+  },
+
+  async markDigestSent(db: Db, userId: string, at: Date): Promise<void> {
+    await db.query('UPDATE notification_preferences SET last_digest_at = $2 WHERE user_id = $1', [userId, at]);
+  },
+
   async recipientsFor(db: Db, workspaceId: string, exceptUserId: string): Promise<string[]> {
     const { rows } = await db.query<{ user_id: string }>(
       `SELECT user_id FROM workspace_members WHERE workspace_id = $1 AND user_id <> $2`,

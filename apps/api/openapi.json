@@ -2229,6 +2229,85 @@
         ],
         "additionalProperties": false
       },
+      "NotificationPreferences": {
+        "type": "object",
+        "properties": {
+          "digest": {
+            "type": "string",
+            "enum": [
+              "off",
+              "daily",
+              "weekly"
+            ],
+            "description": "A summary email of unread notifications."
+          },
+          "instant": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationType"
+            },
+            "maxItems": 20,
+            "description": "Types also emailed as they happen."
+          },
+          "muted": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationType"
+            },
+            "maxItems": 20,
+            "description": "Types not shown in the app (still emailed if also in instant). Essential types cannot be muted."
+          },
+          "essential": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationType"
+            },
+            "description": "Types that are always shown."
+          }
+        },
+        "required": [
+          "digest",
+          "instant",
+          "muted",
+          "essential"
+        ],
+        "additionalProperties": false
+      },
+      "NotificationPreferencesRequest": {
+        "type": "object",
+        "properties": {
+          "digest": {
+            "type": "string",
+            "enum": [
+              "off",
+              "daily",
+              "weekly"
+            ],
+            "description": "A summary email of unread notifications."
+          },
+          "instant": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationType"
+            },
+            "maxItems": 20,
+            "description": "Types also emailed as they happen."
+          },
+          "muted": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationType"
+            },
+            "maxItems": 20,
+            "description": "Types not shown in the app (still emailed if also in instant). Essential types cannot be muted."
+          }
+        },
+        "required": [
+          "digest",
+          "instant",
+          "muted"
+        ]
+      },
       "MarkReadRequest": {
         "type": "object",
         "properties": {
@@ -9012,6 +9091,95 @@
           },
           "429": {
             "description": "Rate limited or locked out. See Retry-After.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/preferences": {
+      "get": {
+        "summary": "Your notification settings",
+        "tags": [
+          "Activity"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferences"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Change your notification settings",
+        "description": "Emails go only to a verified address. Essential types cannot be muted (400).",
+        "tags": [
+          "Activity"
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationPreferencesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferences"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (`VALIDATION_FAILED` with details, or a specific code).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in.",
             "content": {
               "application/json": {
                 "schema": {

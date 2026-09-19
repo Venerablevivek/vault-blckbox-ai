@@ -3,6 +3,7 @@ import { jobsRepo } from '../../jobs/jobs.repo';
 import { sharesRepo } from '../shares/shares.repo';
 import type { Logger } from 'pino';
 import type { Clock } from '../../types';
+import type { NotificationsService } from '../notifications/notifications.service';
 import type { DocumentsService } from '../documents/documents.service';
 import type { UploadsService } from '../uploads/uploads.service';
 
@@ -36,6 +37,7 @@ export function createMaintenanceService(deps: {
   logger: Logger;
   documents: DocumentsService;
   uploads: UploadsService | null;
+  notifications: NotificationsService;
   shareEventRetentionMonths: number;
 }) {
   const { pool, clock, logger, documents, uploads, shareEventRetentionMonths } = deps;
@@ -72,6 +74,7 @@ export function createMaintenanceService(deps: {
           requeuedScans: 0,
           shareCodes: 0,
           queuedProcessing: 0,
+          digests: 0,
         };
 
         const step = async (name: string, fn: () => Promise<void>) => {
@@ -149,6 +152,9 @@ export function createMaintenanceService(deps: {
         });
         await step('scans', async () => {
           result.requeuedScans = await documents.requeuePendingScans();
+        });
+        await step('digests', async () => {
+          result.digests = await deps.notifications.sendDigests();
         });
         await step('processing', async () => {
           // Thumbnails and search text for documents stored before processing existed, or whose

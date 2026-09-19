@@ -149,3 +149,61 @@ export function shareCodeEmail(input: { to: string; code: string; ttlMinutes: nu
     ]),
   };
 }
+
+export function notificationEmail(input: { to: string; title: string; body: string | null; url: string }): MailMessage {
+  return {
+    to: input.to,
+    subject: input.title,
+    text: [
+      input.title,
+      ...(input.body ? ['', input.body] : []),
+      '',
+      `Open Vault: ${input.url}`,
+      '',
+      UNSUBSCRIBE_TEXT,
+    ].join('\n'),
+    html: layout(input.title, [...(input.body ? [escapeHtml(input.body)] : []), escapeHtml(UNSUBSCRIBE_TEXT)], {
+      label: 'Open Vault',
+      url: input.url,
+    }),
+  };
+}
+
+export function digestEmail(input: {
+  to: string;
+  frequency: 'daily' | 'weekly';
+  items: Array<{ title: string; workspace: string | null; at: Date }>;
+  total: number;
+  url: string;
+}): MailMessage {
+  const period = input.frequency === 'daily' ? 'today' : 'this week';
+  const heading = `${input.total} unread notification${input.total === 1 ? '' : 's'} ${period}`;
+  const more = input.total > input.items.length ? `…and ${input.total - input.items.length} more.` : null;
+  const line = (item: (typeof input.items)[number]) => `${item.title}${item.workspace ? ` (${item.workspace})` : ''}`;
+  return {
+    to: input.to,
+    subject: `Vault: ${heading}`,
+    text: [
+      heading,
+      '',
+      ...input.items.map((item) => `- ${line(item)}`),
+      ...(more ? [more] : []),
+      '',
+      `Open Vault: ${input.url}`,
+      '',
+      UNSUBSCRIBE_TEXT,
+    ].join('\n'),
+    html: layout(
+      heading,
+      [
+        `<ul style="margin:0;padding-left:18px">${input.items.map((item) => `<li style="margin:0 0 6px">${escapeHtml(line(item))}</li>`).join('')}</ul>`,
+        ...(more ? [escapeHtml(more)] : []),
+        escapeHtml(UNSUBSCRIBE_TEXT),
+      ],
+      { label: 'Open Vault', url: input.url },
+    ),
+  };
+}
+
+const UNSUBSCRIBE_TEXT =
+  'You get this email because of your notification settings. Change them on your account page in Vault.';

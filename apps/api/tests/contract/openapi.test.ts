@@ -389,6 +389,16 @@ describe('API contract', () => {
       await send('GET', `/api/workspaces/${workspaceId}/audit/verify`, owner),
     );
     ok('GET', '/api/notifications', await send('GET', '/api/notifications', member.cookie));
+    ok('GET', '/api/notifications/preferences', await send('GET', '/api/notifications/preferences', owner));
+    ok(
+      'PUT',
+      '/api/notifications/preferences',
+      await send('PUT', '/api/notifications/preferences', owner, {
+        digest: 'daily',
+        instant: ['share.first_open'],
+        muted: [],
+      }),
+    );
     ok('POST', '/api/notifications/read', await send('POST', '/api/notifications/read', member.cookie, {}));
 
     ok('DELETE', '/api/documents/:id', await send('DELETE', `/api/documents/${documentId}`, owner));

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { ServerResponse } from 'node:http';
 import type { Config } from '../../config';
-import { MarkReadBody } from '../../contracts/activity';
+import { MarkReadBody, NotificationPreferencesBody } from '../../contracts/activity';
 import { Errors } from '../../lib/errors';
 import { currentUser, requireSession } from '../../plugins/session';
 import type { AuthService } from '../auth/auth.service';
@@ -90,6 +90,14 @@ export function registerNotificationRoutes(
     request.raw.on('close', end);
     if (request.raw.destroyed) end();
   });
+
+  app.get('/api/notifications/preferences', { preHandler: requireSession }, async (request) =>
+    notifications.getPreferences(currentUser(request).id),
+  );
+
+  app.put('/api/notifications/preferences', { preHandler: requireSession }, async (request) =>
+    notifications.savePreferences(currentUser(request).id, NotificationPreferencesBody.parse(request.body)),
+  );
 
   app.post('/api/notifications/read', { preHandler: requireSession }, async (request, reply) => {
     const body = MarkReadBody.parse(request.body ?? {});

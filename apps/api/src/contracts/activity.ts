@@ -114,3 +114,16 @@ export const NotificationsResponse = obj({
   notifications: z.array(Notification),
 });
 export const MarkReadBody = z.object({ id: uuid.optional() }).openapi('MarkReadRequest');
+
+const preferenceFields = {
+  digest: z.enum(['off', 'daily', 'weekly']).openapi({ description: 'A summary email of unread notifications.' }),
+  instant: z.array(NotificationType).max(20).openapi({ description: 'Types also emailed as they happen.' }),
+  muted: z.array(NotificationType).max(20).openapi({
+    description: 'Types not shown in the app (still emailed if also in instant). Essential types cannot be muted.',
+  }),
+};
+export const NotificationPreferencesBody = z.object(preferenceFields).openapi('NotificationPreferencesRequest');
+export const NotificationPreferences = obj({
+  ...preferenceFields,
+  essential: z.array(NotificationType).openapi({ description: 'Types that are always shown.' }),
+}).openapi('NotificationPreferences');

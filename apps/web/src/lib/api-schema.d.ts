@@ -4,6670 +4,6630 @@
  */
 
 export interface paths {
-  '/api/auth/register': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Create an account and its first workspace
-     * @description Sets the session cookie. With inviteToken, joins that workspace in the same transaction.
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['RegisterRequest'];
+    "/api/auth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-      };
-      responses: {
-        /** @description Success */
-        201: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              user: components['schemas']['User'];
+        get?: never;
+        put?: never;
+        /**
+         * Create an account and its first workspace
+         * @description Sets the session cookie. With inviteToken, joins that workspace in the same transaction.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
             };
-          };
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/auth/login': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Sign in
-     * @description Sets the session cookie. Five failures in 15 minutes lock the address from anywhere (ACCOUNT_LOCKED).
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['Credentials'];
-        };
-      };
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              user: components['schemas']['User'];
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RegisterRequest"];
+                };
             };
-          };
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/auth/logout': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Sign out */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success, no content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/auth/me': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Current user and their workspaces */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Me'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/auth/password/forgot': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Email a password reset link
-     * @description Always 202 with the same body, whether or not the address has an account.
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['ForgotPasswordRequest'];
-        };
-      };
-      responses: {
-        /** @description Success */
-        202: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              message: string;
+            responses: {
+                /** @description Success */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            user: components["schemas"]["User"];
+                        };
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
-          };
         };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/auth/password/reset': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Set a new password with a reset token
-     * @description Ends every session, then signs this browser in.
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['ResetPasswordRequest'];
+    "/api/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-      };
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              user: components['schemas']['User'];
-              signedOutSessions: number;
+        get?: never;
+        put?: never;
+        /**
+         * Sign in
+         * @description Sets the session cookie. Five failures in 15 minutes lock the address from anywhere (ACCOUNT_LOCKED).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
             };
-          };
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Gone: revoked, expired, used up, or already used. */
-        410: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/auth/password': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Change password
-     * @description Requires the current password. Ends every other session.
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['ChangePasswordRequest'];
-        };
-      };
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              signedOutSessions: number;
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["Credentials"];
+                };
             };
-          };
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/auth/email/verify': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Confirm an email address
-     * @description The token comes from the emailed link (in its URL fragment).
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['VerifyEmailRequest'];
-        };
-      };
-      responses: {
-        /** @description Success, no content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Gone: revoked, expired, used up, or already used. */
-        410: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/auth/email/resend': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Send another confirmation email */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        202: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              message: string;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            user: components["schemas"]["User"];
+                        };
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
-          };
         };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/auth/sessions': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List your sessions */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              sessions: components['schemas']['Session'][];
+    "/api/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign out */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
             };
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    /** Sign out every other session */
-    delete: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              signedOutSessions: number;
+            requestBody?: never;
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
             };
-          };
         };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/auth/sessions/{sessionId}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    /** Sign out one session */
-    delete: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          sessionId: string;
+    "/api/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success, no content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/workspaces': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List your workspaces */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              workspaces: {
-                /** Format: uuid */
-                id: string;
-                name: string;
-                role: components['schemas']['Role'];
-              }[];
+        /** Current user and their workspaces */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
             };
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    /** Create a workspace */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['CreateWorkspaceRequest'];
-        };
-      };
-      responses: {
-        /** @description Success */
-        201: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              workspace: {
-                /** Format: uuid */
-                id: string;
-                name: string;
-                role: components['schemas']['Role'];
-              };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Me"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
-          };
         };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/workspaces/{id}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    /**
-     * Delete a workspace
-     * @description Owner only. Access ends immediately; files are removed by the next maintenance pass.
-     */
-    delete: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
+    "/api/auth/password/forgot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['DeleteWorkspaceRequest'];
-        };
-      };
-      responses: {
-        /** @description Success, no content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    options?: never;
-    head?: never;
-    /** Rename a workspace */
-    patch: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['RenameWorkspaceRequest'];
-        };
-      };
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              workspace: {
-                /** Format: uuid */
-                id: string;
-                name: string;
-              };
+        get?: never;
+        put?: never;
+        /**
+         * Email a password reset link
+         * @description Always 202 with the same body, whether or not the address has an account.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
             };
-          };
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    trace?: never;
-  };
-  '/api/workspaces/{id}/overview': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Dashboard data */
-    get: {
-      parameters: {
-        query?: {
-          tz?: string;
-        };
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Overview'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/workspaces/{id}/storage': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Storage used and quota */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              storage: components['schemas']['StorageUsage'];
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ForgotPasswordRequest"];
+                };
             };
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/workspaces/{id}/members': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Members, and pending invitations for owners */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              role: components['schemas']['Role'];
-              members: components['schemas']['Member'][];
-              /** @description Pending invitations; always empty for non-owners. */
-              invitations: components['schemas']['PendingInvitation'][];
+            responses: {
+                /** @description Success */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message: string;
+                        };
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
-          };
         };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/workspaces/{id}/members/{userId}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    /** Remove a member, or leave */
-    delete: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-          userId: string;
+    "/api/auth/password/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success, no content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    options?: never;
-    head?: never;
-    /**
-     * Change a member's role
-     * @description Demoting to VIEWER revokes their share links. The last owner cannot be demoted.
-     */
-    patch: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-          userId: string;
-        };
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['ChangeRoleRequest'];
-        };
-      };
-      responses: {
-        /** @description Success, no content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    trace?: never;
-  };
-  '/api/workspaces/{id}/invitations': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Invite by email */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['InviteRequest'];
-        };
-      };
-      responses: {
-        /** @description Success */
-        201: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['InvitationCreated'];
-          };
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/workspaces/{id}/invitations/{invitationId}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    /** Cancel an invitation */
-    delete: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-          invitationId: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success, no content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/invitations/{token}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Preview an invitation */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          token: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['InvitationPreview'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Gone: revoked, expired, used up, or already used. */
-        410: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/invitations/{token}/accept': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Accept an invitation */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          token: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** Format: uuid */
-              workspaceId: string;
-              workspaceName: string;
+        get?: never;
+        put?: never;
+        /**
+         * Set a new password with a reset token
+         * @description Ends every session, then signs this browser in.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
             };
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Gone: revoked, expired, used up, or already used. */
-        410: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/workspaces/{workspaceId}/documents': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List, search and page documents */
-    get: {
-      parameters: {
-        query?: {
-          view?: 'active' | 'trash';
-          folderId?: string;
-          q?: string;
-          filter?: 'all' | 'shared' | 'mine' | 'starred' | 'recent';
-          sort?: 'date' | 'name' | 'size';
-          order?: 'asc' | 'desc';
-          cursor?: string;
-          limit?: number;
-        };
-        header?: never;
-        path: {
-          workspaceId: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['DocumentList'];
-          };
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    /** Upload a document */
-    post: {
-      parameters: {
-        query?: {
-          folderId?: string;
-        };
-        header?: never;
-        path: {
-          workspaceId: string;
-        };
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'multipart/form-data': {
-            /** Format: binary */
-            file?: string;
-          };
-        };
-      };
-      responses: {
-        /** @description Success */
-        201: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['UploadResult'];
-          };
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
-        413: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description File type not allowed. */
-        415: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description At capacity; retry after Retry-After seconds. */
-        503: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/documents/{id}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    /**
-     * Move to trash
-     * @description Revokes the document's share links.
-     */
-    delete: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              revokedLinks: number;
-              /**
-               * Format: date-time
-               * @example 2026-09-17T10:15:00.000Z
-               */
-              purgeAt: string;
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ResetPasswordRequest"];
+                };
             };
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    options?: never;
-    head?: never;
-    /** Rename or move */
-    patch: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['UpdateDocumentRequest'];
-        };
-      };
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              document: components['schemas']['Document'];
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            user: components["schemas"]["User"];
+                            signedOutSessions: number;
+                        };
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
-          };
         };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    trace?: never;
-  };
-  '/api/documents/bulk': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Trash, restore, permanently delete or move many documents
-     * @description Each document is authorized and handled on its own, exactly as by its single-document endpoint, so some can fail while the rest succeed. Always 200; check each result.
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['BulkDocumentsRequest'];
+    "/api/auth/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-      };
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['BulkDocumentsResult'];
-          };
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/workspaces/{workspaceId}/archive': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Download documents or a folder as a zip
-     * @description Streams a zip built from storage. Folders keep their structure. Files the malware scan has not cleared are left out and listed in NOT-INCLUDED.txt inside the zip. Each included file is recorded as downloaded.
-     */
-    get: {
-      parameters: {
-        query?: {
-          ids?: string;
-          folderId?: string;
-        };
-        header?: never;
-        path: {
-          workspaceId: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description The file, streamed as an attachment. */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/zip': string;
-          };
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
-        413: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description At capacity; retry after Retry-After seconds. */
-        503: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/workspaces/{workspaceId}/archive/summary': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * What a zip download would contain, without building it
-     * @description Same checks and errors as the download itself; nothing is read from storage or recorded.
-     */
-    get: {
-      parameters: {
-        query?: {
-          ids?: string;
-          folderId?: string;
-        };
-        header?: never;
-        path: {
-          workspaceId: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ArchiveSummary'];
-          };
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
-        413: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/documents/{id}/versions': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Version history, current first */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['DocumentVersions'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    /**
-     * Upload a new version (multipart field "file")
-     * @description Becomes the current version; the previous one is kept. Same size limit, type check and malware scan as an upload. The file must be the same type as the document. Uploader or owner only.
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'multipart/form-data': {
-            /** Format: binary */
-            file?: string;
-          };
-        };
-      };
-      responses: {
-        /** @description Success */
-        201: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              document: components['schemas']['Document'];
+        get?: never;
+        put?: never;
+        /**
+         * Change password
+         * @description Requires the current password. Ends every other session.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
             };
-          };
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
-        413: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description File type not allowed. */
-        415: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description At capacity; retry after Retry-After seconds. */
-        503: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/documents/{id}/versions/{version}/download': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Download a version (redirect to a signed URL) */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-          version: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Redirect to a short-lived signed URL. */
-        302: {
-          headers: {
-            Location?: string;
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Gone: revoked, expired, used up, or already used. */
-        410: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/documents/{id}/versions/{version}/restore': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Restore an earlier version
-     * @description Copies it into a new current version; the history is kept as it was. Uploader or owner only.
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-          version: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              document: components['schemas']['Document'];
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChangePasswordRequest"];
+                };
             };
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Gone: revoked, expired, used up, or already used. */
-        410: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
-        413: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/documents/{id}/versions/{version}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    /** Delete an earlier version for good */
-    delete: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-          version: number;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success, no content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/documents/{id}/star': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    /** Star a document (for you only) */
-    put: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success, no content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    post?: never;
-    /** Unstar a document */
-    delete: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success, no content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/documents/{id}/restore': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Restore from trash */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              document: components['schemas']['Document'];
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            signedOutSessions: number;
+                        };
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
-          };
         };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Gone: revoked, expired, used up, or already used. */
-        410: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/documents/{id}/permanent': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    /** Delete forever */
-    delete: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
+    "/api/auth/email/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success, no content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/documents/{id}/download': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Download (redirect to a 60-second signed URL) */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Redirect to a short-lived signed URL. */
-        302: {
-          headers: {
-            Location?: string;
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/documents/{id}/thumbnail': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * A small WebP picture of the document
-     * @description Present when the document says thumbnail: true. Made by the worker once the file has been scanned.
-     */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description The file, streamed as an attachment. */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'image/webp': string;
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/documents/{id}/preview': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Inline preview (PDF and images) */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Redirect to a short-lived signed URL. */
-        302: {
-          headers: {
-            Location?: string;
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description File type not allowed. */
-        415: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/documents/{id}/shares': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** A document's live links and their activity */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              shares: components['schemas']['ShareSummary'][];
+        get?: never;
+        put?: never;
+        /**
+         * Confirm an email address
+         * @description The token comes from the emailed link (in its URL fragment).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
             };
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/workspaces/{workspaceId}/uploads': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Start a direct upload
-     * @description Reserves quota for the whole file and opens a multipart upload in storage. The browser then PUTs each part to a signed URL; file bytes never pass through the API. Up to MAX_DIRECT_UPLOAD_BYTES (5 GB).
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          workspaceId: string;
-        };
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['CreateUploadRequest'];
-        };
-      };
-      responses: {
-        /** @description Success */
-        201: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['UploadCreated'];
-          };
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
-        413: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description File type not allowed. */
-        415: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/uploads/{id}/parts': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Get signed URLs for parts */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['SignPartsRequest'];
-        };
-      };
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['SignedParts'];
-          };
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/uploads/{id}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Upload status and parts received (for resuming) */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['UploadStatus'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    /** Cancel an upload */
-    delete: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success, no content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/uploads/{id}/complete': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Finish an upload and create the document
-     * @description Verifies every part against storage's record, the assembled size, and the file type from its first bytes. A file that fails is deleted and its quota released; missing parts leave the upload open (409 UPLOAD_INCOMPLETE).
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        201: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['UploadResult'];
-          };
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description File type not allowed. */
-        415: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/workspaces/{workspaceId}/folders': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** List folders */
-    get: {
-      parameters: {
-        query?: {
-          parentId?: string;
-        };
-        header?: never;
-        path: {
-          workspaceId: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              path: components['schemas']['Folder'][];
-              folders: components['schemas']['Folder'][];
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["VerifyEmailRequest"];
+                };
             };
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    /** Create a folder */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          workspaceId: string;
-        };
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['CreateFolderRequest'];
-        };
-      };
-      responses: {
-        /** @description Success */
-        201: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              folder: components['schemas']['Folder'];
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
-          };
         };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Well-formed but not allowed (e.g. moving a folder into itself). */
-        422: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/workspaces/{workspaceId}/folders/{folderId}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    /** Delete an empty folder */
-    delete: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          workspaceId: string;
-          folderId: string;
+    "/api/auth/email/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success, no content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    options?: never;
-    head?: never;
-    /** Rename or move a folder */
-    patch: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          workspaceId: string;
-          folderId: string;
-        };
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['UpdateFolderRequest'];
-        };
-      };
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              folder: components['schemas']['Folder'];
+        get?: never;
+        put?: never;
+        /** Send another confirmation email */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
             };
-          };
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Well-formed but not allowed (e.g. moving a folder into itself). */
-        422: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    trace?: never;
-  };
-  '/api/shares': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Create a share link */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['CreateShareRequest'];
-        };
-      };
-      responses: {
-        /** @description Success */
-        201: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              share: {
-                /** Format: uuid */
-                id: string;
-                /**
-                 * Format: uri
-                 * @description Contains the token. Returned only here, once.
-                 */
-                url: string;
-                /**
-                 * Format: date-time
-                 * @example 2026-09-17T10:15:00.000Z
-                 */
-                expiresAt: string | null;
-                /**
-                 * Format: date-time
-                 * @example 2026-09-17T10:15:00.000Z
-                 */
-                createdAt: string;
-                hasPassword: boolean;
-                maxDownloads: number | null;
-                allowDownload: boolean;
-                allowedEmails: string[];
-              };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message: string;
+                        };
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
-          };
         };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/shares/{id}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    /** Revoke a link */
-    delete: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
+    "/api/auth/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success, no content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    options?: never;
-    head?: never;
-    /** Edit a link's expiry, password or download limit */
-    patch: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['UpdateShareRequest'];
-        };
-      };
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              share: {
-                /** Format: uuid */
-                id: string;
-                /**
-                 * Format: date-time
-                 * @example 2026-09-17T10:15:00.000Z
-                 */
-                expiresAt: string | null;
-                hasPassword: boolean;
-                maxDownloads: number | null;
-                downloadCount: number;
-                allowDownload: boolean;
-                allowedEmails: string[];
-              };
+        /** List your sessions */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
             };
-          };
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    trace?: never;
-  };
-  '/api/shares/{id}/events': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** A link's access history */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              events: {
-                /**
-                 * Format: date-time
-                 * @example 2026-09-17T10:15:00.000Z
-                 */
-                accessedAt: string;
-                outcome: components['schemas']['ShareOutcome'];
-                userAgent: string | null;
-                /** @description Opaque marker for "the same viewer". Never an address. */
-                viewer: string;
-                /** @description The address the viewer proved, on a link restricted to named people. */
-                email: string | null;
-              }[];
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            sessions: components["schemas"]["Session"][];
+                        };
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
-          };
         };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/shares/{id}/events/export': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * A link's full access history as CSV
-     * @description Columns: time_utc, outcome, viewer, email, user_agent. Any member of the workspace.
-     */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description The file, streamed as an attachment. */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'text/csv': string;
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/shares/{token}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Resolve a link
-     * @description Records nothing. A locked link reveals only that a password is required.
-     */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          token: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['PublicShare'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Gone: revoked, expired, used up, or already used. */
-        410: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/shares/{token}/unlock': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Enter a link password
-     * @description Sets an HttpOnly cookie that unlocks this link for one hour.
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          token: string;
-        };
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['UnlockRequest'];
-        };
-      };
-      responses: {
-        /** @description Success, no content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Gone: revoked, expired, used up, or already used. */
-        410: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/shares/{token}/code': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Email a one-time code to open a link restricted to named people
-     * @description Always 202, whether or not the address is on the link. A code is sent only to addresses on the link, at most 3 per 15 minutes.
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          token: string;
-        };
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['ShareCodeRequest'];
-        };
-      };
-      responses: {
-        /** @description Success */
-        202: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              message: string;
+        put?: never;
+        post?: never;
+        /** Sign out every other session */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
             };
-          };
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Gone: revoked, expired, used up, or already used. */
-        410: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/shares/{token}/verify': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Enter the one-time code
-     * @description Sets an HttpOnly cookie naming the verified address, for one hour. Only the newest code works, for 10 minutes and 5 tries.
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          token: string;
-        };
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['ShareCodeVerifyRequest'];
-        };
-      };
-      responses: {
-        /** @description Success, no content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Gone: revoked, expired, used up, or already used. */
-        410: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/shares/{token}/content': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * The shared file, for showing in the page (PDFs and images)
-     * @description Inline, never cached, frameable only by this site. On a view-only link a PDF carries the viewer's watermark on every page.
-     */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          token: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description The file, streamed as an attachment. */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/pdf': string;
-            'image/png': string;
-            'image/jpeg': string;
-            'image/gif': string;
-            'image/webp': string;
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Gone: revoked, expired, used up, or already used. */
-        410: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
-        413: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description File type not allowed. */
-        415: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Well-formed but not allowed (e.g. moving a folder into itself). */
-        422: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/shares/{token}/view': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Record a page view */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          token: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success, no content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Gone: revoked, expired, used up, or already used. */
-        410: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/shares/{token}/download': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Download (redirect to a signed URL) */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          token: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Redirect to a short-lived signed URL. */
-        302: {
-          headers: {
-            Location?: string;
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Gone: revoked, expired, used up, or already used. */
-        410: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/folder-shares': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Create a link to a folder and everything below it */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['CreateFolderShareRequest'];
-        };
-      };
-      responses: {
-        /** @description Success */
-        201: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              share: {
-                /** Format: uuid */
-                id: string;
-                /**
-                 * Format: uri
-                 * @description Contains the token. Returned only here, once.
-                 */
-                url: string;
-                /**
-                 * Format: date-time
-                 * @example 2026-09-17T10:15:00.000Z
-                 */
-                expiresAt: string | null;
-                /**
-                 * Format: date-time
-                 * @example 2026-09-17T10:15:00.000Z
-                 */
-                createdAt: string;
-                hasPassword: boolean;
-              };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            signedOutSessions: number;
+                        };
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
-          };
         };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/workspaces/{workspaceId}/folders/{folderId}/shares': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** A folder's live links, with how often each was opened and downloaded */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          workspaceId: string;
-          folderId: string;
+    "/api/auth/sessions/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              shares: components['schemas']['FolderShareSummary'][];
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Sign out one session */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    sessionId: string;
+                };
+                cookie?: never;
             };
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/folder-shares/{id}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    /** Revoke a folder link */
-    delete: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success, no content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/folder-shares/{token}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Browse a shared folder
-     * @description Records nothing. Only live files the malware scan has cleared are listed. A folder outside the shared one is 404.
-     */
-    get: {
-      parameters: {
-        query?: {
-          folderId?: string;
-        };
-        header?: never;
-        path: {
-          token: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['PublicFolderShare'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Gone: revoked, expired, used up, or already used. */
-        410: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/folder-shares/{token}/unlock': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Enter a folder link password
-     * @description Sets an HttpOnly cookie that unlocks this link for one hour.
-     */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          token: string;
-        };
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['UnlockRequest'];
-        };
-      };
-      responses: {
-        /** @description Success, no content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Gone: revoked, expired, used up, or already used. */
-        410: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/folder-shares/{token}/view': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Record that the shared folder was opened */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          token: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success, no content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Gone: revoked, expired, used up, or already used. */
-        410: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/folder-shares/{token}/documents/{documentId}/download': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Download one file from a shared folder (redirect to a signed URL) */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          token: string;
-          documentId: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Redirect to a short-lived signed URL. */
-        302: {
-          headers: {
-            Location?: string;
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Gone: revoked, expired, used up, or already used. */
-        410: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/folder-shares/{token}/archive/summary': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** What a zip of the shared folder would contain */
-    get: {
-      parameters: {
-        query?: {
-          folderId?: string;
-        };
-        header?: never;
-        path: {
-          token: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['ArchiveSummary'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Gone: revoked, expired, used up, or already used. */
-        410: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
-        413: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/folder-shares/{token}/archive': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Download a shared folder (or a folder inside it) as a zip */
-    get: {
-      parameters: {
-        query?: {
-          folderId?: string;
-        };
-        header?: never;
-        path: {
-          token: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description The file, streamed as an attachment. */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/zip': string;
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Conflict with the current state. */
-        409: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Gone: revoked, expired, used up, or already used. */
-        410: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
-        413: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description At capacity; retry after Retry-After seconds. */
-        503: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/workspaces/{id}/audit': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Audit trail (owners) */
-    get: {
-      parameters: {
-        query?: {
-          limit?: number;
-          cursor?: string;
-          before?: string;
-          category?: 'document' | 'folder' | 'share' | 'people';
-          action?: components['schemas']['AuditAction'];
-          actorId?: string;
-          resourceId?: string;
-          from?: string;
-          to?: string;
-        };
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              events: components['schemas']['AuditEvent'][];
-              nextCursor: string | null;
+            requestBody?: never;
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
-          };
         };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/workspaces/{id}/audit/export': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * The activity trail as CSV (owners only)
-     * @description Same filters as the listing. Columns: time_utc, actor, action, resource_type, resource_id, file, details, hash. Cells that a spreadsheet would run as a formula are prefixed with an apostrophe.
-     */
-    get: {
-      parameters: {
-        query?: {
-          category?: 'document' | 'folder' | 'share' | 'people';
-          action?: components['schemas']['AuditAction'];
-          actorId?: string;
-          resourceId?: string;
-          from?: string;
-          to?: string;
+    "/api/workspaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description The file, streamed as an attachment. */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'text/csv': string;
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/workspaces/{id}/audit/verify': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Verify the audit hash chain (owners)
-     * @description Recomputes every event hash in order. Reports where the chain breaks if an event was changed, inserted or removed. Removal from the end is only detectable against a previously recorded head hash.
-     */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path: {
-          id: string;
-        };
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['AuditVerification'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Signed in and a member, but the role does not allow this. */
-        403: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not found, or not a member (deliberately identical). */
-        404: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/notifications': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Your notifications */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              unread: number;
-              notifications: components['schemas']['Notification'][];
+        /** List your workspaces */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
             };
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/openapi.json': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** This OpenAPI document */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              [key: string]: unknown;
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            workspaces: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                role: components["schemas"]["Role"];
+                            }[];
+                        };
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
             };
-          };
         };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/notifications/stream': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Live notification events (server-sent events)
-     * @description text/event-stream. Sends `event: ready` on connect and `event: notification` whenever your inbox changes; fetch GET /api/notifications on either. A keep-alive comment is sent periodically, and the stream ends when the session does. At most 5 streams per user.
-     */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description An open stream of server-sent events. */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'text/event-stream': string;
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Rate limited or locked out. See Retry-After. */
-        429: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/notifications/read': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Mark one or all notifications read */
-    post: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody: {
-        content: {
-          'application/json': components['schemas']['MarkReadRequest'];
-        };
-      };
-      responses: {
-        /** @description Success, no content */
-        204: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
-        400: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-        /** @description Not signed in. */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
-    };
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/health': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Liveness */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {string} */
-              status: 'ok';
+        put?: never;
+        /** Create a workspace */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
             };
-          };
-        };
-      };
-    };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/ready': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Readiness (database reachable) */
-    get: {
-      parameters: {
-        query?: never;
-        header?: never;
-        path?: never;
-        cookie?: never;
-      };
-      requestBody?: never;
-      responses: {
-        /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {string} */
-              status: 'ready';
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateWorkspaceRequest"];
+                };
             };
-          };
+            responses: {
+                /** @description Success */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            workspace: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                                role: components["schemas"]["Role"];
+                            };
+                        };
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
         };
-        /** @description At capacity; retry after Retry-After seconds. */
-        503: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': components['schemas']['Error'];
-          };
-        };
-      };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
+    "/api/workspaces/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a workspace
+         * @description Owner only. Access ends immediately; files are removed by the next maintenance pass.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DeleteWorkspaceRequest"];
+                };
+            };
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Rename a workspace */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RenameWorkspaceRequest"];
+                };
+            };
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            workspace: {
+                                /** Format: uuid */
+                                id: string;
+                                name: string;
+                            };
+                        };
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/workspaces/{id}/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard data */
+        get: {
+            parameters: {
+                query?: {
+                    tz?: string;
+                };
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Overview"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{id}/storage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Storage used and quota */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            storage: components["schemas"]["StorageUsage"];
+                        };
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{id}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Members, and pending invitations for owners */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            role: components["schemas"]["Role"];
+                            members: components["schemas"]["Member"][];
+                            /** @description Pending invitations; always empty for non-owners. */
+                            invitations: components["schemas"]["PendingInvitation"][];
+                        };
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{id}/members/{userId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a member, or leave */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * Change a member's role
+         * @description Demoting to VIEWER revokes their share links. The last owner cannot be demoted.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChangeRoleRequest"];
+                };
+            };
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/workspaces/{id}/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Invite by email */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["InviteRequest"];
+                };
+            };
+            responses: {
+                /** @description Success */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InvitationCreated"];
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{id}/invitations/{invitationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Cancel an invitation */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    invitationId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invitations/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview an invitation */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["InvitationPreview"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/invitations/{token}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept an invitation */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** Format: uuid */
+                            workspaceId: string;
+                            workspaceName: string;
+                        };
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List, search and page documents */
+        get: {
+            parameters: {
+                query?: {
+                    view?: "active" | "trash";
+                    folderId?: string;
+                    q?: string;
+                    filter?: "all" | "shared" | "mine" | "starred" | "recent";
+                    sort?: "date" | "name" | "size";
+                    order?: "asc" | "desc";
+                    cursor?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    workspaceId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocumentList"];
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Upload a document */
+        post: {
+            parameters: {
+                query?: {
+                    folderId?: string;
+                };
+                header?: never;
+                path: {
+                    workspaceId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Success */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UploadResult"];
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description File type not allowed. */
+                415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description At capacity; retry after Retry-After seconds. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Move to trash
+         * @description Revokes the document's share links.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            revokedLinks: number;
+                            /**
+                             * Format: date-time
+                             * @example 2026-09-17T10:15:00.000Z
+                             */
+                            purgeAt: string;
+                        };
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Rename or move */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateDocumentRequest"];
+                };
+            };
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            document: components["schemas"]["Document"];
+                        };
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/documents/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trash, restore, permanently delete or move many documents
+         * @description Each document is authorized and handled on its own, exactly as by its single-document endpoint, so some can fail while the rest succeed. Always 200; check each result.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["BulkDocumentsRequest"];
+                };
+            };
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BulkDocumentsResult"];
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download documents or a folder as a zip
+         * @description Streams a zip built from storage. Folders keep their structure. Files the malware scan has not cleared are left out and listed in NOT-INCLUDED.txt inside the zip. Each included file is recorded as downloaded.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    ids?: string;
+                    folderId?: string;
+                };
+                header?: never;
+                path: {
+                    workspaceId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The file, streamed as an attachment. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/zip": string;
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description At capacity; retry after Retry-After seconds. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/archive/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What a zip download would contain, without building it
+         * @description Same checks and errors as the download itself; nothing is read from storage or recorded.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    ids?: string;
+                    folderId?: string;
+                };
+                header?: never;
+                path: {
+                    workspaceId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ArchiveSummary"];
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Version history, current first */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocumentVersions"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Upload a new version (multipart field "file")
+         * @description Becomes the current version; the previous one is kept. Same size limit, type check and malware scan as an upload. The file must be the same type as the document. Uploader or owner only.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        /** Format: binary */
+                        file?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Success */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            document: components["schemas"]["Document"];
+                        };
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description File type not allowed. */
+                415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description At capacity; retry after Retry-After seconds. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{id}/versions/{version}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download a version (redirect to a signed URL) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    version: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Redirect to a short-lived signed URL. */
+                302: {
+                    headers: {
+                        Location?: string;
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{id}/versions/{version}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore an earlier version
+         * @description Copies it into a new current version; the history is kept as it was. Uploader or owner only.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    version: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            document: components["schemas"]["Document"];
+                        };
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{id}/versions/{version}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete an earlier version for good */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    version: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{id}/star": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Star a document (for you only) */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /** Unstar a document */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore from trash */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            document: components["schemas"]["Document"];
+                        };
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{id}/permanent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete forever */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download (redirect to a 60-second signed URL) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Redirect to a short-lived signed URL. */
+                302: {
+                    headers: {
+                        Location?: string;
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{id}/thumbnail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A small WebP picture of the document
+         * @description Present when the document says thumbnail: true. Made by the worker once the file has been scanned.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The file, streamed as an attachment. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "image/webp": string;
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inline preview (PDF and images) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Redirect to a short-lived signed URL. */
+                302: {
+                    headers: {
+                        Location?: string;
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description File type not allowed. */
+                415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{id}/shares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A document's live links and their activity */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            shares: components["schemas"]["ShareSummary"][];
+                        };
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start a direct upload
+         * @description Reserves quota for the whole file and opens a multipart upload in storage. The browser then PUTs each part to a signed URL; file bytes never pass through the API. Up to MAX_DIRECT_UPLOAD_BYTES (5 GB).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    workspaceId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateUploadRequest"];
+                };
+            };
+            responses: {
+                /** @description Success */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UploadCreated"];
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description File type not allowed. */
+                415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/uploads/{id}/parts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Get signed URLs for parts */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SignPartsRequest"];
+                };
+            };
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SignedParts"];
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/uploads/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Upload status and parts received (for resuming) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UploadStatus"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Cancel an upload */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/uploads/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finish an upload and create the document
+         * @description Verifies every part against storage's record, the assembled size, and the file type from its first bytes. A file that fails is deleted and its quota released; missing parts leave the upload open (409 UPLOAD_INCOMPLETE).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UploadResult"];
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description File type not allowed. */
+                415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/folders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List folders */
+        get: {
+            parameters: {
+                query?: {
+                    parentId?: string;
+                };
+                header?: never;
+                path: {
+                    workspaceId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            path: components["schemas"]["Folder"][];
+                            folders: components["schemas"]["Folder"][];
+                        };
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /** Create a folder */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    workspaceId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateFolderRequest"];
+                };
+            };
+            responses: {
+                /** @description Success */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            folder: components["schemas"]["Folder"];
+                        };
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Well-formed but not allowed (e.g. moving a folder into itself). */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/folders/{folderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete an empty folder */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    workspaceId: string;
+                    folderId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Rename or move a folder */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    workspaceId: string;
+                    folderId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateFolderRequest"];
+                };
+            };
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            folder: components["schemas"]["Folder"];
+                        };
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Well-formed but not allowed (e.g. moving a folder into itself). */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/shares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a share link */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateShareRequest"];
+                };
+            };
+            responses: {
+                /** @description Success */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            share: {
+                                /** Format: uuid */
+                                id: string;
+                                /**
+                                 * Format: uri
+                                 * @description Contains the token. Returned only here, once.
+                                 */
+                                url: string;
+                                /**
+                                 * Format: date-time
+                                 * @example 2026-09-17T10:15:00.000Z
+                                 */
+                                expiresAt: string | null;
+                                /**
+                                 * Format: date-time
+                                 * @example 2026-09-17T10:15:00.000Z
+                                 */
+                                createdAt: string;
+                                hasPassword: boolean;
+                                maxDownloads: number | null;
+                                allowDownload: boolean;
+                                allowedEmails: string[];
+                            };
+                        };
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shares/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke a link */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /** Edit a link's expiry, password or download limit */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateShareRequest"];
+                };
+            };
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            share: {
+                                /** Format: uuid */
+                                id: string;
+                                /**
+                                 * Format: date-time
+                                 * @example 2026-09-17T10:15:00.000Z
+                                 */
+                                expiresAt: string | null;
+                                hasPassword: boolean;
+                                maxDownloads: number | null;
+                                downloadCount: number;
+                                allowDownload: boolean;
+                                allowedEmails: string[];
+                            };
+                        };
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/shares/{id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A link's access history */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            events: {
+                                /**
+                                 * Format: date-time
+                                 * @example 2026-09-17T10:15:00.000Z
+                                 */
+                                accessedAt: string;
+                                outcome: components["schemas"]["ShareOutcome"];
+                                userAgent: string | null;
+                                /** @description Opaque marker for "the same viewer". Never an address. */
+                                viewer: string;
+                                /** @description The address the viewer proved, on a link restricted to named people. */
+                                email: string | null;
+                            }[];
+                        };
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shares/{id}/events/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A link's full access history as CSV
+         * @description Columns: time_utc, outcome, viewer, email, user_agent. Any member of the workspace.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The file, streamed as an attachment. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/csv": string;
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shares/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Resolve a link
+         * @description Records nothing. A locked link reveals only that a password is required.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PublicShare"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shares/{token}/unlock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Enter a link password
+         * @description Sets an HttpOnly cookie that unlocks this link for one hour.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UnlockRequest"];
+                };
+            };
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shares/{token}/code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email a one-time code to open a link restricted to named people
+         * @description Always 202, whether or not the address is on the link. A code is sent only to addresses on the link, at most 3 per 15 minutes.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ShareCodeRequest"];
+                };
+            };
+            responses: {
+                /** @description Success */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message: string;
+                        };
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shares/{token}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Enter the one-time code
+         * @description Sets an HttpOnly cookie naming the verified address, for one hour. Only the newest code works, for 10 minutes and 5 tries.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ShareCodeVerifyRequest"];
+                };
+            };
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shares/{token}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The shared file, for showing in the page (PDFs and images)
+         * @description Inline, never cached, frameable only by this site. On a view-only link a PDF carries the viewer's watermark on every page.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The file, streamed as an attachment. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/pdf": string;
+                        "image/png": string;
+                        "image/jpeg": string;
+                        "image/gif": string;
+                        "image/webp": string;
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description File type not allowed. */
+                415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Well-formed but not allowed (e.g. moving a folder into itself). */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shares/{token}/view": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record a page view */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shares/{token}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download (redirect to a signed URL) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Redirect to a short-lived signed URL. */
+                302: {
+                    headers: {
+                        Location?: string;
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/folder-shares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a link to a folder and everything below it */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateFolderShareRequest"];
+                };
+            };
+            responses: {
+                /** @description Success */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            share: {
+                                /** Format: uuid */
+                                id: string;
+                                /**
+                                 * Format: uri
+                                 * @description Contains the token. Returned only here, once.
+                                 */
+                                url: string;
+                                /**
+                                 * Format: date-time
+                                 * @example 2026-09-17T10:15:00.000Z
+                                 */
+                                expiresAt: string | null;
+                                /**
+                                 * Format: date-time
+                                 * @example 2026-09-17T10:15:00.000Z
+                                 */
+                                createdAt: string;
+                                hasPassword: boolean;
+                            };
+                        };
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{workspaceId}/folders/{folderId}/shares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A folder's live links, with how often each was opened and downloaded */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    workspaceId: string;
+                    folderId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            shares: components["schemas"]["FolderShareSummary"][];
+                        };
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/folder-shares/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke a folder link */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/folder-shares/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Browse a shared folder
+         * @description Records nothing. Only live files the malware scan has cleared are listed. A folder outside the shared one is 404.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    folderId?: string;
+                };
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PublicFolderShare"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/folder-shares/{token}/unlock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Enter a folder link password
+         * @description Sets an HttpOnly cookie that unlocks this link for one hour.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UnlockRequest"];
+                };
+            };
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/folder-shares/{token}/view": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record that the shared folder was opened */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/folder-shares/{token}/documents/{documentId}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download one file from a shared folder (redirect to a signed URL) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                    documentId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Redirect to a short-lived signed URL. */
+                302: {
+                    headers: {
+                        Location?: string;
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/folder-shares/{token}/archive/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What a zip of the shared folder would contain */
+        get: {
+            parameters: {
+                query?: {
+                    folderId?: string;
+                };
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ArchiveSummary"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/folder-shares/{token}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Download a shared folder (or a folder inside it) as a zip */
+        get: {
+            parameters: {
+                query?: {
+                    folderId?: string;
+                };
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The file, streamed as an attachment. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/zip": string;
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Conflict with the current state. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description At capacity; retry after Retry-After seconds. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{id}/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Audit trail (owners) */
+        get: {
+            parameters: {
+                query?: {
+                    limit?: number;
+                    cursor?: string;
+                    before?: string;
+                    category?: "document" | "folder" | "share" | "people";
+                    action?: components["schemas"]["AuditAction"];
+                    actorId?: string;
+                    resourceId?: string;
+                    from?: string;
+                    to?: string;
+                };
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            events: components["schemas"]["AuditEvent"][];
+                            nextCursor: string | null;
+                        };
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{id}/audit/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The activity trail as CSV (owners only)
+         * @description Same filters as the listing. Columns: time_utc, actor, action, resource_type, resource_id, file, details, hash. Cells that a spreadsheet would run as a formula are prefixed with an apostrophe.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    category?: "document" | "folder" | "share" | "people";
+                    action?: components["schemas"]["AuditAction"];
+                    actorId?: string;
+                    resourceId?: string;
+                    from?: string;
+                    to?: string;
+                };
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description The file, streamed as an attachment. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/csv": string;
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/workspaces/{id}/audit/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Verify the audit hash chain (owners)
+         * @description Recomputes every event hash in order. Reports where the chain breaks if an event was changed, inserted or removed. Removal from the end is only detectable against a previously recorded head hash.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AuditVerification"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Your notifications */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            unread: number;
+                            notifications: components["schemas"]["Notification"][];
+                        };
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/openapi.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** This OpenAPI document */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Live notification events (server-sent events)
+         * @description text/event-stream. Sends `event: ready` on connect and `event: notification` whenever your inbox changes; fetch GET /api/notifications on either. A keep-alive comment is sent periodically, and the stream ends when the session does. At most 5 streams per user.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description An open stream of server-sent events. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/event-stream": string;
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Your notification settings */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotificationPreferences"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        /**
+         * Change your notification settings
+         * @description Emails go only to a verified address. Essential types cannot be muted (400).
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NotificationPreferencesRequest"];
+                };
+            };
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotificationPreferences"];
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark one or all notifications read */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MarkReadRequest"];
+                };
+            };
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liveness */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            status: "ok";
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Readiness (database reachable) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {string} */
+                            status: "ready";
+                        };
+                    };
+                };
+                /** @description At capacity; retry after Retry-After seconds. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-  schemas: {
-    User: {
-      /** Format: uuid */
-      id: string;
-      email: string;
-      /** @description False until the address is confirmed; share links and invitations need it. */
-      emailVerified: boolean;
-    };
-    Error: {
-      error: {
-        /** @example NOT_FOUND */
-        code: string;
-        message: string;
-        /** @description Per-field problems, for VALIDATION_FAILED. */
-        details?: {
-          path: string;
-          message: string;
-        }[];
-      };
-    };
-    Credentials: {
-      /** Format: email */
-      email: string;
-      password: string;
-    };
-    RegisterRequest: components['schemas']['Credentials'] & {
-      inviteToken?: string;
-    };
-    /** @enum {string} */
-    Role: 'OWNER' | 'MEMBER' | 'VIEWER';
-    WorkspaceSummary: {
-      /** Format: uuid */
-      id: string;
-      name: string;
-      role: components['schemas']['Role'];
-    };
-    Me: {
-      user: components['schemas']['User'];
-      workspaces: components['schemas']['WorkspaceSummary'][];
-    };
-    ForgotPasswordRequest: {
-      /** Format: email */
-      email: string;
-    };
-    ResetPasswordRequest: {
-      token: string;
-      password: string;
-    };
-    ChangePasswordRequest: {
-      currentPassword: string;
-      newPassword: string;
-    };
-    VerifyEmailRequest: {
-      token: string;
-    };
-    Session: {
-      /** Format: uuid */
-      id: string;
-      userAgent: string | null;
-      /**
-       * Format: date-time
-       * @example 2026-09-17T10:15:00.000Z
-       */
-      createdAt: string;
-      /**
-       * Format: date-time
-       * @example 2026-09-17T10:15:00.000Z
-       */
-      lastSeenAt: string;
-      /**
-       * Format: date-time
-       * @example 2026-09-17T10:15:00.000Z
-       */
-      expiresAt: string;
-      current: boolean;
-    };
-    CreateWorkspaceRequest: {
-      name: string;
-    };
-    RenameWorkspaceRequest: {
-      name: string;
-    };
-    DeleteWorkspaceRequest: {
-      /** @description The workspace's exact current name. */
-      confirmName: string;
-    };
-    StorageUsage: {
-      usedBytes: number;
-      quotaBytes: number;
-    };
-    /** @enum {string} */
-    AuditAction:
-      | 'workspace.created'
-      | 'workspace.renamed'
-      | 'document.uploaded'
-      | 'document.downloaded'
-      | 'document.previewed'
-      | 'document.deleted'
-      | 'document.renamed'
-      | 'document.moved'
-      | 'document.trashed'
-      | 'document.restored'
-      | 'document.purged'
-      | 'document.version_uploaded'
-      | 'document.version_restored'
-      | 'document.version_deleted'
-      | 'folder.created'
-      | 'folder.renamed'
-      | 'folder.moved'
-      | 'folder.deleted'
-      | 'share.created'
-      | 'share.updated'
-      | 'share.revoked'
-      | 'share.accessed'
-      | 'share.blocked'
-      | 'member.invited'
-      | 'member.joined'
-      | 'member.removed'
-      | 'member.left'
-      | 'member.role_changed'
-      | 'invitation.revoked'
-      | 'document.quarantined';
-    AuditEvent: {
-      /** Format: uuid */
-      id: string;
-      actorEmail: string | null;
-      action: components['schemas']['AuditAction'];
-      /** @enum {string} */
-      resourceType: 'workspace' | 'document' | 'folder' | 'share' | 'folder_share' | 'member' | 'invitation';
-      /** Format: uuid */
-      resourceId: string | null;
-      metadata: {
-        [key: string]: unknown;
-      };
-      /**
-       * Format: date-time
-       * @example 2026-09-17T10:15:00.000Z
-       */
-      createdAt: string;
-    };
-    Overview: {
-      role: components['schemas']['Role'];
-      totals: {
-        documents: number;
-        bytes: number;
-        members: number;
-        liveLinks: number;
-        opens: number;
-        pendingInvites: number;
-      };
-      storage: components['schemas']['StorageUsage'];
-      storageByType: {
-        category: string;
-        count: number;
-        bytes: number;
-      }[];
-      series: {
-        day: string;
-        uploads: number;
-        opens: number;
-      }[];
-      topShared: {
-        /** Format: uuid */
-        id: string;
-        filename: string;
-        mimeType: string;
-        opens: number;
-        viewers: number;
-        /**
-         * Format: date-time
-         * @example 2026-09-17T10:15:00.000Z
-         */
-        lastAccessedAt: string | null;
-      }[];
-      recentDocuments: {
-        /** Format: uuid */
-        id: string;
-        filename: string;
-        mimeType: string;
-        size: number;
-        /**
-         * Format: date-time
-         * @example 2026-09-17T10:15:00.000Z
-         */
-        createdAt: string;
-        uploadedByEmail: string;
-      }[];
-      /** @description null for non-owners. */
-      recentActivity: components['schemas']['AuditEvent'][] | null;
-    };
-    Member: {
-      /** Format: uuid */
-      userId: string;
-      email: string;
-      role: components['schemas']['Role'];
-      /**
-       * Format: date-time
-       * @example 2026-09-17T10:15:00.000Z
-       */
-      joinedAt: string;
-    };
-    PendingInvitation: {
-      /** Format: uuid */
-      id: string;
-      email: string;
-      role: components['schemas']['Role'];
-      /**
-       * Format: date-time
-       * @example 2026-09-17T10:15:00.000Z
-       */
-      expiresAt: string;
-    };
-    ChangeRoleRequest: {
-      role: components['schemas']['Role'];
-    };
-    InvitationCreated: {
-      invitation: components['schemas']['PendingInvitation'];
-      /**
-       * Format: uri
-       * @description Only when EXPOSE_INVITE_LINKS is enabled (development). The email is sent by the worker.
-       */
-      inviteUrl?: string;
-    };
-    InviteRequest: {
-      /** Format: email */
-      email: string;
-      role?: components['schemas']['Role'] & unknown;
-    };
-    InvitationPreview: {
-      workspaceName: string;
-      email: string;
-      role: components['schemas']['Role'];
-      /**
-       * Format: date-time
-       * @example 2026-09-17T10:15:00.000Z
-       */
-      expiresAt: string;
-    };
-    Document: {
-      /** Format: uuid */
-      id: string;
-      filename: string;
-      mimeType: string;
-      size: number;
-      /** @description Hex SHA-256 of the stored bytes; null only while an older file is backfilled. */
-      sha256: string | null;
-      /**
-       * @description pending: being checked for malware (not downloadable yet). infected: removed. unscanned: not scanned (scanning off, too large, or uploaded before scanning).
-       * @enum {string}
-       */
-      scanStatus: 'pending' | 'clean' | 'infected' | 'unscanned';
-      /** Format: uuid */
-      folderId: string | null;
-      /** Format: uuid */
-      uploadedBy: string;
-      /** @description Present in listings. */
-      uploadedByEmail?: string;
-      /**
-       * Format: date-time
-       * @example 2026-09-17T10:15:00.000Z
-       */
-      createdAt: string;
-      /**
-       * Format: date-time
-       * @example 2026-09-17T10:15:00.000Z
-       */
-      deletedAt: string | null;
-      deletedByEmail: string | null;
-      /** @description Whether you starred it. Present in listings. */
-      starred?: boolean;
-      /** @description The current version; earlier ones are in /versions. */
-      version: number;
-      /** @description GET /api/documents/{id}/thumbnail has a picture of it. */
-      thumbnail: boolean;
-      /** @description GET /api/documents/{id}/preview can show it (PDFs, images, and converted Office files). */
-      previewable: boolean;
-      /** @description When searching and the text matched: a passage around the match, with the matched terms in ⟦ ⟧. */
-      matchSnippet?: string | null;
-      /** @description Rollup of live share links. Present in listings. */
-      links?: {
-        count: number;
-        opens: number;
-        /**
-         * Format: date-time
-         * @example 2026-09-17T10:15:00.000Z
-         */
-        lastAccessedAt: string | null;
-      };
-    };
-    Folder: {
-      /** Format: uuid */
-      id: string;
-      name: string;
-      /** Format: uuid */
-      parentId: string | null;
-      /** Format: uuid */
-      createdBy: string | null;
-      /**
-       * Format: date-time
-       * @example 2026-09-17T10:15:00.000Z
-       */
-      createdAt: string;
-      documentCount?: number;
-      folderCount?: number;
-    };
-    DocumentList: {
-      role: components['schemas']['Role'];
-      documents: components['schemas']['Document'][];
-      nextCursor: string | null;
-      folders: components['schemas']['Folder'][];
-      path: components['schemas']['Folder'][];
-      /** @description Tab counts for the whole workspace; null on pages after the first. */
-      counts: {
-        all: number;
-        shared: number;
-        mine: number;
-        starred: number;
-        trash: number;
-      } | null;
-      storage: components['schemas']['StorageUsage'];
-      trashRetentionDays: number;
-    };
-    UploadResult: {
-      document: components['schemas']['Document'];
-      /** @description A live document in the workspace with identical content. */
-      duplicateOf: {
-        /** Format: uuid */
-        id: string;
-        filename: string;
-      } | null;
-    };
-    UpdateDocumentRequest: {
-      filename?: string;
-      /**
-       * Format: uuid
-       * @description null moves the document to the workspace root.
-       */
-      folderId?: string | null;
-    };
-    BulkDocumentsResult: {
-      results: {
-        /** Format: uuid */
-        id: string;
-        ok: boolean;
-        error?: {
-          code: string;
-          message: string;
+    schemas: {
+        User: {
+            /** Format: uuid */
+            id: string;
+            email: string;
+            /** @description False until the address is confirmed; share links and invitations need it. */
+            emailVerified: boolean;
         };
-      }[];
-      succeeded: number;
-      failed: number;
-    };
-    BulkDocumentsRequest: {
-      /**
-       * @description delete permanently removes documents already in the trash (owners only).
-       * @enum {string}
-       */
-      action: 'trash' | 'restore' | 'delete' | 'move';
-      ids: string[];
-      /**
-       * Format: uuid
-       * @description Where move puts them; null is the workspace root.
-       */
-      folderId?: string | null;
-    };
-    ArchiveSummary: {
-      filename: string;
-      files: number;
-      bytes: number;
-      /** @description Chosen files left out because the malware scan has not cleared them. */
-      skipped: number;
-    };
-    DocumentVersion: {
-      version: number;
-      current: boolean;
-      /** @description The name the document had when this version was current. */
-      filename: string;
-      size: number;
-      sha256: string | null;
-      /** @enum {string} */
-      scanStatus: 'pending' | 'clean' | 'infected' | 'unscanned';
-      /** Format: uuid */
-      uploadedBy: string;
-      uploadedByEmail: string;
-      /**
-       * Format: date-time
-       * @description When this version was uploaded.
-       * @example 2026-09-17T10:15:00.000Z
-       */
-      createdAt: string;
-    };
-    DocumentVersions: {
-      versions: components['schemas']['DocumentVersion'][];
-    };
-    ShareActivity: {
-      opens: number;
-      downloads: number;
-      /** @description Estimate: NAT merges viewers, network changes split them. */
-      distinctViewers: number;
-      /**
-       * Format: date-time
-       * @example 2026-09-17T10:15:00.000Z
-       */
-      firstAccessedAt: string | null;
-      /**
-       * Format: date-time
-       * @example 2026-09-17T10:15:00.000Z
-       */
-      lastAccessedAt: string | null;
-      blockedAttempts: number;
-    };
-    ShareSummary: {
-      /** Format: uuid */
-      id: string;
-      /** Format: uuid */
-      createdBy: string;
-      /**
-       * Format: date-time
-       * @example 2026-09-17T10:15:00.000Z
-       */
-      createdAt: string;
-      /**
-       * Format: date-time
-       * @example 2026-09-17T10:15:00.000Z
-       */
-      expiresAt: string | null;
-      hasPassword: boolean;
-      maxDownloads: number | null;
-      downloadCount: number;
-      allowDownload: boolean;
-      allowedEmails: string[];
-      activity: components['schemas']['ShareActivity'];
-    };
-    Upload: {
-      /** Format: uuid */
-      id: string;
-      filename: string;
-      size: number;
-      /** Format: uuid */
-      folderId: string | null;
-      /** @description Every part except the last is exactly this many bytes. */
-      partSize: number;
-      partCount: number;
-      /** @enum {string} */
-      status: 'pending' | 'completing' | 'completed' | 'aborted' | 'expired' | 'rejected';
-      /**
-       * Format: date-time
-       * @example 2026-09-17T10:15:00.000Z
-       */
-      expiresAt: string;
-    };
-    UploadCreated: {
-      upload: components['schemas']['Upload'];
-    };
-    CreateUploadRequest: {
-      filename: string;
-      /** @description Exact size in bytes. */
-      size: number;
-      mimeType: string;
-      /** Format: uuid */
-      folderId?: string | null;
-    };
-    SignedParts: {
-      parts: {
-        partNumber: number;
-        /**
-         * Format: uri
-         * @description PUT the part body here. Read the ETag response header.
-         */
-        url: string;
-      }[];
-      /**
-       * Format: date-time
-       * @example 2026-09-17T10:15:00.000Z
-       */
-      expiresAt: string;
-    };
-    SignPartsRequest: {
-      partNumbers: number[];
-    };
-    UploadStatus: {
-      upload: components['schemas']['Upload'];
-      uploadedParts: {
-        partNumber: number;
-        size: number;
-      }[];
-    };
-    CreateFolderRequest: {
-      name: string;
-      /**
-       * Format: uuid
-       * @default null
-       */
-      parentId: string | null;
-    };
-    UpdateFolderRequest: {
-      name?: string;
-      /** Format: uuid */
-      parentId?: string | null;
-    };
-    CreateShareRequest: {
-      /** Format: uuid */
-      documentId: string;
-      /** @description null = never expires; omitted = the default (create) or unchanged (edit). */
-      expiresInHours?: number | null;
-      /** @description null removes the password. */
-      password?: string | null;
-      /** @description null = unlimited; 1 = one-time link. */
-      maxDownloads?: number | null;
-      /** @description false = view only: the file is shown in the page (watermarked) and cannot be downloaded. PDFs and images only. */
-      allowDownload?: boolean;
-      /** @description Only these people can open the link, each proving their address with a one-time emailed code. Empty = anyone with the link. */
-      allowedEmails?: string[];
-    };
-    UpdateShareRequest: {
-      /** @description null = never expires; omitted = the default (create) or unchanged (edit). */
-      expiresInHours?: number | null;
-      /** @description null removes the password. */
-      password?: string | null;
-      /** @description null = unlimited; 1 = one-time link. */
-      maxDownloads?: number | null;
-      /** @description false = view only: the file is shown in the page (watermarked) and cannot be downloaded. PDFs and images only. */
-      allowDownload?: boolean;
-      /** @description Only these people can open the link, each proving their address with a one-time emailed code. Empty = anyone with the link. */
-      allowedEmails?: string[];
-    };
-    /** @enum {string} */
-    ShareOutcome:
-      | 'resolved'
-      | 'downloaded'
-      | 'expired'
-      | 'revoked'
-      | 'document_deleted'
-      | 'exhausted'
-      | 'bad_password'
-      | 'bad_code';
-    PublicShare:
-      | {
-          /** @enum {boolean} */
-          locked: true;
-          /** @description Confirm an address on the link with a one-time code. */
-          requiresEmail: boolean;
-          requiresPassword: boolean;
-          /**
-           * Format: date-time
-           * @example 2026-09-17T10:15:00.000Z
-           */
-          expiresAt: string | null;
-        }
-      | {
-          /** @enum {boolean} */
-          locked: false;
-          passwordProtected: boolean;
-          restricted: boolean;
-          viewerEmail: string | null;
-          allowDownload: boolean;
-          /** @description GET /api/shares/{token}/content can show it in the page. */
-          previewable: boolean;
-          /** @description On a view-only link: the text stamped on the file, to overlay on images. */
-          watermark: string | null;
-          filename: string;
-          mimeType: string;
-          size: number;
-          /**
-           * Format: date-time
-           * @example 2026-09-17T10:15:00.000Z
-           */
-          expiresAt: string | null;
-          downloadsRemaining: number | null;
+        Error: {
+            error: {
+                /** @example NOT_FOUND */
+                code: string;
+                message: string;
+                /** @description Per-field problems, for VALIDATION_FAILED. */
+                details?: {
+                    path: string;
+                    message: string;
+                }[];
+            };
         };
-    UnlockRequest: {
-      password: string;
-    };
-    ShareCodeRequest: {
-      /** Format: email */
-      email: string;
-    };
-    ShareCodeVerifyRequest: {
-      /** Format: email */
-      email: string;
-      code: string;
-    };
-    CreateFolderShareRequest: {
-      /** Format: uuid */
-      folderId: string;
-      /** @description null = never expires; omitted = the default. */
-      expiresInHours?: number | null;
-      password?: string | null;
-    };
-    FolderShareSummary: {
-      /** Format: uuid */
-      id: string;
-      /** Format: uuid */
-      createdBy: string;
-      /**
-       * Format: date-time
-       * @example 2026-09-17T10:15:00.000Z
-       */
-      createdAt: string;
-      /**
-       * Format: date-time
-       * @example 2026-09-17T10:15:00.000Z
-       */
-      expiresAt: string | null;
-      hasPassword: boolean;
-      opens: number;
-      downloads: number;
-      /**
-       * Format: date-time
-       * @example 2026-09-17T10:15:00.000Z
-       */
-      lastAccessedAt: string | null;
-    };
-    PublicFolderShare:
-      | {
-          /** @enum {boolean} */
-          locked: true;
-          /**
-           * Format: date-time
-           * @example 2026-09-17T10:15:00.000Z
-           */
-          expiresAt: string | null;
-        }
-      | {
-          /** @enum {boolean} */
-          locked: false;
-          /** @description The shared folder. */
-          name: string;
-          /**
-           * Format: date-time
-           * @example 2026-09-17T10:15:00.000Z
-           */
-          expiresAt: string | null;
-          passwordProtected: boolean;
-          /** @description From the shared folder down to the one shown. */
-          path: {
+        Credentials: {
+            /** Format: email */
+            email: string;
+            password: string;
+        };
+        RegisterRequest: components["schemas"]["Credentials"] & {
+            inviteToken?: string;
+        };
+        /** @enum {string} */
+        Role: "OWNER" | "MEMBER" | "VIEWER";
+        WorkspaceSummary: {
             /** Format: uuid */
             id: string;
             name: string;
-          }[];
-          folders: {
+            role: components["schemas"]["Role"];
+        };
+        Me: {
+            user: components["schemas"]["User"];
+            workspaces: components["schemas"]["WorkspaceSummary"][];
+        };
+        ForgotPasswordRequest: {
+            /** Format: email */
+            email: string;
+        };
+        ResetPasswordRequest: {
+            token: string;
+            password: string;
+        };
+        ChangePasswordRequest: {
+            currentPassword: string;
+            newPassword: string;
+        };
+        VerifyEmailRequest: {
+            token: string;
+        };
+        Session: {
+            /** Format: uuid */
+            id: string;
+            userAgent: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            lastSeenAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            expiresAt: string;
+            current: boolean;
+        };
+        CreateWorkspaceRequest: {
+            name: string;
+        };
+        RenameWorkspaceRequest: {
+            name: string;
+        };
+        DeleteWorkspaceRequest: {
+            /** @description The workspace's exact current name. */
+            confirmName: string;
+        };
+        StorageUsage: {
+            usedBytes: number;
+            quotaBytes: number;
+        };
+        /** @enum {string} */
+        AuditAction: "workspace.created" | "workspace.renamed" | "document.uploaded" | "document.downloaded" | "document.previewed" | "document.deleted" | "document.renamed" | "document.moved" | "document.trashed" | "document.restored" | "document.purged" | "document.version_uploaded" | "document.version_restored" | "document.version_deleted" | "folder.created" | "folder.renamed" | "folder.moved" | "folder.deleted" | "share.created" | "share.updated" | "share.revoked" | "share.accessed" | "share.blocked" | "member.invited" | "member.joined" | "member.removed" | "member.left" | "member.role_changed" | "invitation.revoked" | "document.quarantined";
+        AuditEvent: {
+            /** Format: uuid */
+            id: string;
+            actorEmail: string | null;
+            action: components["schemas"]["AuditAction"];
+            /** @enum {string} */
+            resourceType: "workspace" | "document" | "folder" | "share" | "folder_share" | "member" | "invitation";
+            /** Format: uuid */
+            resourceId: string | null;
+            metadata: {
+                [key: string]: unknown;
+            };
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            createdAt: string;
+        };
+        Overview: {
+            role: components["schemas"]["Role"];
+            totals: {
+                documents: number;
+                bytes: number;
+                members: number;
+                liveLinks: number;
+                opens: number;
+                pendingInvites: number;
+            };
+            storage: components["schemas"]["StorageUsage"];
+            storageByType: {
+                category: string;
+                count: number;
+                bytes: number;
+            }[];
+            series: {
+                day: string;
+                uploads: number;
+                opens: number;
+            }[];
+            topShared: {
+                /** Format: uuid */
+                id: string;
+                filename: string;
+                mimeType: string;
+                opens: number;
+                viewers: number;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-17T10:15:00.000Z
+                 */
+                lastAccessedAt: string | null;
+            }[];
+            recentDocuments: {
+                /** Format: uuid */
+                id: string;
+                filename: string;
+                mimeType: string;
+                size: number;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-17T10:15:00.000Z
+                 */
+                createdAt: string;
+                uploadedByEmail: string;
+            }[];
+            /** @description null for non-owners. */
+            recentActivity: components["schemas"]["AuditEvent"][] | null;
+        };
+        Member: {
+            /** Format: uuid */
+            userId: string;
+            email: string;
+            role: components["schemas"]["Role"];
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            joinedAt: string;
+        };
+        PendingInvitation: {
+            /** Format: uuid */
+            id: string;
+            email: string;
+            role: components["schemas"]["Role"];
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            expiresAt: string;
+        };
+        ChangeRoleRequest: {
+            role: components["schemas"]["Role"];
+        };
+        InvitationCreated: {
+            invitation: components["schemas"]["PendingInvitation"];
+            /**
+             * Format: uri
+             * @description Only when EXPOSE_INVITE_LINKS is enabled (development). The email is sent by the worker.
+             */
+            inviteUrl?: string;
+        };
+        InviteRequest: {
+            /** Format: email */
+            email: string;
+            role?: components["schemas"]["Role"] & unknown;
+        };
+        InvitationPreview: {
+            workspaceName: string;
+            email: string;
+            role: components["schemas"]["Role"];
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            expiresAt: string;
+        };
+        Document: {
+            /** Format: uuid */
+            id: string;
+            filename: string;
+            mimeType: string;
+            size: number;
+            /** @description Hex SHA-256 of the stored bytes; null only while an older file is backfilled. */
+            sha256: string | null;
+            /**
+             * @description pending: being checked for malware (not downloadable yet). infected: removed. unscanned: not scanned (scanning off, too large, or uploaded before scanning).
+             * @enum {string}
+             */
+            scanStatus: "pending" | "clean" | "infected" | "unscanned";
+            /** Format: uuid */
+            folderId: string | null;
+            /** Format: uuid */
+            uploadedBy: string;
+            /** @description Present in listings. */
+            uploadedByEmail?: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            deletedAt: string | null;
+            deletedByEmail: string | null;
+            /** @description Whether you starred it. Present in listings. */
+            starred?: boolean;
+            /** @description The current version; earlier ones are in /versions. */
+            version: number;
+            /** @description GET /api/documents/{id}/thumbnail has a picture of it. */
+            thumbnail: boolean;
+            /** @description GET /api/documents/{id}/preview can show it (PDFs, images, and converted Office files). */
+            previewable: boolean;
+            /** @description When searching and the text matched: a passage around the match, with the matched terms in ⟦ ⟧. */
+            matchSnippet?: string | null;
+            /** @description Rollup of live share links. Present in listings. */
+            links?: {
+                count: number;
+                opens: number;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-17T10:15:00.000Z
+                 */
+                lastAccessedAt: string | null;
+            };
+        };
+        Folder: {
             /** Format: uuid */
             id: string;
             name: string;
-            documentCount: number;
-            folderCount: number;
-          }[];
-          documents: {
+            /** Format: uuid */
+            parentId: string | null;
+            /** Format: uuid */
+            createdBy: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            createdAt: string;
+            documentCount?: number;
+            folderCount?: number;
+        };
+        DocumentList: {
+            role: components["schemas"]["Role"];
+            documents: components["schemas"]["Document"][];
+            nextCursor: string | null;
+            folders: components["schemas"]["Folder"][];
+            path: components["schemas"]["Folder"][];
+            /** @description Tab counts for the whole workspace; null on pages after the first. */
+            counts: {
+                all: number;
+                shared: number;
+                mine: number;
+                starred: number;
+                trash: number;
+            } | null;
+            storage: components["schemas"]["StorageUsage"];
+            trashRetentionDays: number;
+        };
+        UploadResult: {
+            document: components["schemas"]["Document"];
+            /** @description A live document in the workspace with identical content. */
+            duplicateOf: {
+                /** Format: uuid */
+                id: string;
+                filename: string;
+            } | null;
+        };
+        UpdateDocumentRequest: {
+            filename?: string;
+            /**
+             * Format: uuid
+             * @description null moves the document to the workspace root.
+             */
+            folderId?: string | null;
+        };
+        BulkDocumentsResult: {
+            results: {
+                /** Format: uuid */
+                id: string;
+                ok: boolean;
+                error?: {
+                    code: string;
+                    message: string;
+                };
+            }[];
+            succeeded: number;
+            failed: number;
+        };
+        BulkDocumentsRequest: {
+            /**
+             * @description delete permanently removes documents already in the trash (owners only).
+             * @enum {string}
+             */
+            action: "trash" | "restore" | "delete" | "move";
+            ids: string[];
+            /**
+             * Format: uuid
+             * @description Where move puts them; null is the workspace root.
+             */
+            folderId?: string | null;
+        };
+        ArchiveSummary: {
+            filename: string;
+            files: number;
+            bytes: number;
+            /** @description Chosen files left out because the malware scan has not cleared them. */
+            skipped: number;
+        };
+        DocumentVersion: {
+            version: number;
+            current: boolean;
+            /** @description The name the document had when this version was current. */
+            filename: string;
+            size: number;
+            sha256: string | null;
+            /** @enum {string} */
+            scanStatus: "pending" | "clean" | "infected" | "unscanned";
+            /** Format: uuid */
+            uploadedBy: string;
+            uploadedByEmail: string;
+            /**
+             * Format: date-time
+             * @description When this version was uploaded.
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            createdAt: string;
+        };
+        DocumentVersions: {
+            versions: components["schemas"]["DocumentVersion"][];
+        };
+        ShareActivity: {
+            opens: number;
+            downloads: number;
+            /** @description Estimate: NAT merges viewers, network changes split them. */
+            distinctViewers: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            firstAccessedAt: string | null;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            lastAccessedAt: string | null;
+            blockedAttempts: number;
+        };
+        ShareSummary: {
             /** Format: uuid */
             id: string;
+            /** Format: uuid */
+            createdBy: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            expiresAt: string | null;
+            hasPassword: boolean;
+            maxDownloads: number | null;
+            downloadCount: number;
+            allowDownload: boolean;
+            allowedEmails: string[];
+            activity: components["schemas"]["ShareActivity"];
+        };
+        Upload: {
+            /** Format: uuid */
+            id: string;
+            filename: string;
+            size: number;
+            /** Format: uuid */
+            folderId: string | null;
+            /** @description Every part except the last is exactly this many bytes. */
+            partSize: number;
+            partCount: number;
+            /** @enum {string} */
+            status: "pending" | "completing" | "completed" | "aborted" | "expired" | "rejected";
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            expiresAt: string;
+        };
+        UploadCreated: {
+            upload: components["schemas"]["Upload"];
+        };
+        CreateUploadRequest: {
+            filename: string;
+            /** @description Exact size in bytes. */
+            size: number;
+            mimeType: string;
+            /** Format: uuid */
+            folderId?: string | null;
+        };
+        SignedParts: {
+            parts: {
+                partNumber: number;
+                /**
+                 * Format: uri
+                 * @description PUT the part body here. Read the ETag response header.
+                 */
+                url: string;
+            }[];
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            expiresAt: string;
+        };
+        SignPartsRequest: {
+            partNumbers: number[];
+        };
+        UploadStatus: {
+            upload: components["schemas"]["Upload"];
+            uploadedParts: {
+                partNumber: number;
+                size: number;
+            }[];
+        };
+        CreateFolderRequest: {
+            name: string;
+            /**
+             * Format: uuid
+             * @default null
+             */
+            parentId: string | null;
+        };
+        UpdateFolderRequest: {
+            name?: string;
+            /** Format: uuid */
+            parentId?: string | null;
+        };
+        CreateShareRequest: {
+            /** Format: uuid */
+            documentId: string;
+            /** @description null = never expires; omitted = the default (create) or unchanged (edit). */
+            expiresInHours?: number | null;
+            /** @description null removes the password. */
+            password?: string | null;
+            /** @description null = unlimited; 1 = one-time link. */
+            maxDownloads?: number | null;
+            /** @description false = view only: the file is shown in the page (watermarked) and cannot be downloaded. PDFs and images only. */
+            allowDownload?: boolean;
+            /** @description Only these people can open the link, each proving their address with a one-time emailed code. Empty = anyone with the link. */
+            allowedEmails?: string[];
+        };
+        UpdateShareRequest: {
+            /** @description null = never expires; omitted = the default (create) or unchanged (edit). */
+            expiresInHours?: number | null;
+            /** @description null removes the password. */
+            password?: string | null;
+            /** @description null = unlimited; 1 = one-time link. */
+            maxDownloads?: number | null;
+            /** @description false = view only: the file is shown in the page (watermarked) and cannot be downloaded. PDFs and images only. */
+            allowDownload?: boolean;
+            /** @description Only these people can open the link, each proving their address with a one-time emailed code. Empty = anyone with the link. */
+            allowedEmails?: string[];
+        };
+        /** @enum {string} */
+        ShareOutcome: "resolved" | "downloaded" | "expired" | "revoked" | "document_deleted" | "exhausted" | "bad_password" | "bad_code";
+        PublicShare: {
+            /** @enum {boolean} */
+            locked: true;
+            /** @description Confirm an address on the link with a one-time code. */
+            requiresEmail: boolean;
+            requiresPassword: boolean;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            expiresAt: string | null;
+        } | {
+            /** @enum {boolean} */
+            locked: false;
+            passwordProtected: boolean;
+            restricted: boolean;
+            viewerEmail: string | null;
+            allowDownload: boolean;
+            /** @description GET /api/shares/{token}/content can show it in the page. */
+            previewable: boolean;
+            /** @description On a view-only link: the text stamped on the file, to overlay on images. */
+            watermark: string | null;
             filename: string;
             mimeType: string;
             size: number;
@@ -6675,71 +6635,174 @@ export interface components {
              * Format: date-time
              * @example 2026-09-17T10:15:00.000Z
              */
-            createdAt: string;
-          }[];
-          /** @description More than 500 folders or files here; only the first are listed. */
-          truncated: boolean;
+            expiresAt: string | null;
+            downloadsRemaining: number | null;
         };
-    AuditVerification: {
-      valid: boolean;
-      /** @description Events recorded before hashing began; not verifiable. */
-      legacyEvents: number;
-      chainedEvents: number;
-      /** @description The last verified event. Record its hash elsewhere to detect later removal from the end. */
-      head: {
-        /** Format: uuid */
-        eventId: string;
-        hash: string;
-        /**
-         * Format: date-time
-         * @example 2026-09-17T10:15:00.000Z
-         */
-        at: string;
-      } | null;
-      brokenAt: {
-        /** Format: uuid */
-        eventId: string;
-        reason: string;
-      } | null;
+        UnlockRequest: {
+            password: string;
+        };
+        ShareCodeRequest: {
+            /** Format: email */
+            email: string;
+        };
+        ShareCodeVerifyRequest: {
+            /** Format: email */
+            email: string;
+            code: string;
+        };
+        CreateFolderShareRequest: {
+            /** Format: uuid */
+            folderId: string;
+            /** @description null = never expires; omitted = the default. */
+            expiresInHours?: number | null;
+            password?: string | null;
+        };
+        FolderShareSummary: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            createdBy: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            expiresAt: string | null;
+            hasPassword: boolean;
+            opens: number;
+            downloads: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            lastAccessedAt: string | null;
+        };
+        PublicFolderShare: {
+            /** @enum {boolean} */
+            locked: true;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            expiresAt: string | null;
+        } | {
+            /** @enum {boolean} */
+            locked: false;
+            /** @description The shared folder. */
+            name: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            expiresAt: string | null;
+            passwordProtected: boolean;
+            /** @description From the shared folder down to the one shown. */
+            path: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+            }[];
+            folders: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                documentCount: number;
+                folderCount: number;
+            }[];
+            documents: {
+                /** Format: uuid */
+                id: string;
+                filename: string;
+                mimeType: string;
+                size: number;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-17T10:15:00.000Z
+                 */
+                createdAt: string;
+            }[];
+            /** @description More than 500 folders or files here; only the first are listed. */
+            truncated: boolean;
+        };
+        AuditVerification: {
+            valid: boolean;
+            /** @description Events recorded before hashing began; not verifiable. */
+            legacyEvents: number;
+            chainedEvents: number;
+            /** @description The last verified event. Record its hash elsewhere to detect later removal from the end. */
+            head: {
+                /** Format: uuid */
+                eventId: string;
+                hash: string;
+                /**
+                 * Format: date-time
+                 * @example 2026-09-17T10:15:00.000Z
+                 */
+                at: string;
+            } | null;
+            brokenAt: {
+                /** Format: uuid */
+                eventId: string;
+                reason: string;
+            } | null;
+        };
+        /** @enum {string} */
+        NotificationType: "share.first_open" | "share.new_viewer" | "share.forwarding_suspected" | "document.uploaded" | "member.joined" | "member.removed" | "member.role_changed" | "workspace.deleted" | "document.quarantined";
+        Notification: {
+            /** Format: uuid */
+            id: string;
+            type: components["schemas"]["NotificationType"];
+            title: string;
+            body: string | null;
+            /** Format: uuid */
+            workspaceId: string | null;
+            /** Format: uuid */
+            resourceId: string | null;
+            read: boolean;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            createdAt: string;
+        };
+        NotificationPreferences: {
+            /**
+             * @description A summary email of unread notifications.
+             * @enum {string}
+             */
+            digest: "off" | "daily" | "weekly";
+            /** @description Types also emailed as they happen. */
+            instant: components["schemas"]["NotificationType"][];
+            /** @description Types not shown in the app (still emailed if also in instant). Essential types cannot be muted. */
+            muted: components["schemas"]["NotificationType"][];
+            /** @description Types that are always shown. */
+            essential: components["schemas"]["NotificationType"][];
+        };
+        NotificationPreferencesRequest: {
+            /**
+             * @description A summary email of unread notifications.
+             * @enum {string}
+             */
+            digest: "off" | "daily" | "weekly";
+            /** @description Types also emailed as they happen. */
+            instant: components["schemas"]["NotificationType"][];
+            /** @description Types not shown in the app (still emailed if also in instant). Essential types cannot be muted. */
+            muted: components["schemas"]["NotificationType"][];
+        };
+        MarkReadRequest: {
+            /** Format: uuid */
+            id?: string;
+        };
     };
-    /** @enum {string} */
-    NotificationType:
-      | 'share.first_open'
-      | 'share.new_viewer'
-      | 'share.forwarding_suspected'
-      | 'document.uploaded'
-      | 'member.joined'
-      | 'member.removed'
-      | 'member.role_changed'
-      | 'workspace.deleted'
-      | 'document.quarantined';
-    Notification: {
-      /** Format: uuid */
-      id: string;
-      type: components['schemas']['NotificationType'];
-      title: string;
-      body: string | null;
-      /** Format: uuid */
-      workspaceId: string | null;
-      /** Format: uuid */
-      resourceId: string | null;
-      read: boolean;
-      /**
-       * Format: date-time
-       * @example 2026-09-17T10:15:00.000Z
-       */
-      createdAt: string;
-    };
-    MarkReadRequest: {
-      /** Format: uuid */
-      id?: string;
-    };
-  };
-  responses: never;
-  parameters: never;
-  requestBodies: never;
-  headers: never;
-  pathItems: never;
+    responses: never;
+    parameters: never;
+    requestBodies: never;
+    headers: never;
+    pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;

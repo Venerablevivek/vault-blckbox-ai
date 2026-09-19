@@ -57,7 +57,7 @@ export function createServices(deps: {
   // Cross-cutting services first: the feature modules depend on them.
   const jobs = createJobQueue({ pool, listenPool: directPool, clock, logger });
   const audit = createAuditService({ pool, readPool, clock, logger });
-  const notifications = createNotificationsService({ pool, clock, logger, jobs });
+  const notifications = createNotificationsService({ pool, clock, logger, jobs, webUrl: config.WEB_URL });
 
   const auth = createAuthService({
     pool,
@@ -159,6 +159,7 @@ export function createServices(deps: {
     logger,
     documents,
     uploads,
+    notifications,
     shareEventRetentionMonths: config.SHARE_EVENT_RETENTION_MONTHS,
   });
 
