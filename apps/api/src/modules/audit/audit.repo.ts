@@ -26,6 +26,9 @@ export type AuditAction =
   | 'document.version_uploaded'
   | 'document.version_restored'
   | 'document.version_deleted'
+  | 'webhook.created'
+  | 'webhook.updated'
+  | 'webhook.deleted'
   | 'folder.created'
   | 'folder.renamed'
   | 'folder.moved'
@@ -34,7 +37,8 @@ export type AuditAction =
   | 'workspace.renamed'
   | 'document.quarantined';
 
-export type AuditResource = 'workspace' | 'document' | 'folder' | 'share' | 'folder_share' | 'member' | 'invitation';
+export type AuditResource =
+  'workspace' | 'document' | 'folder' | 'share' | 'folder_share' | 'member' | 'invitation' | 'webhook';
 
 export interface AuditRow {
   id: string;
@@ -134,6 +138,18 @@ export const auditRepo = {
   },
 
   /** A page of the chain in order, for verification. */
+  /** One event with its actor's email, for delivering it to webhooks. */
+  async findEvent(db: Db, id: string): Promise<AuditRow | null> {
+    const { rows } = await db.query<AuditRow>(
+      `SELECT a.id, a.actor_user_id, u.email AS actor_email, a.action, a.resource_type, a.resource_id, a.metadata,
+              a.created_at, a.seq::text AS seq, a.hash
+         FROM audit_events a LEFT JOIN users u ON u.id = a.actor_user_id
+        WHERE a.id = $1`,
+      [id],
+    );
+    return rows[0] ?? null;
+  },
+
   async chainPage(db: Db, workspaceId: string, afterSeq: string, limit: number): Promise<ChainRow[]> {
     const { rows } = await db.query<ChainRow>(
       `SELECT seq, id, workspace_id, actor_user_id, action, resource_type, resource_id, metadata, created_at, prev_hash, hash

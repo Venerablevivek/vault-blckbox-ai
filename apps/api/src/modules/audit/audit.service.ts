@@ -4,6 +4,8 @@ import type { Logger } from 'pino';
 import type { Db } from '../../db/pool';
 import { withTenant } from '../../db/tenant';
 import { withTransaction } from '../../db/tx';
+import type { JobQueue } from '../../jobs/queue';
+import { webhooksRepo } from '../webhooks/webhooks.repo';
 import { chainHash } from './audit-chain';
 import type { Clock } from '../../types';
 import { auditRepo, type AuditAction, type AuditFilter, type AuditResource, type AuditRow } from './audit.repo';
@@ -29,8 +31,26 @@ export interface AuditEntry {
   metadata?: Record<string, unknown>;
 }
 
-export function createAuditService(deps: { pool: Pool; readPool?: Pool; clock: Clock; logger: Logger }) {
-  const { pool, clock, logger } = deps;
+export function createAuditService(deps: {
+  pool: Pool;
+  readPool?: Pool;
+  clock: Clock;
+  logger: Logger;
+  jobs: JobQueue;
+}) {
+  const { pool, clock, logger, jobs } = deps;
+
+  /**
+   * Writes an event and, in the same transaction, queues a delivery to every enabled webhook of
+   * the workspace that asked for its action: a delivery exists exactly when its event does.
+   */
+  async function write(tx: Db, entry: AuditEntry): Promise<void> {
+    const row = toRow(entry);
+    await auditRepo.insertChained(tx, row);
+    for (const webhookId of await webhooksRepo.subscribers(tx, row.workspaceId, row.action)) {
+      await jobs.enqueue(tx, 'webhook.deliver', { webhookId, eventId: row.id }, { maxAttempts: 6 });
+    }
+  }
   // Reading the trail tolerates replication lag; writing it never goes to a replica.
   const readPool = deps.readPool ?? pool;
 
@@ -56,8 +76,8 @@ export function createAuditService(deps: { pool: Pool; readPool?: Pool; clock: C
      * not at all.
      */
     async record(entry: AuditEntry, tx?: Db): Promise<void> {
-      if (tx) await auditRepo.insertChained(tx, toRow(entry));
-      else await withTransaction(pool, (own) => auditRepo.insertChained(own, toRow(entry)));
+      if (tx) await write(tx, entry);
+      else await withTransaction(pool, (own) => write(own, entry));
     },
 
     /**
@@ -69,7 +89,7 @@ export function createAuditService(deps: { pool: Pool; readPool?: Pool; clock: C
      * mutations — hence two methods rather than one.
      */
     recordAsync(entry: AuditEntry): void {
-      void withTransaction(pool, (tx) => auditRepo.insertChained(tx, toRow(entry))).catch((error: unknown) => {
+      void withTransaction(pool, (tx) => write(tx, entry)).catch((error: unknown) => {
         logger.warn({ err: error, action: entry.action }, 'failed to write audit event');
       });
     },

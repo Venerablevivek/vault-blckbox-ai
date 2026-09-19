@@ -5848,6 +5848,427 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/workspaces/{id}/webhooks': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The workspace's webhooks (owners only) */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Success */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              webhooks: components['schemas']['Webhook'][];
+            };
+          };
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Signed in and a member, but the role does not allow this. */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    put?: never;
+    /**
+     * Add a webhook
+     * @description Each chosen event is POSTed as JSON: { id, type, createdAt, workspaceId, actor, resource, data }, with headers Vault-Event, Vault-Delivery and Vault-Signature. Failed deliveries are retried with backoff; after 15 failures in a row the webhook is switched off. At most 10 per workspace.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['CreateWebhookRequest'];
+        };
+      };
+      responses: {
+        /** @description Success */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              webhook: components['schemas']['Webhook'];
+              /** @description Signs every delivery: the Vault-Signature header is t=<unix seconds>,v1=<hex HMAC-SHA256 of "<t>.<body>">. Returned only here. */
+              secret: string;
+            };
+          };
+        };
+        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Signed in and a member, but the role does not allow this. */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Conflict with the current state. */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/workspaces/{id}/webhooks/{webhookId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Remove a webhook */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+          webhookId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Success, no content */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Signed in and a member, but the role does not allow this. */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    /** Change a webhook, or switch it off and on */
+    patch: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+          webhookId: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': components['schemas']['UpdateWebhookRequest'];
+        };
+      };
+      responses: {
+        /** @description Success */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              webhook: components['schemas']['Webhook'];
+            };
+          };
+        };
+        /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Signed in and a member, but the role does not allow this. */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    trace?: never;
+  };
+  '/api/workspaces/{id}/webhooks/{webhookId}/deliveries': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** The last 50 delivery attempts */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+          webhookId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Success */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              deliveries: components['schemas']['WebhookDelivery'][];
+            };
+          };
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Signed in and a member, but the role does not allow this. */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/workspaces/{id}/webhooks/{webhookId}/ping': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Send a test delivery (webhook.ping) now */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+          webhookId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Success */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              success: boolean;
+              statusCode: number | null;
+              error: string | null;
+            };
+          };
+        };
+        /** @description Not signed in. */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Signed in and a member, but the role does not allow this. */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Not found, or not a member (deliberately identical). */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+        /** @description Rate limited or locked out. See Retry-After. */
+        429: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Error'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/workspaces/{id}/audit/verify': {
     parameters: {
       query?: never;
@@ -6441,6 +6862,9 @@ export interface components {
       | 'document.version_uploaded'
       | 'document.version_restored'
       | 'document.version_deleted'
+      | 'webhook.created'
+      | 'webhook.updated'
+      | 'webhook.deleted'
       | 'folder.created'
       | 'folder.renamed'
       | 'folder.moved'
@@ -6463,7 +6887,8 @@ export interface components {
       actorEmail: string | null;
       action: components['schemas']['AuditAction'];
       /** @enum {string} */
-      resourceType: 'workspace' | 'document' | 'folder' | 'share' | 'folder_share' | 'member' | 'invitation';
+      resourceType:
+        'workspace' | 'document' | 'folder' | 'share' | 'folder_share' | 'member' | 'invitation' | 'webhook';
       /** Format: uuid */
       resourceId: string | null;
       metadata: {
@@ -6997,6 +7422,56 @@ export interface components {
           /** @description More than 500 folders or files here; only the first are listed. */
           truncated: boolean;
         };
+    Webhook: {
+      /** Format: uuid */
+      id: string;
+      url: string;
+      events: string[];
+      /**
+       * Format: date-time
+       * @example 2026-09-17T10:15:00.000Z
+       */
+      createdAt: string;
+      enabled: boolean;
+      disabledReason: string | null;
+      consecutiveFailures: number;
+      /**
+       * Format: date-time
+       * @example 2026-09-17T10:15:00.000Z
+       */
+      lastDeliveryAt: string | null;
+      lastStatus: number | null;
+    };
+    CreateWebhookRequest: {
+      /** @description An https URL on a public address. Redirects are not followed. */
+      url: string;
+      /** @description Activity to send: any of the audit actions. */
+      events: components['schemas']['AuditAction'][];
+    };
+    UpdateWebhookRequest: {
+      /** @description An https URL on a public address. Redirects are not followed. */
+      url?: string;
+      /** @description Activity to send: any of the audit actions. */
+      events?: components['schemas']['AuditAction'][];
+      /** @description true switches a disabled webhook back on and resets its failure count. */
+      enabled?: boolean;
+    };
+    WebhookDelivery: {
+      /** Format: uuid */
+      id: string;
+      /** Format: uuid */
+      eventId: string | null;
+      eventType: string;
+      success: boolean;
+      statusCode: number | null;
+      error: string | null;
+      durationMs: number;
+      /**
+       * Format: date-time
+       * @example 2026-09-17T10:15:00.000Z
+       */
+      attemptedAt: string;
+    };
     AuditVerification: {
       valid: boolean;
       /** @description Events recorded before hashing began; not verifiable. */

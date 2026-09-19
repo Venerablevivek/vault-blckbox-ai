@@ -117,6 +117,13 @@ const schema = z.object({
   /** Earlier versions kept per document; the oldest go when a new version would exceed this. */
   DOCUMENT_MAX_VERSIONS: z.coerce.number().int().min(1).max(500).default(20),
 
+  /**
+   * Allow webhook URLs over plain http and to private or local addresses. Only for development
+   * and tests: in production a webhook must never reach the internal network.
+   */
+  WEBHOOK_ALLOW_INSECURE: booleanish.default(false),
+  WEBHOOK_TIMEOUT_MS: z.coerce.number().int().min(1000).max(30_000).default(10_000),
+
   /** Days a deleted document stays restorable before it is purged. */
   TRASH_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(30),
 

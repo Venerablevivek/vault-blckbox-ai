@@ -1,5 +1,6 @@
 import {
   History,
+  Webhook,
   Download,
   Eye,
   ArchiveRestore,
@@ -56,6 +57,9 @@ export const AUDIT_STYLE: Record<AuditAction, { icon: LucideIcon; tone: string }
   'document.version_uploaded': { icon: History, tone: 'bg-brand-50 text-brand-600' },
   'document.version_restored': { icon: History, tone: 'bg-ok-soft text-ok' },
   'document.version_deleted': { icon: History, tone: 'bg-danger-soft text-danger' },
+  'webhook.created': { icon: Webhook, tone: 'bg-slate-100 text-ink-muted' },
+  'webhook.updated': { icon: Webhook, tone: 'bg-slate-100 text-ink-muted' },
+  'webhook.deleted': { icon: Webhook, tone: 'bg-danger-soft text-danger' },
   'folder.created': { icon: FolderPlus, tone: 'bg-brand-50 text-brand-600' },
   'folder.renamed': { icon: FolderPen, tone: 'bg-slate-100 text-ink-muted' },
   'folder.moved': { icon: FolderInput, tone: 'bg-slate-100 text-ink-muted' },
@@ -117,6 +121,12 @@ export function describeAuditEvent(event: AuditEvent): string {
       return `${who} moved ${file} to the trash`;
     case 'document.restored':
       return `${who} restored ${file} from the trash`;
+    case 'webhook.created':
+      return `${who} added a webhook to ${String(m.url ?? 'an endpoint')}`;
+    case 'webhook.updated':
+      return `${who} changed the webhook to ${String(m.url ?? 'an endpoint')}${m.enabled === false ? ' (switched off)' : ''}`;
+    case 'webhook.deleted':
+      return `${who} removed the webhook to ${String(m.url ?? 'an endpoint')}`;
     case 'document.version_uploaded':
       return `${who} uploaded version ${m.version} of ${file}`;
     case 'document.version_restored':

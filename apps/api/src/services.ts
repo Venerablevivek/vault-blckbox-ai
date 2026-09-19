@@ -12,6 +12,7 @@ import { createOverviewService } from './modules/overview/overview.service';
 import { createSharesService } from './modules/shares/shares.service';
 import { createFolderSharesService } from './modules/folder-shares/folder-shares.service';
 import { createTokensService } from './modules/tokens/tokens.service';
+import { createWebhooksService } from './modules/webhooks/webhooks.service';
 import { createWorkspacesService } from './modules/workspaces/workspaces.service';
 import { createUploadsService } from './modules/uploads/uploads.service';
 import { ClamdScanner, type Scanner } from './scanning/scanner';
@@ -57,7 +58,7 @@ export function createServices(deps: {
 
   // Cross-cutting services first: the feature modules depend on them.
   const jobs = createJobQueue({ pool, listenPool: directPool, clock, logger });
-  const audit = createAuditService({ pool, readPool, clock, logger });
+  const audit = createAuditService({ pool, readPool, clock, logger, jobs });
   const notifications = createNotificationsService({ pool, clock, logger, jobs, webUrl: config.WEB_URL });
 
   const auth = createAuthService({
@@ -121,6 +122,14 @@ export function createServices(deps: {
     watermarkMaxBytes: config.SHARE_WATERMARK_MAX_BYTES,
   });
   const tokens = createTokensService({ pool, clock, logger, jobs, webUrl: config.WEB_URL });
+  const webhooks = createWebhooksService({
+    pool,
+    clock,
+    logger,
+    audit,
+    allowInsecure: config.WEBHOOK_ALLOW_INSECURE,
+    timeoutMs: config.WEBHOOK_TIMEOUT_MS,
+  });
   const folderShares = createFolderSharesService({
     pool,
     storage,
@@ -162,6 +171,7 @@ export function createServices(deps: {
     documents,
     uploads,
     notifications,
+    webhooks,
     shareEventRetentionMonths: config.SHARE_EVENT_RETENTION_MONTHS,
   });
 
@@ -175,6 +185,7 @@ export function createServices(deps: {
     shares,
     folderShares,
     tokens,
+    webhooks,
     overview,
     folders,
     uploads,

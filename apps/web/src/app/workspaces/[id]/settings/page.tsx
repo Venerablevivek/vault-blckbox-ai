@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AlertTriangle, HardDrive, LogOut, Pencil, ShieldCheck, Trash2 } from 'lucide-react';
 import { api, ApiRequestError } from '@/lib/api';
 import { useDialogs } from '@/components/dialog';
+import { WebhooksPanel } from '@/components/webhooks-panel';
 import { toast } from '@/components/toast';
 import { RoleBadge, Shell, StorageMeter, useSession, WorkspaceAvatar } from '@/components/ui';
 
@@ -194,6 +195,8 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
             </div>
           </div>
         </section>
+
+        {isOwner ? <WebhooksPanel workspaceId={workspaceId} /> : null}
 
         {isOwner ? (
           <section className="card border-danger/25 p-6">

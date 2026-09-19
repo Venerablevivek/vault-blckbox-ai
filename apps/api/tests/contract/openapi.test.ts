@@ -382,6 +382,34 @@ describe('API contract', () => {
       await send('GET', `/api/workspaces/${workspaceId}/overview?tz=Europe/London`, owner),
     );
     ok('GET', '/api/workspaces/:id/audit', await send('GET', `/api/workspaces/${workspaceId}/audit`, owner));
+    // A webhook to a name that resolves privately: accepted, but its ping is refused without any network traffic.
+    const hook = await send('POST', `/api/workspaces/${workspaceId}/webhooks`, owner, {
+      url: 'https://localhost./hook',
+      events: ['invitation.revoked'],
+    });
+    ok('POST', '/api/workspaces/:id/webhooks', hook);
+    const hookId = hook.json().webhook.id;
+    ok('GET', '/api/workspaces/:id/webhooks', await send('GET', `/api/workspaces/${workspaceId}/webhooks`, owner));
+    ok(
+      'PATCH',
+      '/api/workspaces/:id/webhooks/:webhookId',
+      await send('PATCH', `/api/workspaces/${workspaceId}/webhooks/${hookId}`, owner, { enabled: false }),
+    );
+    ok(
+      'POST',
+      '/api/workspaces/:id/webhooks/:webhookId/ping',
+      await send('POST', `/api/workspaces/${workspaceId}/webhooks/${hookId}/ping`, owner),
+    );
+    ok(
+      'GET',
+      '/api/workspaces/:id/webhooks/:webhookId/deliveries',
+      await send('GET', `/api/workspaces/${workspaceId}/webhooks/${hookId}/deliveries`, owner),
+    );
+    ok(
+      'DELETE',
+      '/api/workspaces/:id/webhooks/:webhookId',
+      await send('DELETE', `/api/workspaces/${workspaceId}/webhooks/${hookId}`, owner),
+    );
     ok(
       'GET',
       '/api/workspaces/:id/audit/export',

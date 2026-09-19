@@ -10,6 +10,7 @@ export function createJobHandlers(services: Services, mailer: Mailer): JobHandle
     'document.checksum': async ({ documentId }) => services.documents.computeChecksum(documentId),
     'document.scan': async ({ documentId }) => services.documents.scanDocument(documentId),
     'document.process': async ({ documentId }) => services.documents.processDocument(documentId),
+    'webhook.deliver': async ({ webhookId, eventId }) => services.webhooks.deliver(webhookId, eventId),
     'workspace.purge': async ({ workspaceId }) => {
       await services.documents.purgeWorkspace(workspaceId);
     },

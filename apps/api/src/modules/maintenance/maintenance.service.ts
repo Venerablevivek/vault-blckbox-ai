@@ -3,6 +3,7 @@ import { jobsRepo } from '../../jobs/jobs.repo';
 import { sharesRepo } from '../shares/shares.repo';
 import type { Logger } from 'pino';
 import type { Clock } from '../../types';
+import type { WebhooksService } from '../webhooks/webhooks.service';
 import type { NotificationsService } from '../notifications/notifications.service';
 import type { DocumentsService } from '../documents/documents.service';
 import type { UploadsService } from '../uploads/uploads.service';
@@ -15,6 +16,8 @@ export const RETENTION = {
   loginFailuresDays: 1,
   /** One-time share codes last ten minutes; a day covers any clock skew and debugging. */
   shareCodesDays: 1,
+  /** Webhook delivery attempts, kept so owners can see why a receiver failed. */
+  webhookDeliveriesDays: 30,
   /** Read notifications are clutter after a month; unread ones are kept longer. */
   readNotificationsDays: 30,
   anyNotificationsDays: 90,
@@ -38,6 +41,7 @@ export function createMaintenanceService(deps: {
   documents: DocumentsService;
   uploads: UploadsService | null;
   notifications: NotificationsService;
+  webhooks: WebhooksService;
   shareEventRetentionMonths: number;
 }) {
   const { pool, clock, logger, documents, uploads, shareEventRetentionMonths } = deps;
@@ -75,6 +79,7 @@ export function createMaintenanceService(deps: {
           shareCodes: 0,
           queuedProcessing: 0,
           digests: 0,
+          webhookDeliveries: 0,
         };
 
         const step = async (name: string, fn: () => Promise<void>) => {
@@ -152,6 +157,9 @@ export function createMaintenanceService(deps: {
         });
         await step('scans', async () => {
           result.requeuedScans = await documents.requeuePendingScans();
+        });
+        await step('webhook_deliveries', async () => {
+          result.webhookDeliveries = await deps.webhooks.pruneDeliveries(daysAgo(RETENTION.webhookDeliveriesDays));
         });
         await step('digests', async () => {
           result.digests = await deps.notifications.sendDigests();

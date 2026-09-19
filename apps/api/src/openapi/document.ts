@@ -6,6 +6,7 @@ import * as documents from '../contracts/documents';
 import * as shares from '../contracts/shares';
 import * as folderShares from '../contracts/folder-shares';
 import * as tokens from '../contracts/tokens';
+import * as webhooks from '../contracts/webhooks';
 import * as uploads from '../contracts/uploads';
 import * as workspaces from '../contracts/workspaces';
 
@@ -930,6 +931,70 @@ export const operations: Operation[] = [
     params: workspaces.WorkspaceParams,
     query: activity.AuditExportQuery,
     success: { file: ['text/csv'] },
+    errors: [401, 403, 404, 429],
+  },
+  {
+    method: 'get',
+    path: '/api/workspaces/:id/webhooks',
+    tag: 'Webhooks',
+    summary: "The workspace's webhooks (owners only)",
+    auth: S,
+    params: workspaces.WorkspaceParams,
+    success: [200, webhooks.WebhooksResponse],
+    errors: [401, 403, 404],
+  },
+  {
+    method: 'post',
+    path: '/api/workspaces/:id/webhooks',
+    tag: 'Webhooks',
+    summary: 'Add a webhook',
+    description:
+      'Each chosen event is POSTed as JSON: { id, type, createdAt, workspaceId, actor, resource, data }, with headers Vault-Event, Vault-Delivery and Vault-Signature. Failed deliveries are retried with backoff; after 15 failures in a row the webhook is switched off. At most 10 per workspace.',
+    auth: S,
+    params: workspaces.WorkspaceParams,
+    body: webhooks.CreateWebhookBody,
+    success: [201, webhooks.WebhookCreatedResponse],
+    errors: [400, 401, 403, 404, 409],
+  },
+  {
+    method: 'patch',
+    path: '/api/workspaces/:id/webhooks/:webhookId',
+    tag: 'Webhooks',
+    summary: 'Change a webhook, or switch it off and on',
+    auth: S,
+    params: webhooks.WebhookParams,
+    body: webhooks.UpdateWebhookBody,
+    success: [200, webhooks.WebhookResponse],
+    errors: [400, 401, 403, 404],
+  },
+  {
+    method: 'delete',
+    path: '/api/workspaces/:id/webhooks/:webhookId',
+    tag: 'Webhooks',
+    summary: 'Remove a webhook',
+    auth: S,
+    params: webhooks.WebhookParams,
+    success: [204, null],
+    errors: [401, 403, 404],
+  },
+  {
+    method: 'get',
+    path: '/api/workspaces/:id/webhooks/:webhookId/deliveries',
+    tag: 'Webhooks',
+    summary: 'The last 50 delivery attempts',
+    auth: S,
+    params: webhooks.WebhookParams,
+    success: [200, webhooks.WebhookDeliveriesResponse],
+    errors: [401, 403, 404],
+  },
+  {
+    method: 'post',
+    path: '/api/workspaces/:id/webhooks/:webhookId/ping',
+    tag: 'Webhooks',
+    summary: 'Send a test delivery (webhook.ping) now',
+    auth: S,
+    params: webhooks.WebhookParams,
+    success: [200, webhooks.WebhookPingResponse],
     errors: [401, 403, 404, 429],
   },
   {
