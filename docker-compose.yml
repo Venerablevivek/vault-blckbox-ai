@@ -64,6 +64,8 @@ x-api-environment: &api-environment
   # Metrics on 9464 (compose network only). Tracing is off unless an OTLP endpoint is set, as the
   # observability profile does: OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
   METRICS_PORT: 9464
+  # Only for load tests from a single machine (see loadtest/vault.js). An empty value would turn it off.
+  RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
   OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
   EXPOSE_INVITE_LINKS: ${EXPOSE_INVITE_LINKS:-true}
   SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
