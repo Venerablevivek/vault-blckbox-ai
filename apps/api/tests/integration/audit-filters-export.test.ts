@@ -169,7 +169,8 @@ describe('activity filters and CSV exports', () => {
     const token = share.json().share.url.split('/s/')[1];
     await call(undefined, 'POST', `/api/shares/${token}/view`);
     await call(undefined, 'GET', `/api/shares/${token}/download`);
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    // Access is recorded after the response; wait for both events rather than a fixed time.
+    await expect.poll(async () => (await h.query('SELECT 1 FROM share_access_events')).length).toBe(2);
 
     const res = await call(member, 'GET', `/api/shares/${share.json().share.id}/events/export`);
     expect(res.statusCode).toBe(200);

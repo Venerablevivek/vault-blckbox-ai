@@ -249,15 +249,19 @@ describe('view-only and restricted share links', () => {
       expect(again.json().error.code).toBe('CODE_INVALID');
 
       // The sender sees who opened it, and the wrong code.
-      await new Promise((resolve) => setTimeout(resolve, 150));
-      const events = await h.app.inject({
-        method: 'GET',
-        url: `/api/shares/${created.json().share.id}/events`,
-        headers: { cookie: owner.cookie },
-      });
-      const seen = events.json().events.map((e: { outcome: string; email: string | null }) => [e.outcome, e.email]);
-      expect(seen).toContainEqual(['downloaded', 'alice@example.com']);
-      expect(seen).toContainEqual(['bad_code', 'alice@example.com']);
+      // Access is recorded after the response: wait for it rather than a fixed time.
+      const seenEvents = async () =>
+        (
+          await h.app.inject({
+            method: 'GET',
+            url: `/api/shares/${created.json().share.id}/events`,
+            headers: { cookie: owner.cookie },
+          })
+        )
+          .json()
+          .events.map((e: { outcome: string; email: string | null }) => [e.outcome, e.email]);
+      await expect.poll(seenEvents).toContainEqual(['downloaded', 'alice@example.com']);
+      expect(await seenEvents()).toContainEqual(['bad_code', 'alice@example.com']);
     });
 
     it('accept only the newest code, for ten minutes and five tries', async () => {

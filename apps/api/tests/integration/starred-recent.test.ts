@@ -84,10 +84,10 @@ describe('starred and recent documents', () => {
     await call('GET', `/api/documents/${ids['b.pdf']}/download`, bob);
     h.clock.advanceHours(1);
     await call('GET', `/api/documents/${ids['c.pdf']}/preview`, bob);
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    const recent = await list(bob, 'filter=recent');
-    expect(recent.documents.map((d: { filename: string }) => d.filename)).toEqual(['c.pdf', 'b.pdf']);
+    // "Recent" is recorded after the response: wait for it rather than a fixed time.
+    await expect
+      .poll(async () => (await list(bob, 'filter=recent')).documents.map((d: { filename: string }) => d.filename))
+      .toEqual(['c.pdf', 'b.pdf']);
     // Alice uploaded all three, which counts as opening them.
     expect((await list(alice, 'filter=recent')).documents).toHaveLength(3);
   });

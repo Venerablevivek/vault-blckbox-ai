@@ -3,7 +3,6 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createHarness, registerUser, SAMPLE_PDF, uploadDocument, type Harness } from '../helpers/harness';
 
 type User = Awaited<ReturnType<typeof registerUser>>;
-const settle = () => new Promise((resolve) => setTimeout(resolve, 100));
 
 /** Checksums, storage quotas and deleting a workspace. */
 describe('integrity, quotas and workspace deletion', () => {
@@ -208,12 +207,17 @@ describe('integrity, quotas and workspace deletion', () => {
 
     it('tells the other members, without naming a workspace they can no longer open', async () => {
       await call('DELETE', `/api/workspaces/${alice.workspaceId}`, alice.cookie, { confirmName: 'Acme Legal' });
-      await settle();
-      const notes = (await call('GET', '/api/notifications', bob.cookie)).json().notifications as Array<{
-        type: string;
-        title: string;
-      }>;
-      expect(notes.some((n) => n.type === 'workspace.deleted' && n.title === 'Acme Legal was deleted')).toBe(true);
+      // Notifications are written after the response: wait for it rather than a fixed time.
+      await expect
+        .poll(async () =>
+          (
+            (await call('GET', '/api/notifications', bob.cookie)).json().notifications as Array<{
+              type: string;
+              title: string;
+            }>
+          ).some((n) => n.type === 'workspace.deleted' && n.title === 'Acme Legal was deleted'),
+        )
+        .toBe(true);
       const aliceNotes = (await call('GET', '/api/notifications', alice.cookie)).json().notifications as Array<{
         type: string;
       }>;
