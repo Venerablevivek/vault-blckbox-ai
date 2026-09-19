@@ -1,7 +1,7 @@
 # ---- build: compile TypeScript ----------------------------------------------
 # Base images are pinned by digest so a build is reproducible and can't silently pick up a
 # changed image; Dependabot proposes digest updates.
-FROM node:22-alpine@sha256:b6f26b36c8ff49624cfdac716b8ea1138d606df02586a77d364bb5536a634f85 AS build
+FROM node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4 AS build
 WORKDIR /app
 # argon2 is a native module; the compilers are needed only while installing it.
 RUN apk add --no-cache python3 make g++
@@ -12,7 +12,7 @@ COPY src ./src
 RUN npm run build
 
 # ---- deps: production dependencies, native modules compiled for this platform ----
-FROM node:22-alpine@sha256:b6f26b36c8ff49624cfdac716b8ea1138d606df02586a77d364bb5536a634f85 AS deps
+FROM node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4 AS deps
 WORKDIR /app
 RUN apk add --no-cache python3 make g++
 COPY package.json package-lock.json* ./
@@ -20,7 +20,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 # ---- runtime ----------------------------------------------------------------
 # No compilers, no dev dependencies, no source. Runs as the unprivileged node user.
-FROM node:22-alpine@sha256:b6f26b36c8ff49624cfdac716b8ea1138d606df02586a77d364bb5536a634f85 AS runtime
+FROM node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4 AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 # The running service only needs node. npm, npx and corepack ship in the base image with their own
