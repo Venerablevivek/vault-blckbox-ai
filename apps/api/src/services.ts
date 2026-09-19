@@ -11,6 +11,7 @@ import { createNotificationsService } from './modules/notifications/notification
 import { createOverviewService } from './modules/overview/overview.service';
 import { createSharesService } from './modules/shares/shares.service';
 import { createFolderSharesService } from './modules/folder-shares/folder-shares.service';
+import { createFileRequestsService } from './modules/file-requests/file-requests.service';
 import { createTokensService } from './modules/tokens/tokens.service';
 import { createWebhooksService } from './modules/webhooks/webhooks.service';
 import { createWorkspacesService } from './modules/workspaces/workspaces.service';
@@ -144,6 +145,15 @@ export function createServices(deps: {
     audit,
     notifications,
   });
+  const fileRequests = createFileRequestsService({
+    pool,
+    clock,
+    webUrl: config.WEB_URL,
+    maxUploadBytes: config.MAX_UPLOAD_BYTES,
+    audit,
+    notifications,
+    documents,
+  });
   // The dashboard is all aggregate reads: fine to serve from a replica.
   const overview = createOverviewService({ pool: readPool, clock, audit });
   const folders = createFoldersService({ pool, audit });
@@ -184,6 +194,7 @@ export function createServices(deps: {
     documents,
     shares,
     folderShares,
+    fileRequests,
     tokens,
     webhooks,
     overview,

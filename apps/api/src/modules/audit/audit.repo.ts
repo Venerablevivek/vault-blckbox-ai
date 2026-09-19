@@ -28,6 +28,8 @@ export type AuditAction =
   | 'document.version_deleted'
   | 'document.comment_added'
   | 'document.comment_deleted'
+  | 'file_request.created'
+  | 'file_request.revoked'
   | 'webhook.created'
   | 'webhook.updated'
   | 'webhook.deleted'
@@ -40,7 +42,7 @@ export type AuditAction =
   | 'document.quarantined';
 
 export type AuditResource =
-  'workspace' | 'document' | 'folder' | 'share' | 'folder_share' | 'member' | 'invitation' | 'webhook';
+  'workspace' | 'document' | 'folder' | 'share' | 'folder_share' | 'file_request' | 'member' | 'invitation' | 'webhook';
 
 export interface AuditRow {
   id: string;

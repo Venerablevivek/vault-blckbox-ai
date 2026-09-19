@@ -71,6 +71,11 @@ for (const colorScheme of ['light', 'dark'] as const) {
       await audit(page, 'comments');
       await page.keyboard.press('Escape');
 
+      await page.getByRole('button', { name: 'Request files' }).click();
+      await expect(page.getByRole('dialog', { name: 'File requests' })).toBeVisible();
+      await audit(page, 'file requests');
+      await page.keyboard.press('Escape');
+
       await page.getByRole('button', { name: 'Open the command menu' }).click();
       await page.getByRole('combobox', { name: 'Command' }).fill('se');
       await audit(page, 'command menu');
@@ -84,6 +89,12 @@ for (const colorScheme of ['light', 'dark'] as const) {
 
       await page.goto(new URL(share.share.url).pathname);
       await audit(page, 'public share page');
+
+      const request = (await (
+        await page.request.post(`/api/workspaces/${workspaceId}/file-requests`, { data: { title: 'Your files' } })
+      ).json()) as { url: string };
+      await page.goto(new URL(request.url).pathname);
+      await audit(page, 'public file request page');
     });
   });
 }

@@ -18,6 +18,8 @@ const EVENT_GROUPS: Array<{ label: string; events: Array<{ event: string; label:
       { event: 'document.uploaded', label: 'Uploaded' },
       { event: 'document.version_uploaded', label: 'New version' },
       { event: 'document.comment_added', label: 'Commented' },
+      { event: 'file_request.created', label: 'File request created' },
+      { event: 'file_request.revoked', label: 'File request closed' },
       { event: 'document.renamed', label: 'Renamed' },
       { event: 'document.moved', label: 'Moved' },
       { event: 'document.trashed', label: 'Moved to trash' },

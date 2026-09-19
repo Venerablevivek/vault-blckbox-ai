@@ -184,6 +184,7 @@ trail.
 | --- | --- |
 | Workspaces | Invite by email as Owner, Member or Viewer; change roles; remove or leave; a workspace always keeps an owner. Storage quota per workspace. Deleting a workspace removes everything |
 | Documents | Direct, resumable uploads up to 5 GB; types checked against the bytes; duplicate detection; folders (8 levels); trash with 30-day restore; stars, recents; bulk move/trash/restore/delete; zip download of a selection or a folder tree |
+| File requests | An upload link for people without an account: they send files into a chosen folder, with a title and message, an expiry (at most 90 days) and an optional file limit; files get the same type check, quota and malware scan as any upload, and the request shows who sent what |
 | Comments | A discussion thread on every document for the whole workspace, viewers included; authors edit their own, owners can remove any; the uploader and everyone in the thread are notified |
 | Versions | Upload a newer copy, keep history, download, restore or delete any version; the oldest are pruned past a limit |
 | Processing | Malware scanning (ClamAV); thumbnails of images and PDFs; full-text search of PDFs, text and Office files; Office previews through Gotenberg |
@@ -204,17 +205,17 @@ All of it lives in `apps/api/src/policy.ts`:
 | --- | :---: | :---: | :---: |
 | List, search, preview, download documents and zips; list members | ✅ | ✅ | ✅ |
 | Upload, create folders, upload versions of their own documents | ✅ | ✅ | ❌ |
-| Create share links and folder links | ✅ | ✅ | ❌ |
+| Create share links, folder links and file requests | ✅ | ✅ | ❌ |
 | Rename, move, trash, restore, version a document | ✅ any | ✅ own only | ❌ |
 | Rename, move, delete a folder | ✅ any | ✅ own only | ❌ |
-| Edit or revoke a share link | ✅ any | ✅ own only | ❌ |
+| Edit or revoke a share link; close a file request | ✅ any | ✅ own only | ❌ |
 | Comment on documents; edit or delete your own comments | ✅ | ✅ | ✅ |
 | Delete anyone's comment | ✅ | ❌ | ❌ |
 | Delete forever from the trash | ✅ | ❌ | ❌ |
 | Invite, change roles, remove members, activity trail, webhooks, delete the workspace | ✅ | ❌ | ❌ |
 
 **Losing access takes your links with it.** Removing a member, demoting them to Viewer, or deleting
-the workspace revokes the share links and folder links they created, in the same transaction.
+the workspace revokes the share links, folder links and file requests they created, in the same transaction.
 
 **Status codes carry meaning.** A non-member gets 404, identical to a resource that never existed; a
 member without the role gets 403; a dead share link gets 410 so the recipient knows to ask for a new

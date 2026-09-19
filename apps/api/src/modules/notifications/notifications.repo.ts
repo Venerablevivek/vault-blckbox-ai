@@ -6,6 +6,7 @@ export type NotificationType =
   | 'share.forwarding_suspected'
   | 'document.uploaded'
   | 'document.commented'
+  | 'file_request.received'
   | 'member.joined'
   | 'member.removed'
   | 'member.role_changed'

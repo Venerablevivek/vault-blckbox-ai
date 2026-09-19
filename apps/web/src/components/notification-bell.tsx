@@ -14,6 +14,7 @@ import {
   UserCog,
   UserMinus,
   type LucideIcon,
+  Inbox,
 } from 'lucide-react';
 import { api, timeAgo, type NotificationDto } from '@/lib/api';
 
@@ -28,6 +29,7 @@ const ICONS: Record<NotificationDto['type'], { icon: LucideIcon; tone: string }>
   'share.forwarding_suspected': { icon: AlertTriangle, tone: 'bg-warn-soft text-warn' },
   'document.uploaded': { icon: FilePlus2, tone: 'bg-brand-50 text-brand-600' },
   'document.commented': { icon: MessageSquare, tone: 'bg-brand-50 text-brand-600' },
+  'file_request.received': { icon: Inbox, tone: 'bg-ok-soft text-ok' },
   'member.joined': { icon: UserCheck, tone: 'bg-ok-soft text-ok' },
   'member.removed': { icon: UserMinus, tone: 'bg-danger-soft text-danger' },
   'member.role_changed': {

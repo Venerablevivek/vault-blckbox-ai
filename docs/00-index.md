@@ -15,7 +15,7 @@ These documents hold the reasoning behind it, including the alternatives conside
 | [`01-brief-analysis.md`](01-brief-analysis.md) | What the original brief requires, how it's graded, and how the blueprint resolves it |
 | [`02-product-decisions.md`](02-product-decisions.md) | **Part A:** the blueprint's decisions. **Part B:** the gaps it leaves, resolved. Feeds the README's most-weighted section |
 | [`../technical.md`](../technical.md) | Stack, architecture, layering, flows, config, compose topology |
-| [`03-data-model.md`](03-data-model.md) | The specified tables as DDL, plus every later migration (001–036) |
+| [`03-data-model.md`](03-data-model.md) | The specified tables as DDL, plus every later migration (001–037) |
 | [`04-api-spec.md`](04-api-spec.md) | Conventions, plus the generated reference of every route |
 | [`05-security.md`](05-security.md) | The blueprint's nine controls; the rubric's three questions; **what's knowingly left out** |
 | [`06-ui-spec.md`](06-ui-spec.md) | Next.js routes, screens, dialogs, permission rendering |

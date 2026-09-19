@@ -72,7 +72,7 @@ creates or updates `vault_app`, the least-privilege role the API and worker conn
 
 ```
 apps/api/
-  migrations/                  001–036, forward-only SQL
+  migrations/                  001–037, forward-only SQL
   src/
     main.ts · worker.ts · migrate-cli.ts · maintenance.ts     entry points
     server.ts · services.ts · config.ts · policy.ts

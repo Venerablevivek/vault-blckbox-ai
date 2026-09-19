@@ -26,6 +26,7 @@ import { assertScanAllows, initialScanStatus, type ScanStatus } from './scan-pol
 import { planArchive, type ArchivePlan } from './archive';
 import { versionsRepo, type VersionRow } from './versions.repo';
 import { commentsRepo, type CommentRow } from './comments.repo';
+import { fileRequestsRepo } from '../file-requests/file-requests.repo';
 import {
   documentsRepo,
   type DocumentFilter,
@@ -384,8 +385,16 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
       declaredMimeType: string;
       body: Buffer;
       truncated: boolean;
+      /**
+       * Set when someone outside the workspace sends the file through a file request. The
+       * document belongs to the person who made the request (`userId`); the sender is recorded
+       * beside it, the request's file count is claimed in the same transaction, and the trail
+       * names no member as the actor.
+       */
+      fileRequest?: { id: string; title: string; senderName: string; senderEmail: string | null };
     }) {
       requireContributor(input.membership.role, 'upload documents');
+      const viaRequest = input.fileRequest;
 
       if (input.truncated || input.body.length > opts.maxUploadBytes) {
         throw Errors.payloadTooLarge(opts.maxUploadBytes);
@@ -418,6 +427,9 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
         // Quota, row and audit entry commit together: if any of them fails, none exist, and
         // the catch below removes the object.
         const document = await withTransaction(pool, async (tx) => {
+          if (viaRequest && !(await fileRequestsRepo.claimSlot(tx, viaRequest.id, clock.now()))) {
+            throw new AppError(410, 'REQUEST_CLOSED', 'This file request is not accepting more files.');
+          }
           if (!(await workspacesRepo.reserveStorage(tx, workspaceId, size))) {
             const latest = await workspacesRepo.storageUsage(tx, workspaceId);
             throw Errors.quotaExceeded(latest.usedBytes, latest.quotaBytes);
@@ -439,21 +451,44 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
           } else {
             await enqueueProcessing(tx, row.id);
           }
+          if (viaRequest) {
+            await fileRequestsRepo.recordUpload(tx, {
+              id: randomUUID(),
+              requestId: viaRequest.id,
+              workspaceId,
+              documentId: row.id,
+              senderName: viaRequest.senderName,
+              senderEmail: viaRequest.senderEmail,
+              filename: row.filename,
+              size,
+              at: clock.now(),
+            });
+          }
           await audit.record(
             {
               workspaceId,
-              actorUserId: input.userId,
+              actorUserId: viaRequest ? null : input.userId,
               action: 'document.uploaded',
               resourceType: 'document',
               resourceId: row.id,
-              metadata: { filename: row.filename, size },
+              metadata: viaRequest
+                ? {
+                    filename: row.filename,
+                    size,
+                    via: 'file_request',
+                    request: viaRequest.title,
+                    sender: viaRequest.senderEmail ?? viaRequest.senderName,
+                  }
+                : { filename: row.filename, size },
             },
             tx,
           );
           await notifications.notifyWorkspace(tx, workspaceId, input.userId, {
             type: 'document.uploaded',
             title: `${filename} was added`,
-            body: `${input.userEmail} uploaded a new document to this workspace.`,
+            body: viaRequest
+              ? `${viaRequest.senderName} sent it through the file request “${viaRequest.title}”.`
+              : `${input.userEmail} uploaded a new document to this workspace.`,
             resourceId: row.id,
           });
           return row;
@@ -461,7 +496,7 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
 
         // Identical content is allowed (people keep copies on purpose), but worth pointing out.
         const duplicateOf = await documentsRepo.findByChecksum(pool, workspaceId, sha256, document.id);
-        touchRecent(input.userId, document.id);
+        if (!viaRequest) touchRecent(input.userId, document.id);
         return { document, duplicateOf };
       } catch (error) {
         // Metadata failed: remove the object we just wrote so no orphan is left behind.

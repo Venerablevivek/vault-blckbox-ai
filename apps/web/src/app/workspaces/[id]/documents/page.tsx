@@ -15,6 +15,7 @@ import {
   Folder,
   FolderInput,
   FolderPlus,
+  Inbox,
   Home,
   Info,
   LayoutGrid,
@@ -53,6 +54,7 @@ import { PreviewModal } from '@/components/preview-modal';
 import { SharePanel } from '@/components/share-panel';
 import { VersionHistory } from '@/components/version-history';
 import { CommentsPanel } from '@/components/comments-panel';
+import { FileRequestsPanel } from '@/components/file-requests-panel';
 import { toast } from '@/components/toast';
 import { cancelDirectUpload, directUpload, UploadCancelled } from '@/lib/direct-upload';
 import { EmptyState, ErrorNote, FileGlyph, Shell, Skeleton, StorageMeter, useSession } from '@/components/ui';
@@ -150,6 +152,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
   const [shareFolderFor, setShareFolderFor] = useState<FolderDto | null>(null);
   const [versionsFor, setVersionsFor] = useState<DocumentDto | null>(null);
   const [commentsFor, setCommentsFor] = useState<DocumentDto | null>(null);
+  const [requestsOpen, setRequestsOpen] = useState(false);
   const [previewFor, setPreviewFor] = useState<DocumentDto | null>(null);
   const [detailsFor, setDetailsFor] = useState<DocumentDto | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -917,6 +920,9 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
               tabIndex={-1}
               onChange={(e) => e.target.files && void uploadFiles(e.target.files)}
             />
+            <button className="btn-secondary hidden sm:inline-flex" onClick={() => setRequestsOpen(true)}>
+              <Inbox className="h-4 w-4" aria-hidden /> Request files
+            </button>
             <button
               className="btn-secondary hidden sm:inline-flex"
               onClick={() => void createFolder()}
@@ -1495,6 +1501,16 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
           userId={session.userId}
           onClose={() => setShareFor(null)}
           onChanged={() => void load()}
+        />
+      ) : null}
+      {requestsOpen ? (
+        <FileRequestsPanel
+          workspaceId={workspaceId}
+          folder={!trash && folderId && path.length ? { id: folderId, name: path[path.length - 1]!.name } : null}
+          onClose={() => {
+            setRequestsOpen(false);
+            void load();
+          }}
         />
       ) : null}
       {commentsFor ? <CommentsPanel document={commentsFor} onClose={() => setCommentsFor(null)} /> : null}

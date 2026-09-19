@@ -289,3 +289,41 @@ export async function uploadDocument(
 }
 
 export { PDF as SAMPLE_PDF };
+
+/** Sends a file through a file request as someone outside the workspace: no cookie. */
+export async function sendToFileRequest(
+  app: FastifyInstance,
+  token: string,
+  options: {
+    name?: string;
+    email?: string;
+    filename?: string;
+    body?: Buffer;
+    contentType?: string;
+    forwardedFor?: string;
+  } = {},
+) {
+  const boundary = '----harness';
+  const field = (name: string, value: string) =>
+    `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`;
+  const payload = Buffer.concat([
+    Buffer.from(
+      (options.name !== undefined ? field('name', options.name) : '') +
+        (options.email !== undefined ? field('email', options.email) : '') +
+        `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${options.filename ?? 'sent.pdf'}"\r\n` +
+        `Content-Type: ${options.contentType ?? 'application/pdf'}\r\n\r\n`,
+      'utf8',
+    ),
+    options.body ?? PDF,
+    Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8'),
+  ]);
+  return app.inject({
+    method: 'POST',
+    url: `/api/requests/${token}/files`,
+    headers: {
+      'content-type': `multipart/form-data; boundary=${boundary}`,
+      ...(options.forwardedFor ? { 'x-forwarded-for': options.forwardedFor } : {}),
+    },
+    payload,
+  });
+}

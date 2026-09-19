@@ -25,9 +25,9 @@ These five are the backbone of the suite. Everything else is secondary.
 ## Shape
 
 ```
- 364 × API tests       unit, integration, security and contract (vitest), against a real
+ 372 × API tests       unit, integration, security and contract (vitest), against a real
                        Postgres and a real MinIO (the containers `docker compose up` starts)
-  34 × end-to-end      Playwright + Chromium against the whole stack through port 3000
+  35 × end-to-end      Playwright + Chromium against the whole stack through port 3000
                        (one is skipped unless malware scanning is on), incl. axe accessibility checks
        load test       k6, results in 11-performance.md
 ```

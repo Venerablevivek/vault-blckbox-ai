@@ -12,6 +12,7 @@ import { registerInvitationRoutes, registerWorkspaceRoutes } from './modules/wor
 import { registerDocumentRoutes } from './modules/documents/documents.routes';
 import { registerShareRoutes } from './modules/shares/shares.routes';
 import { registerFolderShareRoutes } from './modules/folder-shares/folder-shares.routes';
+import { registerFileRequestRoutes } from './modules/file-requests/file-requests.routes';
 import { registerTokenRoutes } from './modules/tokens/tokens.routes';
 import { registerWebhookRoutes } from './modules/webhooks/webhooks.routes';
 import { registerAuditRoutes } from './modules/audit/audit.routes';
@@ -159,6 +160,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   registerDocumentRoutes(app, { config, documents, workspaces, shares, storage });
   registerShareRoutes(app, { config, shares });
   registerFolderShareRoutes(app, { config, folderShares: services.folderShares, storage });
+  registerFileRequestRoutes(app, { config, fileRequests: services.fileRequests, now: () => clock.now() });
   registerFolderRoutes(app, { folders, workspaces });
   registerUploadRoutes(app, { uploads: services.uploads, workspaces });
   registerAuditRoutes(app, { audit, workspaces });

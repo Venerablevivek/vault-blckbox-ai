@@ -133,6 +133,7 @@ workspace, not the uploader, not the object key, not other documents.
 - **Restricted links**: view-only (watermarked PDF, no download), and email-restricted links unlocked by a one-time code.
 - **API tokens** (`vlt_…`, hashed, scoped, revocable); browser-only operations refuse them.
 - **Webhooks** are signed (`t=…,v1=HMAC`), and the destination address is checked inside the connection's own DNS lookup, so private and reserved addresses can't be reached, even by DNS rebinding.
+- **File requests** let people without an account upload, so the public endpoint is fenced: a 256-bit `frq_` token stored only as a hash, a required expiry (at most 90 days), an optional file limit claimed atomically in the upload transaction, its own small pool of upload slots and a per-address rate limit, and the same type-against-content check, size limit, quota and malware scan as any upload. Senders see nothing in the workspace. The request dies when its maker loses upload rights. No email is ever sent to a sender's address, so the form can't be used to send mail to strangers.
 - **Rate limits** are stored in Postgres, so they hold across replicas.
 - **Tracing** redacts share, folder and API tokens from spans.
 

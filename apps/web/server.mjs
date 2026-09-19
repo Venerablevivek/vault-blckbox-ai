@@ -57,14 +57,14 @@ if (process.env.ENABLE_HSTS === 'true') {
   SECURITY_HEADERS['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains';
 }
 
-// Public link pages: /s/<token> for a document, /f/<token> for a folder.
-const SHARE_PAGE = /^\/(s|f)\/([A-Za-z0-9_-]{10,200})\/?$/;
+// Public link pages: /s/<token> for a document, /f/<token> for a folder, /r/<token> for a file request.
+const SHARE_PAGE = /^\/(s|f|r)\/([A-Za-z0-9_-]{10,200})\/?$/;
 /** A shared file shown inside the share page: the one response this site may frame (itself only). */
 const SHARE_CONTENT = /^\/api\/shares\/[A-Za-z0-9_-]{10,200}\/content$/;
 
 /** Asks the API whether a share token is live, forwarding the visitor's address and cookies. */
 async function shareStatus(kind, token, req) {
-  const resource = kind === 'f' ? 'folder-shares' : 'shares';
+  const resource = kind === 'f' ? 'folder-shares' : kind === 'r' ? 'requests' : 'shares';
   try {
     const response = await fetch(`${apiUrl}/api/${resource}/${encodeURIComponent(token)}`, {
       headers: {

@@ -12,6 +12,7 @@ type NotificationType = Preferences['muted'][number];
 /** Every kind of notification, in the words the settings use. */
 const TYPES: Array<{ type: NotificationType; label: string }> = [
   { type: 'document.uploaded', label: 'A document is added or updated' },
+  { type: 'file_request.received', label: 'Someone sends a file through your file request' },
   { type: 'document.commented', label: 'Someone comments on a file you uploaded or discussed' },
   { type: 'share.first_open', label: 'One of your links is opened for the first time' },
   { type: 'share.new_viewer', label: 'Someone new opens one of your links' },

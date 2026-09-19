@@ -494,6 +494,12 @@ export const sharesRepo = {
         WHERE workspace_id = $1 AND created_by = $2 AND revoked_at IS NULL`,
       [workspaceId, userId, now],
     );
-    return (rowCount ?? 0) + (folders.rowCount ?? 0);
+    // And file requests: whoever can no longer upload mustn't keep a way in for others.
+    const requests = await db.query(
+      `UPDATE file_requests SET revoked_at = $3
+        WHERE workspace_id = $1 AND created_by = $2 AND revoked_at IS NULL`,
+      [workspaceId, userId, now],
+    );
+    return (rowCount ?? 0) + (folders.rowCount ?? 0) + (requests.rowCount ?? 0);
   },
 };

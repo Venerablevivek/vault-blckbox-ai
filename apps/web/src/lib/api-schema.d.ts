@@ -3038,6 +3038,470 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/workspaces/{workspaceId}/file-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A workspace's file requests, newest first */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    workspaceId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            requests: components["schemas"]["FileRequestSummary"][];
+                        };
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Create a file request (an upload link for people outside the workspace)
+         * @description Owners and members. Files sent through it land in the chosen folder, owned by you, and go through the same checks as any upload. The link is returned once; it always expires (at most 90 days).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    workspaceId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateFileRequestRequest"];
+                };
+            };
+            responses: {
+                /** @description Success */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            request: components["schemas"]["FileRequestSummary"];
+                            /** @description The upload link. Shown once: only its hash is stored. */
+                            url: string;
+                        };
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/file-requests/{id}/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Files received through a request, with who sent them */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            files: components["schemas"]["ReceivedFile"][];
+                        };
+                    };
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/file-requests/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Close a file request
+         * @description Its maker, or a workspace owner. Files already received stay.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success, no content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not signed in. */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Signed in and a member, but the role does not allow this. */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requests/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What a file request asks for (public) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Success */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            request: components["schemas"]["PublicFileRequest"];
+                        };
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/requests/{token}/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a file through a file request (public, multipart)
+         * @description Fields "name" (required) and "email" (optional) must come before the "file" field. Same size limit, type check against content, quota and malware scan as any upload.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        name: string;
+                        email?: (string | null) | "" | null;
+                        /** Format: binary */
+                        file?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Success */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            file: {
+                                filename: string;
+                                size: number;
+                            };
+                            remainingFiles: number | null;
+                        };
+                    };
+                };
+                /** @description Invalid request (`VALIDATION_FAILED` with details, or a specific code). */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Not found, or not a member (deliberately identical). */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Gone: revoked, expired, used up, or already used. */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description File too large, or the workspace quota is full (`QUOTA_EXCEEDED`). */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description File type not allowed. */
+                415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description Rate limited or locked out. See Retry-After. */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+                /** @description At capacity; retry after Retry-After seconds. */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Error"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/documents/{id}/star": {
         parameters: {
             query?: never;
@@ -7117,14 +7581,14 @@ export interface components {
             quotaBytes: number;
         };
         /** @enum {string} */
-        AuditAction: "workspace.created" | "workspace.renamed" | "document.uploaded" | "document.downloaded" | "document.previewed" | "document.deleted" | "document.renamed" | "document.moved" | "document.trashed" | "document.restored" | "document.purged" | "document.version_uploaded" | "document.version_restored" | "document.version_deleted" | "document.comment_added" | "document.comment_deleted" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "folder.created" | "folder.renamed" | "folder.moved" | "folder.deleted" | "share.created" | "share.updated" | "share.revoked" | "share.accessed" | "share.blocked" | "member.invited" | "member.joined" | "member.removed" | "member.left" | "member.role_changed" | "invitation.revoked" | "document.quarantined";
+        AuditAction: "workspace.created" | "workspace.renamed" | "document.uploaded" | "document.downloaded" | "document.previewed" | "document.deleted" | "document.renamed" | "document.moved" | "document.trashed" | "document.restored" | "document.purged" | "document.version_uploaded" | "document.version_restored" | "document.version_deleted" | "document.comment_added" | "document.comment_deleted" | "file_request.created" | "file_request.revoked" | "webhook.created" | "webhook.updated" | "webhook.deleted" | "folder.created" | "folder.renamed" | "folder.moved" | "folder.deleted" | "share.created" | "share.updated" | "share.revoked" | "share.accessed" | "share.blocked" | "member.invited" | "member.joined" | "member.removed" | "member.left" | "member.role_changed" | "invitation.revoked" | "document.quarantined";
         AuditEvent: {
             /** Format: uuid */
             id: string;
             actorEmail: string | null;
             action: components["schemas"]["AuditAction"];
             /** @enum {string} */
-            resourceType: "workspace" | "document" | "folder" | "share" | "folder_share" | "member" | "invitation" | "webhook";
+            resourceType: "workspace" | "document" | "folder" | "share" | "folder_share" | "file_request" | "member" | "invitation" | "webhook";
             /** Format: uuid */
             resourceId: string | null;
             metadata: {
@@ -7417,6 +7881,91 @@ export interface components {
         };
         CommentRequest: {
             body: string;
+        };
+        FileRequestSummary: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            message: string | null;
+            /** Format: uuid */
+            folderId: string | null;
+            folderName: string | null;
+            /** Format: uuid */
+            createdBy: string;
+            createdByEmail: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            expiresAt: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            revokedAt: string | null;
+            maxFiles: number | null;
+            receivedCount: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            lastReceivedAt: string | null;
+            /** @enum {string} */
+            status: "open" | "full" | "expired" | "revoked";
+            /** @description The caller made it, or owns the workspace. */
+            canManage: boolean;
+        };
+        CreateFileRequestRequest: {
+            title: string;
+            /** @description Shown to the person uploading, e.g. what to send. */
+            message?: string | null;
+            /**
+             * Format: uuid
+             * @description Where files land; null or omitted = the top level.
+             */
+            folderId?: string | null;
+            /**
+             * @description A request always expires: at most 90 days.
+             * @default 7
+             */
+            expiresInDays: number;
+            /** @description Stop accepting files after this many; null or omitted = no limit. */
+            maxFiles?: number | null;
+        };
+        ReceivedFile: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            documentId: string;
+            senderName: string;
+            senderEmail: string | null;
+            filename: string;
+            size: number;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            receivedAt: string;
+        };
+        PublicFileRequest: {
+            title: string;
+            message: string | null;
+            /** @description Email of the person asking. */
+            requestedBy: string;
+            workspaceName: string;
+            /**
+             * Format: date-time
+             * @example 2026-09-17T10:15:00.000Z
+             */
+            expiresAt: string;
+            /** @description null = no limit. */
+            remainingFiles: number | null;
+            maxFileBytes: number;
         };
         ShareActivity: {
             opens: number;
@@ -7747,7 +8296,7 @@ export interface components {
             } | null;
         };
         /** @enum {string} */
-        NotificationType: "share.first_open" | "share.new_viewer" | "share.forwarding_suspected" | "document.uploaded" | "document.commented" | "member.joined" | "member.removed" | "member.role_changed" | "workspace.deleted" | "document.quarantined";
+        NotificationType: "share.first_open" | "share.new_viewer" | "share.forwarding_suspected" | "document.uploaded" | "document.commented" | "file_request.received" | "member.joined" | "member.removed" | "member.role_changed" | "workspace.deleted" | "document.quarantined";
         Notification: {
             /** Format: uuid */
             id: string;

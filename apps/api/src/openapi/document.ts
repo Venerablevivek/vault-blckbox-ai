@@ -5,6 +5,7 @@ import { ErrorBody, z } from '../contracts/common';
 import * as documents from '../contracts/documents';
 import * as shares from '../contracts/shares';
 import * as folderShares from '../contracts/folder-shares';
+import * as fileRequests from '../contracts/file-requests';
 import * as tokens from '../contracts/tokens';
 import * as webhooks from '../contracts/webhooks';
 import * as uploads from '../contracts/uploads';
@@ -43,6 +44,8 @@ interface Operation {
   query?: z.AnyZodObject;
   body?: ZodSchema;
   multipart?: boolean;
+  /** Plain form fields sent before the file in a multipart body. */
+  multipartFields?: z.AnyZodObject;
   /** Success status and body; null body means no content. */
   success: [number, ZodSchema | null] | 'redirect' | 'stream' | { file: string[] };
   errors?: ErrorStatus[];
@@ -535,6 +538,74 @@ export const operations: Operation[] = [
     params: documents.CommentParams,
     success: [204, null],
     errors: [401, 403, 404],
+  },
+  {
+    method: 'post',
+    path: '/api/workspaces/:workspaceId/file-requests',
+    tag: 'File requests',
+    summary: 'Create a file request (an upload link for people outside the workspace)',
+    description:
+      'Owners and members. Files sent through it land in the chosen folder, owned by you, and go through the same checks as any upload. The link is returned once; it always expires (at most 90 days).',
+    auth: S,
+    params: fileRequests.FileRequestWorkspaceParams,
+    body: fileRequests.CreateFileRequestBody,
+    success: [201, fileRequests.FileRequestCreatedResponse],
+    errors: [400, 401, 403, 404, 429],
+  },
+  {
+    method: 'get',
+    path: '/api/workspaces/:workspaceId/file-requests',
+    tag: 'File requests',
+    summary: "A workspace's file requests, newest first",
+    auth: S,
+    params: fileRequests.FileRequestWorkspaceParams,
+    success: [200, fileRequests.FileRequestsResponse],
+    errors: [401, 403, 404],
+  },
+  {
+    method: 'get',
+    path: '/api/file-requests/:id/files',
+    tag: 'File requests',
+    summary: 'Files received through a request, with who sent them',
+    auth: S,
+    params: fileRequests.FileRequestParams,
+    success: [200, fileRequests.ReceivedFilesResponse],
+    errors: [401, 403, 404],
+  },
+  {
+    method: 'delete',
+    path: '/api/file-requests/:id',
+    tag: 'File requests',
+    summary: 'Close a file request',
+    description: 'Its maker, or a workspace owner. Files already received stay.',
+    auth: S,
+    params: fileRequests.FileRequestParams,
+    success: [204, null],
+    errors: [401, 403, 404],
+  },
+  {
+    method: 'get',
+    path: '/api/requests/:token',
+    tag: 'File requests',
+    summary: 'What a file request asks for (public)',
+    auth: P,
+    params: fileRequests.FileRequestTokenParams,
+    success: [200, fileRequests.PublicFileRequestResponse],
+    errors: [404, 410, 429],
+  },
+  {
+    method: 'post',
+    path: '/api/requests/:token/files',
+    tag: 'File requests',
+    summary: 'Send a file through a file request (public, multipart)',
+    description:
+      'Fields "name" (required) and "email" (optional) must come before the "file" field. Same size limit, type check against content, quota and malware scan as any upload.',
+    auth: P,
+    params: fileRequests.FileRequestTokenParams,
+    multipart: true,
+    multipartFields: fileRequests.SenderFields,
+    success: [201, fileRequests.FileRequestUploadResponse],
+    errors: [400, 404, 410, 413, 415, 429, 503],
   },
   {
     method: 'put',
@@ -1197,7 +1268,9 @@ export function buildOpenApiDocument() {
                 required: true,
                 content: {
                   'multipart/form-data': {
-                    schema: z.object({ file: z.any().openapi({ type: 'string', format: 'binary' }) }),
+                    schema: (op.multipartFields ?? z.object({})).extend({
+                      file: z.any().openapi({ type: 'string', format: 'binary' }),
+                    }),
                   },
                 },
               },

@@ -4,7 +4,14 @@ import SwaggerParser from '@apidevtools/swagger-parser';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { allOperations, buildOpenApiDocument } from '../../src/openapi/document';
 import { withReference } from '../../src/openapi/reference';
-import { createHarness, registerUser, SAMPLE_PDF, uploadDocument, type Harness } from '../helpers/harness';
+import {
+  createHarness,
+  registerUser,
+  SAMPLE_PDF,
+  uploadDocument,
+  type Harness,
+  sendToFileRequest,
+} from '../helpers/harness';
 
 /**
  * The OpenAPI document is generated from the same Zod schemas the routes validate with. These
@@ -240,6 +247,23 @@ describe('API contract', () => {
     const folderShare = await send('POST', '/api/folder-shares', owner, { folderId });
     ok('POST', '/api/folder-shares', folderShare);
     const folderToken = folderShare.json().share.url.split('/f/')[1];
+    // File requests: create, the public page and upload, what arrived, then close it.
+    const fileRequest = await send('POST', `/api/workspaces/${workspaceId}/file-requests`, owner, {
+      title: 'Your signed contract',
+      maxFiles: 3,
+    });
+    ok('POST', '/api/workspaces/:workspaceId/file-requests', fileRequest);
+    const requestToken = String(fileRequest.json().url).split('/r/')[1]!;
+    ok('GET', '/api/requests/:token', await send('GET', `/api/requests/${requestToken}`));
+    ok('POST', '/api/requests/:token/files', await sendToFileRequest(h.app, requestToken, { name: 'Dana' }));
+    ok(
+      'GET',
+      '/api/workspaces/:workspaceId/file-requests',
+      await send('GET', `/api/workspaces/${workspaceId}/file-requests`, owner),
+    );
+    const requestId = fileRequest.json().request.id as string;
+    ok('GET', '/api/file-requests/:id/files', await send('GET', `/api/file-requests/${requestId}/files`, owner));
+    ok('DELETE', '/api/file-requests/:id', await send('DELETE', `/api/file-requests/${requestId}`, owner));
     ok('GET', '/api/folder-shares/:token', await send('GET', `/api/folder-shares/${folderToken}`));
     ok('POST', '/api/folder-shares/:token/view', await send('POST', `/api/folder-shares/${folderToken}/view`));
     ok(
