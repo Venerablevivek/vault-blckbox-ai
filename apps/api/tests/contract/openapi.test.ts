@@ -298,6 +298,12 @@ describe('API contract', () => {
       '/api/documents/:id/thumbnail',
       await send('GET', `/api/documents/${picture.json().document.id}/thumbnail`, owner),
     );
+    const comment = await send('POST', `/api/documents/${documentId}/comments`, owner, { body: 'Looks good.' });
+    ok('POST', '/api/documents/:id/comments', comment);
+    ok('GET', '/api/documents/:id/comments', await send('GET', `/api/documents/${documentId}/comments`, owner));
+    const commentUrl = `/api/documents/${documentId}/comments/${comment.json().comment.id}`;
+    ok('PATCH', '/api/documents/:id/comments/:commentId', await send('PATCH', commentUrl, owner, { body: 'Edited.' }));
+    ok('DELETE', '/api/documents/:id/comments/:commentId', await send('DELETE', commentUrl, owner));
     ok('PUT', '/api/documents/:id/star', await send('PUT', `/api/documents/${documentId}/star`, owner));
     ok('DELETE', '/api/documents/:id/star', await send('DELETE', `/api/documents/${documentId}/star`, owner));
     ok('GET', '/api/documents/:id/download', await send('GET', `/api/documents/${documentId}/download`, owner));

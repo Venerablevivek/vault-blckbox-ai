@@ -17,6 +17,7 @@ const EVENT_GROUPS: Array<{ label: string; events: Array<{ event: string; label:
     events: [
       { event: 'document.uploaded', label: 'Uploaded' },
       { event: 'document.version_uploaded', label: 'New version' },
+      { event: 'document.comment_added', label: 'Commented' },
       { event: 'document.renamed', label: 'Renamed' },
       { event: 'document.moved', label: 'Moved' },
       { event: 'document.trashed', label: 'Moved to trash' },

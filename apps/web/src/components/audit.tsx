@@ -1,5 +1,6 @@
 import {
   History,
+  MessageSquare,
   Webhook,
   Download,
   Eye,
@@ -60,6 +61,8 @@ export const AUDIT_STYLE: Record<AuditAction, { icon: LucideIcon; tone: string }
   'document.version_uploaded': { icon: History, tone: 'bg-brand-50 text-brand-600' },
   'document.version_restored': { icon: History, tone: 'bg-ok-soft text-ok' },
   'document.version_deleted': { icon: History, tone: 'bg-danger-soft text-danger' },
+  'document.comment_added': { icon: MessageSquare, tone: 'bg-brand-50 text-brand-600' },
+  'document.comment_deleted': { icon: MessageSquare, tone: 'bg-danger-soft text-danger' },
   'webhook.created': { icon: Webhook, tone: 'bg-surface-muted text-ink-muted' },
   'webhook.updated': { icon: Webhook, tone: 'bg-surface-muted text-ink-muted' },
   'webhook.deleted': { icon: Webhook, tone: 'bg-danger-soft text-danger' },
@@ -148,6 +151,10 @@ export function describeAuditEvent(event: AuditEvent): string {
       return `${who} moved the folder ${folder}`;
     case 'folder.deleted':
       return `${who} deleted the folder ${folder}`;
+    case 'document.comment_added':
+      return `${who} commented on ${file}`;
+    case 'document.comment_deleted':
+      return `${who} deleted a comment on ${file}`;
     case 'document.quarantined':
       return `${file} was removed: the malware scanner found ${(m.signature as string) ?? 'a threat'}`;
     case 'share.updated':

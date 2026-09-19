@@ -28,6 +28,7 @@ import {
   Trash2,
   UploadCloud,
   History,
+  MessageSquare,
 } from 'lucide-react';
 import {
   api,
@@ -51,6 +52,7 @@ import { FolderSharePanel } from '@/components/folder-share-panel';
 import { PreviewModal } from '@/components/preview-modal';
 import { SharePanel } from '@/components/share-panel';
 import { VersionHistory } from '@/components/version-history';
+import { CommentsPanel } from '@/components/comments-panel';
 import { toast } from '@/components/toast';
 import { cancelDirectUpload, directUpload, UploadCancelled } from '@/lib/direct-upload';
 import { EmptyState, ErrorNote, FileGlyph, Shell, Skeleton, StorageMeter, useSession } from '@/components/ui';
@@ -147,6 +149,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
   const [shareFor, setShareFor] = useState<DocumentDto | null>(null);
   const [shareFolderFor, setShareFolderFor] = useState<FolderDto | null>(null);
   const [versionsFor, setVersionsFor] = useState<DocumentDto | null>(null);
+  const [commentsFor, setCommentsFor] = useState<DocumentDto | null>(null);
   const [previewFor, setPreviewFor] = useState<DocumentDto | null>(null);
   const [detailsFor, setDetailsFor] = useState<DocumentDto | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -779,6 +782,14 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
               href={`/workspaces/${workspaceId}/activity?document=${doc.id}&name=${encodeURIComponent(doc.filename)}`}
             />
           ) : null}
+          <MenuItem
+            icon={MessageSquare}
+            label="Comments"
+            onClick={() => {
+              setMenuFor(null);
+              setCommentsFor(doc);
+            }}
+          />
           <MenuItem
             icon={History}
             label={doc.version > 1 ? `Versions (${doc.version})` : 'Versions'}
@@ -1486,6 +1497,7 @@ function DocumentsView({ workspaceId }: { workspaceId: string }) {
           onChanged={() => void load()}
         />
       ) : null}
+      {commentsFor ? <CommentsPanel document={commentsFor} onClose={() => setCommentsFor(null)} /> : null}
       {versionsFor ? (
         <VersionHistory
           document={versionsFor}

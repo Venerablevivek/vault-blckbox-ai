@@ -72,7 +72,7 @@ creates or updates `vault_app`, the least-privilege role the API and worker conn
 
 ```
 apps/api/
-  migrations/                  001–035, forward-only SQL
+  migrations/                  001–036, forward-only SQL
   src/
     main.ts · worker.ts · migrate-cli.ts · maintenance.ts     entry points
     server.ts · services.ts · config.ts · policy.ts
@@ -282,7 +282,7 @@ workspace, documents, a live link and a pending invitation.
 
 ## 14. Out of scope
 
-OAuth, SSO and MFA; billing; comments and co-editing; account deletion; a separate search engine;
+OAuth, SSO and MFA; billing; real-time co-editing; account deletion; a separate search engine;
 microservices, Redis, Kafka, Kubernetes, any ORM. Each is a decision rather than an omission: the
 README's trade-offs section says what would change the answer.
 

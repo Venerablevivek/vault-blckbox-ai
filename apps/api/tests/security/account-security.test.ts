@@ -334,8 +334,13 @@ describe('account security', () => {
 
       h.clock.advanceHours(1 / 60);
       await h.mailer.waitFor((m) => m.to === 'bob@example.com');
-      const [done] = await h.query<{ status: string }>(`SELECT status FROM jobs WHERE queue = 'email.send'`);
-      expect(done!.status).toBe('done');
+      // The job is marked done just after the message is handed over, so wait for that too.
+      await expect
+        .poll(
+          async () =>
+            (await h.query<{ status: string }>(`SELECT status FROM jobs WHERE queue = 'email.send'`))[0]?.status,
+        )
+        .toBe('done');
     });
 
     it('never sends an email for an invitation that was not saved', async () => {

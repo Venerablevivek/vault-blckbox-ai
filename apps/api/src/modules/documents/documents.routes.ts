@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import type { Config } from '../../config';
 import {
+  CommentBody,
+  CommentParams,
   ArchiveQuery,
   BulkDocumentsBody,
   DocumentParams,
@@ -20,6 +22,20 @@ import { PREVIEWABLE, type DocumentsService } from './documents.service';
 import type { FileStorage } from '../../storage/file-storage';
 import { createArchiveStream } from './archive';
 import type { DocumentListRow, DocumentRow } from './documents.repo';
+import type { CommentRow } from './comments.repo';
+import { Permissions } from '../../policy';
+import type { Role } from '../../types';
+
+const toCommentDto = (row: CommentRow, userId: string, role: Role) => ({
+  id: row.id,
+  body: row.body,
+  authorId: row.author_id,
+  authorEmail: row.author_email,
+  createdAt: row.created_at,
+  editedAt: row.edited_at,
+  canEdit: row.author_id === userId,
+  canDelete: Permissions.canDeleteComment(role, row.author_id, userId),
+});
 
 export function toDocumentDto(row: DocumentRow & Partial<DocumentListRow>) {
   return {
@@ -361,6 +377,48 @@ export function registerDocumentRoutes(
     handler: async (request) => {
       const { id } = DocumentParams.parse(request.params);
       return documents.trash(id, currentUser(request).id);
+    },
+  });
+
+  app.get('/api/documents/:id/comments', {
+    preHandler: requireSession,
+    handler: async (request) => {
+      const { id } = DocumentParams.parse(request.params);
+      const userId = currentUser(request).id;
+      const { comments, role } = await documents.listComments(id, userId);
+      return { comments: comments.map((c) => toCommentDto(c, userId, role)) };
+    },
+  });
+
+  app.post('/api/documents/:id/comments', {
+    preHandler: requireSession,
+    config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
+    handler: async (request, reply) => {
+      const { id } = DocumentParams.parse(request.params);
+      const { body } = CommentBody.parse(request.body);
+      const userId = currentUser(request).id;
+      const { comment, role } = await documents.addComment(id, userId, body);
+      return reply.status(201).send({ comment: toCommentDto(comment, userId, role) });
+    },
+  });
+
+  app.patch('/api/documents/:id/comments/:commentId', {
+    preHandler: requireSession,
+    handler: async (request) => {
+      const { id, commentId } = CommentParams.parse(request.params);
+      const { body } = CommentBody.parse(request.body);
+      const userId = currentUser(request).id;
+      const { comment, role } = await documents.editComment(id, commentId, userId, body);
+      return { comment: toCommentDto(comment, userId, role) };
+    },
+  });
+
+  app.delete('/api/documents/:id/comments/:commentId', {
+    preHandler: requireSession,
+    handler: async (request, reply) => {
+      const { id, commentId } = CommentParams.parse(request.params);
+      await documents.deleteComment(id, commentId, currentUser(request).id);
+      return reply.status(204).send();
     },
   });
 

@@ -82,6 +82,13 @@ export function createNotificationsService(deps: {
      * about it. A dropped notification is a minor loss; a failed upload because of one is
      * not acceptable.
      */
+    /** The same, for several people at once (for example everyone in a comment thread). */
+    notifyUsers(userIds: string[], input: Omit<NotifyInput, 'userId'>): void {
+      void deliver(userIds, input).catch((error: unknown) => {
+        logger.warn({ err: error, type: input.type }, 'failed to write notification');
+      });
+    },
+
     notify(input: NotifyInput): void {
       void deliver([input.userId], input).catch((error: unknown) => {
         logger.warn({ err: error, type: input.type }, 'failed to write notification');

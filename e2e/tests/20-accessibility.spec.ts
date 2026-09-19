@@ -59,6 +59,18 @@ for (const colorScheme of ['light', 'dark'] as const) {
       await audit(page, 'share panel');
       await page.keyboard.press('Escape');
 
+      await page.request.post(`/api/documents/${doc}/comments`, { data: { body: 'Looks good to me.' } });
+      await page.getByRole('button', { name: 'List view' }).click();
+      await page
+        .getByRole('listitem')
+        .filter({ hasText: 'notes.txt' })
+        .getByRole('button', { name: 'More actions' })
+        .click();
+      await page.getByRole('menuitem', { name: 'Comments' }).click();
+      await expect(page.getByRole('list', { name: 'Comments' }).getByRole('listitem')).toHaveCount(1);
+      await audit(page, 'comments');
+      await page.keyboard.press('Escape');
+
       await page.getByRole('button', { name: 'Open the command menu' }).click();
       await page.getByRole('combobox', { name: 'Command' }).fill('se');
       await audit(page, 'command menu');

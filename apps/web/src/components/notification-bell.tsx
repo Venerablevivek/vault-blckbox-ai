@@ -8,6 +8,7 @@ import {
   CheckCheck,
   Eye,
   FilePlus2,
+  MessageSquare,
   Trash2,
   UserCheck,
   UserCog,
@@ -26,6 +27,7 @@ const ICONS: Record<NotificationDto['type'], { icon: LucideIcon; tone: string }>
   'share.new_viewer': { icon: Eye, tone: 'bg-ok-soft text-ok' },
   'share.forwarding_suspected': { icon: AlertTriangle, tone: 'bg-warn-soft text-warn' },
   'document.uploaded': { icon: FilePlus2, tone: 'bg-brand-50 text-brand-600' },
+  'document.commented': { icon: MessageSquare, tone: 'bg-brand-50 text-brand-600' },
   'member.joined': { icon: UserCheck, tone: 'bg-ok-soft text-ok' },
   'member.removed': { icon: UserMinus, tone: 'bg-danger-soft text-danger' },
   'member.role_changed': {

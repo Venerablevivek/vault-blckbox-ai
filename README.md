@@ -184,6 +184,7 @@ trail.
 | --- | --- |
 | Workspaces | Invite by email as Owner, Member or Viewer; change roles; remove or leave; a workspace always keeps an owner. Storage quota per workspace. Deleting a workspace removes everything |
 | Documents | Direct, resumable uploads up to 5 GB; types checked against the bytes; duplicate detection; folders (8 levels); trash with 30-day restore; stars, recents; bulk move/trash/restore/delete; zip download of a selection or a folder tree |
+| Comments | A discussion thread on every document for the whole workspace, viewers included; authors edit their own, owners can remove any; the uploader and everyone in the thread are notified |
 | Versions | Upload a newer copy, keep history, download, restore or delete any version; the oldest are pruned past a limit |
 | Processing | Malware scanning (ClamAV); thumbnails of images and PDFs; full-text search of PDFs, text and Office files; Office previews through Gotenberg |
 | Sharing | Links to a file or a whole folder; expiry, password, download limits (one-time links), view-only with a burned-in watermark, and links restricted to named people who prove their address with an emailed code |
@@ -207,6 +208,8 @@ All of it lives in `apps/api/src/policy.ts`:
 | Rename, move, trash, restore, version a document | ✅ any | ✅ own only | ❌ |
 | Rename, move, delete a folder | ✅ any | ✅ own only | ❌ |
 | Edit or revoke a share link | ✅ any | ✅ own only | ❌ |
+| Comment on documents; edit or delete your own comments | ✅ | ✅ | ✅ |
+| Delete anyone's comment | ✅ | ❌ | ❌ |
 | Delete forever from the trash | ✅ | ❌ | ❌ |
 | Invite, change roles, remove members, activity trail, webhooks, delete the workspace | ✅ | ❌ | ❌ |
 
@@ -230,7 +233,7 @@ a contract test calls every route and checks every response against it.
 | --- | --- |
 | Auth | register, sign in, password reset, email confirmation, sessions, API tokens |
 | Workspaces & members | create, rename, delete; invite, change roles, remove; overview; storage |
-| Documents | list/search/page, upload, rename/move, trash/restore/purge, bulk actions, zips, versions, stars, thumbnails, previews, downloads |
+| Documents | list/search/page, upload, rename/move, trash/restore/purge, bulk actions, zips, versions, comments, stars, thumbnails, previews, downloads |
 | Uploads | direct multipart uploads: start, sign parts, resume, complete, cancel |
 | Sharing | document links and folder links: create, edit, revoke, access history (JSON and CSV) |
 | Public | resolve and download links, passwords, one-time codes, view-only content, folder browsing and zips, invitations |
@@ -347,7 +350,7 @@ security the design relies on.
 | --- | --- |
 | Contract | Every route is documented; every response matches its schema; the committed OpenAPI and route table are current |
 | Security | Cross-tenant 404s on every route, the database role's privileges, row-level security, the audit hash chain, email verification, malware scanning, rate limits and lockouts, client IP trust, protected/view-only/restricted links, folder links, API tokens, the webhook address guard |
-| Integration | Uploads (buffered and direct), quotas, trash, folders, search, versions, processing, zips and bulk actions, stars and recents, the job queue, notifications (live stream, preferences, digests), activity filters and exports, webhooks, metrics |
+| Integration | Uploads (buffered and direct), quotas, trash, folders, search, versions, comments, processing, zips and bulk actions, stars and recents, the job queue, notifications (live stream, preferences, digests), activity filters and exports, webhooks, metrics |
 | Unit | Token and type handling, zip entry names, the SSRF guard, webhook signatures, the permission matrix |
 | End-to-end | Every main journey through a real browser, including uploads resuming after a failure, a recipient opening a restricted view-only link with a code from Mailpit, folder links, versions, the command menu, themes, and **axe-core WCAG 2.1 AA checks** of every screen in both themes |
 

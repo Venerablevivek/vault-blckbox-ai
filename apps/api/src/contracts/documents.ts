@@ -1,6 +1,12 @@
 import { obj, Role, StorageUsage, timestamp, uuid, z } from './common';
 
 export const DocumentParams = obj({ id: uuid });
+export const CommentParams = obj({ id: uuid, commentId: uuid });
+export const CommentBody = z
+  .object({
+    body: z.string().trim().min(1, 'Write something first.').max(2000, 'Comments can be at most 2,000 characters.'),
+  })
+  .openapi('CommentRequest');
 export const VersionParams = obj({ id: uuid, version: z.coerce.number().int().min(1).max(1_000_000) });
 export const WorkspaceDocumentsParams = obj({ workspaceId: uuid });
 export const UploadQuery = z.object({ folderId: uuid.optional() });
@@ -195,3 +201,16 @@ export const UpdateFolderBody = z
   .openapi('UpdateFolderRequest');
 export const FolderResponse = obj({ folder: Folder });
 export const FoldersResponse = obj({ path: z.array(Folder), folders: z.array(Folder) });
+
+export const DocumentComment = obj({
+  id: uuid,
+  body: z.string(),
+  authorId: uuid,
+  authorEmail: z.string(),
+  createdAt: timestamp,
+  editedAt: timestamp.nullable(),
+  canEdit: z.boolean().openapi({ description: 'The caller wrote it.' }),
+  canDelete: z.boolean().openapi({ description: 'The caller wrote it, or owns the workspace.' }),
+}).openapi('DocumentComment');
+export const CommentResponse = obj({ comment: DocumentComment });
+export const CommentsResponse = obj({ comments: z.array(DocumentComment) }).openapi('DocumentComments');

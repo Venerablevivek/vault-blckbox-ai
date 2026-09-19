@@ -26,6 +26,8 @@ export type AuditAction =
   | 'document.version_uploaded'
   | 'document.version_restored'
   | 'document.version_deleted'
+  | 'document.comment_added'
+  | 'document.comment_deleted'
   | 'webhook.created'
   | 'webhook.updated'
   | 'webhook.deleted'

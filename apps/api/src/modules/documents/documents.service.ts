@@ -25,6 +25,7 @@ import type { Scanner } from '../../scanning/scanner';
 import { assertScanAllows, initialScanStatus, type ScanStatus } from './scan-policy';
 import { planArchive, type ArchivePlan } from './archive';
 import { versionsRepo, type VersionRow } from './versions.repo';
+import { commentsRepo, type CommentRow } from './comments.repo';
 import {
   documentsRepo,
   type DocumentFilter,
@@ -96,6 +97,19 @@ export interface BulkResult {
   id: string;
   ok: boolean;
   error?: { code: string; message: string };
+}
+
+/** The most comments one document can hold; also the most a listing returns. */
+const MAX_COMMENTS = 500;
+
+/** Trims a comment and drops control characters other than line breaks and tabs. */
+function cleanCommentBody(body: string): string {
+  const text = body
+    .replace(/\r\n?/g, '\n')
+    .replace(/[^\P{Cc}\n\t]/gu, '')
+    .trim();
+  if (!text) throw Errors.badRequest('EMPTY_COMMENT', 'Write something first.');
+  return text;
 }
 
 export function createDocumentsService(opts: DocumentsServiceOptions) {
@@ -1097,6 +1111,98 @@ export function createDocumentsService(opts: DocumentsServiceOptions) {
       const { document } = await authorizeById(documentId, userId);
       if (!document.thumbnail_key || document.processed_key !== document.storage_key) return null;
       return storage.download(document.thumbnail_key);
+    },
+
+    /** A document's comment thread, oldest first, for any member of its workspace. */
+    async listComments(documentId: string, userId: string): Promise<{ comments: CommentRow[]; role: Role }> {
+      const { document, role } = await authorizeById(documentId, userId);
+      return { comments: await commentsRepo.list(pool, document.id, MAX_COMMENTS), role };
+    },
+
+    /**
+     * Adds a comment. Any member may comment, viewers included. The uploader and everyone else
+     * in the thread are notified; the comment and its audit entry are written together.
+     */
+    async addComment(documentId: string, userId: string, body: string): Promise<{ comment: CommentRow; role: Role }> {
+      const { document, role } = await authorizeById(documentId, userId);
+      const text = cleanCommentBody(body);
+      if ((await commentsRepo.count(pool, document.id)) >= MAX_COMMENTS) {
+        throw Errors.conflict('TOO_MANY_COMMENTS', `A document can have at most ${MAX_COMMENTS} comments.`);
+      }
+      const id = randomUUID();
+      await withTransaction(pool, async (tx) => {
+        await commentsRepo.insert(tx, {
+          id,
+          documentId: document.id,
+          workspaceId: document.workspace_id,
+          authorId: userId,
+          body: text,
+          at: clock.now(),
+        });
+        await audit.record(
+          {
+            workspaceId: document.workspace_id,
+            actorUserId: userId,
+            action: 'document.comment_added',
+            resourceType: 'document',
+            resourceId: document.id,
+            metadata: { filename: document.filename, commentId: id },
+          },
+          tx,
+        );
+      });
+      const comment = await commentsRepo.find(pool, document.id, id);
+      if (!comment) throw Errors.notFound('Comment');
+      const recipients = await commentsRepo.participants(pool, document.id, document.workspace_id, userId);
+      notifications.notifyUsers(recipients, {
+        workspaceId: document.workspace_id,
+        type: 'document.commented',
+        title: `${comment.author_email} commented on ${document.filename}`,
+        body: text.length > 140 ? `${text.slice(0, 139)}…` : text,
+        resourceId: document.id,
+      });
+      return { comment, role };
+    },
+
+    /** Edits a comment. Only its author can, whatever their role. */
+    async editComment(
+      documentId: string,
+      commentId: string,
+      userId: string,
+      body: string,
+    ): Promise<{ comment: CommentRow; role: Role }> {
+      const { document, role } = await authorizeById(documentId, userId);
+      const existing = await commentsRepo.find(pool, document.id, commentId);
+      if (!existing) throw Errors.notFound('Comment');
+      if (existing.author_id !== userId) throw Errors.forbidden('Only the person who wrote a comment can edit it.');
+      await commentsRepo.update(pool, existing.id, cleanCommentBody(body), clock.now());
+      const comment = await commentsRepo.find(pool, document.id, commentId);
+      if (!comment) throw Errors.notFound('Comment');
+      return { comment, role };
+    },
+
+    /** Deletes a comment: its author, or a workspace owner. */
+    async deleteComment(documentId: string, commentId: string, userId: string): Promise<void> {
+      const { document, role } = await authorizeById(documentId, userId);
+      const existing = await commentsRepo.find(pool, document.id, commentId);
+      if (!existing) throw Errors.notFound('Comment');
+      if (!Permissions.canDeleteComment(role, existing.author_id, userId)) {
+        throw Errors.forbidden("Only the comment's author or a workspace owner can delete it.");
+      }
+      await withTransaction(pool, async (tx) => {
+        await commentsRepo.remove(tx, existing.id);
+        await audit.record(
+          {
+            workspaceId: document.workspace_id,
+            actorUserId: userId,
+            action: 'document.comment_deleted',
+            resourceType: 'document',
+            resourceId: document.id,
+            metadata: { filename: document.filename, commentId: existing.id, authorEmail: existing.author_email },
+          },
+          tx,
+        );
+      });
     },
 
     async setStar(documentId: string, userId: string, starred: boolean): Promise<void> {

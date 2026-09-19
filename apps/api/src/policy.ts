@@ -12,6 +12,9 @@ import type { Role } from './types';
  *  rename / move / trash / restore document   x     own only      -
  *  rename / move / delete folder              x     own only      -
  *  edit / revoke share link                   x     own only      -
+ *  comment on documents                       x        x          x
+ *  edit a comment                            own      own        own
+ *  delete a comment                           x     own only   own only
  *  permanently delete from trash              x        -          -
  *  invite, change roles, remove members       x        -          -
  *  view audit trail, rename workspace         x        -          -
@@ -22,6 +25,8 @@ import type { Role } from './types';
  * "own" means the caller created the row (documents.uploaded_by, folders.created_by,
  * shares.created_by). Ownership only grants rights while the caller is still a MEMBER:
  * someone downgraded to VIEWER cannot keep editing what they created.
+ *
+ * Commenting is open to VIEWER too: discussing a file doesn't change it or move it anywhere.
  *
  * VIEWER cannot create share links on purpose — a read-only collaborator should not be able
  * to move a document outside the workspace.
@@ -45,6 +50,9 @@ export const Permissions = {
   canModifyFolder: ownsOrAdministers,
   /** Editing a link (expiry, password, download limit) follows the same rule as revoking it. */
   canManageShare: ownsOrAdministers,
+  /** A comment is its author's to delete; an OWNER may remove any (moderation). */
+  canDeleteComment: (role: Role, authorId: string, actorId: string): boolean =>
+    role === 'OWNER' || authorId === actorId,
 };
 
 export function requireOwner(role: Role): void {

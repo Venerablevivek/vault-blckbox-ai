@@ -291,6 +291,7 @@ This is checked by review; there is no lint rule enforcing it.
 | `033_notification_digest_marks.sql` | `notifications.digested_at` |
 | `034_api_tokens.sql` | `api_tokens` (hashed `vlt_` tokens, scope, expiry, last use) |
 | `035_webhooks.sql` | `webhooks`, `webhook_deliveries` |
+| `036_document_comments.sql` | `document_comments` (author, body up to 2,000 characters, `seq` for thread order, `edited_at`); tenant RLS |
 
 ```sql
 -- One-time and limited links: the last download can be claimed exactly once.

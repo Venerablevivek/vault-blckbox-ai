@@ -73,6 +73,7 @@ export type ShareSummary = Schemas['ShareSummary'];
 export type ShareOutcome = Schemas['ShareOutcome'];
 export type FolderShareSummary = Schemas['FolderShareSummary'];
 export type DocumentVersion = Schemas['DocumentVersion'];
+export type DocumentComment = Schemas['DocumentComment'];
 export interface ShareEvent {
   accessedAt: string;
   outcome: ShareOutcome;

@@ -5,6 +5,7 @@ export type NotificationType =
   | 'share.new_viewer'
   | 'share.forwarding_suspected'
   | 'document.uploaded'
+  | 'document.commented'
   | 'member.joined'
   | 'member.removed'
   | 'member.role_changed'
