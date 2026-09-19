@@ -270,6 +270,27 @@ This is checked by review; there is no lint rule enforcing it.
 | `012_protected_links.sql` | `shares.password_hash`, `max_downloads`, `download_count`; access outcomes gain `exhausted` and `bad_password` |
 | `013_login_failures.sql` | `login_failures (email_hash, failed_at)` — no foreign key, so unknown emails are counted identically |
 | `014_document_search.sql` | `pg_trgm`; trigram GIN index on `documents.filename`; `(workspace_id, lower(filename), id)` and `(workspace_id, size, id)` for sorted keyset paging |
+| `015_account_security.sql` | `password_resets`; sessions gain `user_agent`, `last_seen_at`; `users.password_changed_at` |
+| `016_integrity_quotas_workspace_deletion.sql` | `documents.sha256`; workspace `storage_quota_bytes` / `storage_used_bytes`; workspace soft delete |
+| `017_jobs.sql` | `jobs` — the PostgreSQL job queue (claimed with `SKIP LOCKED`, `dedupe_key` collapses unfinished duplicates) |
+| `018_share_counters_and_event_partitions.sql` | share counters (`open_count`, `viewer_count`, `blocked_count`, first/last access); `share_access_events` partitioned by month |
+| `019_uploads.sql` | `uploads` — resumable multipart uploads straight to storage |
+| `020_rate_limits.sql` | unlogged `rate_limits` table, so limits hold across API replicas |
+| `021_notification_notify.sql` | trigger that `NOTIFY`s on new notifications (live updates) |
+| `022_partition_functions_security_definer.sql` | partition maintenance as `SECURITY DEFINER` functions, so the app role needs no DDL |
+| `023_audit_hash_chain.sql` | `audit_events.seq`, `prev_hash`, `hash` — a tamper-evident chain |
+| `024_row_level_security.sql` | RLS policies (`app_workspace_visible`, `app_user_visible`) on every tenant table |
+| `025_email_verification.sql` | `users.email_verified_at`; `email_verifications` |
+| `026_malware_scanning.sql` | `documents.scan_status`, `scan_signature`, `scanned_at` |
+| `027_stars_and_recents.sql` | `document_stars`, `document_recents` |
+| `028_view_only_and_restricted_links.sql` | `shares.allow_download`, `allowed_emails`; events gain `viewer_email` and the `bad_code` outcome; `share_email_codes` |
+| `029_folder_shares.sql` | `folder_shares` (hashed token, expiry, password, `failed_unlocks`) |
+| `030_document_versions.sql` | `documents.version`, `version_uploaded_by`, `version_created_at`; `document_versions` |
+| `031_document_processing.sql` | `thumbnail_key`, `preview_key`, `processed_key`, `processing_status`, `processed_at`; `document_contents` with a `tsvector` |
+| `032_notification_preferences.sql` | `notification_preferences` (mute, email instantly / in a digest / never) |
+| `033_notification_digest_marks.sql` | `notifications.digested_at` |
+| `034_api_tokens.sql` | `api_tokens` (hashed `vlt_` tokens, scope, expiry, last use) |
+| `035_webhooks.sql` | `webhooks`, `webhook_deliveries` |
 
 ```sql
 -- One-time and limited links: the last download can be claimed exactly once.

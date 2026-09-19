@@ -25,12 +25,16 @@ These five are the backbone of the suite. Everything else is secondary.
 ## Shape
 
 ```
-  13 × unit            token entropy, MIME sniffing, the permission matrix — no I/O
-  77 × integration     Fastify app.inject() against a real Postgres and a real MinIO
-  53 × security        cross-tenant, shares, client IP, protected links, lockout, offboarding, Viewer
-                       (the same containers `docker compose up` starts, separate database)
-   7 × end-to-end      Playwright + Chromium against the whole stack through port 3000
+ 357 × API tests       unit, integration, security and contract (vitest), against a real
+                       Postgres and a real MinIO (the containers `docker compose up` starts)
+  33 × end-to-end      Playwright + Chromium against the whole stack through port 3000
+                       (one is skipped unless malware scanning is on), incl. axe accessibility checks
+       load test       k6, results in 11-performance.md
 ```
+
+The contract test checks that every route is in the OpenAPI document, every documented operation
+is exercised, responses match their schemas, and the generated route reference in `04-api-spec.md`
+is current. Background work is awaited with polls, never fixed sleeps.
 
 The original plan had no end-to-end browser tests, on the reasoning that an integration suite
 through the real database catches the bugs that matter. **That was wrong.** Both defects found in the

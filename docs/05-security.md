@@ -124,29 +124,22 @@ workspace, not the uploader, not the object key, not other documents.
 
 ---
 
+## Added since the first version
+
+- **Malware scanning** (ClamAV, in the worker): files are held as `pending` until clean; infected files are never served or zipped.
+- **Email verification** before notification email is sent; **password resets** revoke every session and API token.
+- **Row-level security** on every tenant table, with a least-privilege `vault_app` role that owns nothing.
+- **Hash-chained audit trail**: each event stores the previous event's hash, so edits and deletions are detectable.
+- **Restricted links**: view-only (watermarked PDF, no download), and email-restricted links unlocked by a one-time code.
+- **API tokens** (`vlt_…`, hashed, scoped, revocable); browser-only operations refuse them.
+- **Webhooks** are signed (`t=…,v1=HMAC`), and the destination address is checked inside the connection's own DNS lookup, so private and reserved addresses can't be reached, even by DNS rebinding.
+- **Rate limits** are stored in Postgres, so they hold across replicas.
+- **Tracing** redacts share, folder and API tokens from spans.
+
 ## Knowingly left out
 
-Stated plainly, because a take-home that claims to be secure everywhere isn't being honest.
-
-1. **No virus/malware scanning.** A user can upload malware and share it. Real risk for this product;
-   out of scope for a weekend, and the blueprint's §10 says keep scope tight.
-2. **No email verification.** You can register with an address you don't own. Partly mitigated by
-   invitations being email-bound.
-3. **No 2FA / SSO / OAuth** — explicitly excluded by the blueprint.
-4. **No CSRF double-submit token.** `SameSite=Lax` plus a JSON-only content type covers the realistic
-   attacks; the token is the correct belt-and-braces addition and is deliberately omitted.
-5. **No row-level security in Postgres.** Authorization is application-level through one guard path.
-   RLS would be genuine defence-in-depth and is the first hardening step with more time.
-6. **Cleanup is hourly, not immediate.** The maintenance job purges expired trash (retrying failed
-   object deletions on the next run) and removes stale sessions, login failures, notifications and
-   invitations. Access and audit events are never purged.
-7. **The audit trail is append-only by convention, not enforcement.** The application never updates
-   or deletes `audit_events`, but the database role could. Revoking `UPDATE`/`DELETE` for the app role,
-   or hash-chaining entries, would make it tamper-evident.
-8. **No TLS in the compose file.** Everything is HTTP on localhost; shipping self-signed certs would
-   make the five-minute setup worse for no evaluation benefit.
-9. **No account deletion / GDPR erasure flow.**
-10. **Single-node assumptions.** Rate limiting is in-process; multi-replica would need shared state.
-    Account and link lockouts are in Postgres and already work across instances.
-11. **The CSP allows inline scripts**, because Next.js's bootstrap scripts are inline; a nonce would
-    force every page to render dynamically.
+1. **No CSRF double-submit token.** `SameSite=Lax` plus a JSON-only content type covers the realistic attacks.
+2. **No MFA / SSO / OAuth**, and no account deletion (GDPR erasure) flow.
+3. **No TLS in the compose file.** Everything is HTTP on localhost.
+4. **The CSP allows inline scripts**, because Next.js's bootstrap scripts are inline; a nonce would force every page to render dynamically.
+5. **Secrets are not encrypted at rest** beyond what the disk provides (webhook signing secrets are stored so they can sign).

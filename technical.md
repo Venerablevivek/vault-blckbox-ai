@@ -1,160 +1,99 @@
 # Technical Design — File Storage & Sharing
 
-Status: **Implemented.** See [`README.md`](README.md) for how to run it.
-Authority: this design follows **`file_storage_sharing_takehome_blueprint.pdf`** exactly — stack,
-roles, schema, API shape, scope limits. Where the blueprint is silent, the choice is recorded in
-[`docs/02-product-decisions.md`](docs/02-product-decisions.md).
+Status: **Implementation reference.** See [`README.md`](README.md) for how to run it and what it does.
+The original design followed `file_storage_sharing_takehome_blueprint.pdf`; everything built since
+(recorded in the README and the ADRs) extends it without changing its foundations.
 
-Companion docs: [`docs/`](docs/) · ADRs: [`docs/adr/`](docs/adr/)
+Companion docs: [`docs/`](docs/) · ADRs: [`docs/adr/`](docs/adr/) · API: [`docs/04-api-spec.md`](docs/04-api-spec.md)
 
 ---
 
 ## 1. Goal
 
-A small, functional full-stack application for document storage, external sharing, workspaces,
-invitations and access control — **optimized for a weekend scope**.
+Document storage, external sharing, workspaces, invitations and access control, built the way a
+small product team would run it in production: correct under concurrency, safe across tenants,
+observable, and cheap to operate.
 
-`Browser → Next.js UI → Node.js API → PostgreSQL (metadata) + MinIO (file bytes)`
+`Browser → Next.js → Fastify API → PostgreSQL (metadata, queue, search) + S3/MinIO (bytes)`
 
-**Modular monolith.** No microservices, no Redis, no Kafka, no Elasticsearch, no Kubernetes.
+**Modular monolith**: one codebase, two processes (API and worker), PostgreSQL as the only stateful
+service besides object storage. No microservices, no Redis, no Kafka, no Elasticsearch, no ORM.
 
 ---
 
-## 2. Stack (as specified)
+## 2. Stack
 
 | Layer | Choice | Why |
 | --- | --- | --- |
-| Frontend | **Next.js + TypeScript + Tailwind** | Fast to build, functional UI, strong TypeScript support |
-| Backend | **Node.js + TypeScript + Fastify** | Lightweight REST API with good validation and structure |
-| Database | **PostgreSQL + `pg` (raw SQL)** | Explicit queries, strong SQL control, **no ORM** |
-| Migrations | **Ordered `.sql` files + a small runner** | Meets the migration requirement without introducing an ORM |
-| File storage | **MinIO locally via the S3 API** | Keeps bytes outside PostgreSQL; easy to swap for AWS S3 |
-| Auth | **Email/password + server-side session cookie** | Simple browser auth with HttpOnly cookies |
-| Testing | **Vitest + API/integration tests** | Effort aimed at authorization, sharing and storage boundaries |
-| Infra | **Docker Compose** | One command brings up web, API, PostgreSQL and MinIO |
-
-Supporting libraries, kept deliberately few: `@fastify/cookie`, `@fastify/multipart`,
-`@fastify/rate-limit`, `@fastify/helmet`, `zod` (request validation), `@aws-sdk/client-s3` +
-`s3-request-presigner`, `argon2`, `pino`.
-
-Zod schemas are parsed explicitly inside each handler rather than through a type-provider plugin.
-It is a few more lines per route, but it keeps the validation visible at the point of use and adds
-no glue dependency — which matters for a codebase that has to be explained line by line.
-
-### 2.1 Migrations: ordered SQL over node-pg-migrate
-
-The blueprint allows either. **Chosen: numbered `.sql` files plus a ~50-line runner.**
-
-```
-apps/api/migrations/001_users_sessions.sql
-                    002_workspaces_members.sql
-                    003_documents.sql
-                    004_shares.sql
-                    005_invitations.sql
-                    006_share_access_events.sql
-                    007_audit_events.sql
-                    008_notifications.sql
-```
-
-The runner opens a transaction, takes an advisory lock, reads applied versions from a
-`schema_migrations` table, and executes the rest in filename order. It runs from the API entrypoint
-before the server starts.
-
-**Why:** the whole point of `pg` + raw SQL is that the schema is explicit and reviewable. Numbered
-SQL files are the most explicit form of that — a reviewer reads the DDL directly, and every statement
-is one I can defend in a walkthrough. `node-pg-migrate` would wrap the same SQL in a JS API and add a
-dependency for nothing we need. Forward-only; no down-migrations (a weekend project doesn't roll back,
-it re-creates).
+| Frontend | **Next.js + TypeScript + Tailwind** | App Router; the browser only talks to the web origin |
+| Backend | **Node.js + TypeScript + Fastify 5** | Lightweight, fast, good hooks for security and metrics |
+| Contracts | **Zod + `@asteasolutions/zod-to-openapi`** | One definition validates requests, documents the API and types the web client |
+| Database | **PostgreSQL 16 + `pg`, raw SQL** | Explicit queries; also the queue, search, rate limits and live updates |
+| Migrations | **Ordered `.sql` files + a small runner** | The schema is the reviewable artefact |
+| Files | **S3 API (MinIO locally)** | Bytes never in PostgreSQL; any S3 works |
+| Auth | **Server-side sessions** (HttpOnly cookie) **+ personal API tokens** | Revocation takes effect on the next request |
+| Processing | `sharp`, `pdfjs-dist` + `@napi-rs/canvas`, `yauzl`, `pdf-lib`, `yazl` | Thumbnails, text extraction, watermarks, zips; native dependencies installed during the Docker build |
+| Optional services | ClamAV, Gotenberg (LibreOffice), Prometheus, Jaeger | Compose profiles |
+| Observability | `@prometheus-io/client`, OpenTelemetry SDK, pino | Metrics port, OTLP traces, structured logs with trace ids |
+| Testing | **Vitest** (API, against real PostgreSQL and MinIO), **Playwright** + axe-core (end-to-end), **k6** (load) | |
+| Infra | **Docker Compose**; images pinned by digest | `docker compose up --build` is the whole setup |
 
 ---
 
-## 3. Architecture
+## 3. Processes
 
 ```
                      ┌──────────────────────────────────┐
- Browser (member)    │  web — Next.js (App Router)      │
- Browser (recipient) │  :3000                           │
-                     │  next.config rewrites /api/* ────┼──┐  single origin,
-                     └──────────────────────────────────┘  │  no CORS, cookies just work
-                                                           │
+ Browser (member)    │  web — Next.js         :3000     │  server.mjs: security headers, real
+ Browser (recipient) │  rewrites /api/* ────────────────┼──┐  client address, 404/410 for dead links
+                     └──────────────────────────────────┘  │
                      ┌─────────────────────────────────────▼─┐
-                     │  api — Fastify                  :4000 │
-                     │  ┌─────────────────────────────────┐  │
-                     │  │ routes    validate + delegate   │  │
-                     │  │ ─────────────────────────────── │  │
-                     │  │ service   domain, transactions  │  │
-                     │  │ ─────────────────────────────── │  │
-                     │  │ repo      parameterized SQL     │  │  ← the only SQL in the app
-                     │  └─────────────────────────────────┘  │
-                     │      FileStorage ◄────────────────────┼──┐
-                     └───────────────┬───────────────────────┘  │
-                                     │                          │
-                  ┌──────────────────▼────────┐   ┌─────────────▼──────────────┐
-                  │ PostgreSQL :5432          │   │ MinIO :9000 (console 9001) │
-                  │ metadata only, no bytes   │   │ private bucket, file bytes │
-                  └───────────────────────────┘   └────────────────────────────┘
+                     │  api — Fastify                  :4000 │ ──► /metrics on :9464
+                     │  routes → services → repositories     │
+                     └───────┬───────────────────────┬───────┘
+                             │  jobs (same transaction) │
+                     ┌───────▼───────┐               ┌──▼──────────────────────────┐
+                     │  PostgreSQL   │◄──────────────│  worker — same code         │ ──► /metrics on :9464
+                     │  :5432        │  SKIP LOCKED  │  email, fan-out, scans,     │
+                     └───────────────┘  LISTEN/NOTIFY│  processing, webhooks,      │
+                             ▲                       │  purges, maintenance        │
+                     ┌───────┴────────┐              └──┬──────────────────────────┘
+                     │ MinIO / S3     │◄────────────────┘   ──► ClamAV, Gotenberg, SMTP, webhooks
+                     │ :9000          │◄── browser: direct part uploads, signed downloads
+                     └────────────────┘
 ```
 
-Four compose services — `postgres`, `minio`, `api`, `web` — exactly as the blueprint specifies. The
-bucket is created by the API at boot (`ensureBucket()`), so no fifth init container is needed.
-
-**Bytes flow through the API.** `POST /api/workspaces/:id/documents` takes a multipart body and
-writes it to MinIO; `GET /api/documents/:id/download` authorizes and then returns a short-lived
-signed URL. This is the blueprint's flow, and it is the right one here: authorization is checked on
-the same request that moves the bytes, and the `FileStorage` interface stays four honest methods
-instead of leaking presigning semantics into the upload path.
-
-The uploaded part is buffered in memory before being written. At a 25 MB cap that is a deliberate
-trade: it is what allows the magic-byte check to run against the real content *before* anything is
-written to storage, and it yields an exact size for the row. It would be the wrong call at
-multi-gigabyte sizes, where streaming with a rolling prefix check is the answer.
+A one-off **migrate** container runs first, as the database owner: it applies migrations and
+creates or updates `vault_app`, the least-privilege role the API and worker connect as.
 
 ---
 
-## 4. Project layout (as specified)
+## 4. Project layout
 
 ```
-.
-├── docker-compose.yml
-├── .env.example
-├── README.md
-├── technical.md
-├── docs/
-├── apps/
-│   ├── web/                       # Next.js + TypeScript + Tailwind
-│   │   └── src/app/               # login, register, workspaces, documents, invite, s/[token]
-│   └── api/
-│       ├── migrations/            # 001_*.sql … ordered, forward-only
-│       ├── tests/                 # Vitest: unit + integration
-│       └── src/
-│           ├── server.ts          # buildApp(deps) — pure, testable
-│           ├── main.ts            # migrate → ensureBucket → listen
-│           ├── config.ts          # env parsed by Zod once, fail-fast
-│           ├── db/
-│           │   ├── pool.ts        # pg Pool
-│           │   ├── tx.ts          # withTransaction(fn)
-│           │   └── migrate.ts     # the ordered-SQL runner
-│           ├── modules/
-│           │   ├── auth/          # routes, service, repo, sessions, password
-│           │   ├── workspaces/    # routes, service, repo, members, invitations
-│           │   ├── documents/     # routes, service, repo, upload/download
-│           │   └── shares/        # routes, service, repo (+ the public token route)
-│           ├── storage/
-│           │   ├── file-storage.ts   # the interface
-│           │   ├── s3-storage.ts     # MinIO / S3
-│           │   └── keys.ts           # the ONLY place object keys are built
-│           ├── plugins/           # session, errors, rate-limit, logging
-│           └── lib/               # tokens, errors, mime allowlist, logger redaction
+apps/api/
+  migrations/                  001–035, forward-only SQL
+  src/
+    main.ts · worker.ts · migrate-cli.ts · maintenance.ts     entry points
+    server.ts · services.ts · config.ts · policy.ts
+    contracts/                 Zod schemas (validation + OpenAPI)
+    modules/<name>/            routes · service · repo: auth, workspaces, documents (archive, versions),
+                               folders, uploads, shares, folder-shares, audit, notifications, overview,
+                               tokens, webhooks, maintenance
+    jobs/                      the queue and its handlers
+    processing/                text, thumbnails, Office conversion, pdf.js loader
+    scanning/                  ClamAV client
+    storage/                   FileStorage, S3Storage, object keys
+    db/                        pools, transactions, tenant scoping, migrations, app role
+    lib/                       errors, tokens, logger (redaction), csv, safe-http (SSRF guard), slots
+    observability/             metrics, tracing
+    openapi/                   document builder, route reference
+  tests/                       unit · integration · security · contract
+apps/web/                      Next.js app, server.mjs
+e2e/                           Playwright specs (including accessibility)
+loadtest/                      k6 script
+ops/                           Prometheus configuration
 ```
-
-**Layering convention:** a route may call a service; a service may call repositories and
-`FileStorage`; nothing calls upward. `@aws-sdk` is imported only under `storage/`, and SQL lives in
-`*.repo.ts` files — with one exception: `overview.service.ts` runs its dashboard aggregation queries
-directly rather than through a repository.
-
-This is a convention kept by review, **not enforced by tooling** — the project has no ESLint
-configuration. An ESLint `no-restricted-imports` rule would be the way to make it mechanical, and is
-listed as a follow-up.
 
 ---
 
@@ -162,234 +101,190 @@ listed as a follow-up.
 
 ```
 request
-  → helmet · cookie · rate-limit (per route) · pino (requestId, token redaction)
-  → session hook (global, onRequest)  cookie → sha256 → SELECT session → req.user, or null
-  → preHandler: requireSession        on every authenticated route                 | else 401
-  → route handler
-      workspaces.requireMember(id)    SELECT role FROM workspace_members           | else 404
-      requireOwner() / Permissions    where the action needs a role or ownership   | else 403
-      Zod validation                  params, query, body
-      → service (transaction boundary) → repository
-  → error handler                     one envelope: { error: { code, message } }
+  → helmet · cookie · per-route rate limit (PostgreSQL store) · metrics timer · pino (request id, redaction)
+  → identity hook (onRequest)        Authorization: Bearer vlt_… → token owner   (a bad token is never ignored)
+                                     else session cookie → sha256 → session row
+  → preHandler requireSession        401 without a user; 403 for a read-only token on a write
+            or requireBrowserSession  also refuses API tokens (account security, workspace deletion)
+  → handler
+      requireMember(workspaceId)     role from workspace_members, per request              else 404
+      Permissions / requireOwner     policy.ts                                              else 403
+      Zod parse                      after authorization, so outsiders all get the same 404
+      → service (transaction boundary; jobs enqueued in the same transaction)
+      → repository (parameterised SQL; multi-row reads inside withTenant for RLS)
+  → error handler                    { error: { code, message, details? } }; unknown errors are opaque 500s
 ```
-
-How it actually works, stated precisely because the walkthrough will test it:
-
-1. **Identity is resolved globally; enforcement is per route.** The session hook runs on every
-   request, including public ones, and only sets `req.user`. Each authenticated route opts in with
-   `preHandler: requireSession`. Public routes (share resolve/view/download, invitation preview,
-   login, register) simply don't.
-2. **Membership is checked explicitly in each handler**, by calling `workspaces.requireMember()` for
-   workspace-scoped routes, or by `authorizeById()` in the documents service for routes addressed by
-   document id. There is no guard registered on a route prefix, so a new route that forgets the call
-   would not be protected automatically — which is why `tests/security/cross-tenant.test.ts`
-   enumerates every route and asserts 404 for an outsider.
-3. **Authorization runs before body validation**, so a non-member receives the same 404 whether or not
-   the request was well-formed.
-4. **Role checks are one small module** (`policy.ts`), not scattered `if`s.
 
 ---
 
 ## 6. Data access
 
-`pg` `Pool`, parameterized queries, no query builder, no ORM.
-
-```ts
-// Every workspace-scoped read carries the tenant in the WHERE clause. Always.
-const { rows } = await db.query(
-  `SELECT id, filename, mime_type, size, uploaded_by, created_at
-     FROM documents
-    WHERE workspace_id = $1 AND deleted_at IS NULL
-    ORDER BY created_at DESC`,
-  [workspaceId],
-);
-```
-
-- **Documents addressed by id are authorized against their own workspace**: `authorizeById()` loads
-  the row by id, then checks the caller's membership of `document.workspace_id` before anything is
-  returned or changed. Listing queries are scoped by `workspace_id` directly. The object id
-  alone is never sufficient to load a row — the structural defence against IDOR.
-- **Every live-row query carries `deleted_at IS NULL`.** There is no ORM to do it for us, so it's a
-  review checklist item and there's a test that soft-deletes a document and asserts it disappears
-  from listing *and* download *and* share resolution.
-- **Transactions** via `withTransaction(async (tx) => …)`, used wherever related rows must change
-  together (accepting an invitation, registering a user with their first workspace).
-- **Never string-interpolated SQL.** Parameterized only, everywhere, no exceptions.
+- **Pools.** `pool` for requests, `directPool` for `LISTEN` and advisory locks (bypasses a
+  transaction-pooling PgBouncer), `readPool` for replica-tolerant reads (the dashboard, the trail).
+  A statement timeout bounds every query.
+- **Tenant scoping, twice.** Every workspace-scoped query filters by `workspace_id`. Multi-row reads
+  also run in `withTenant(pool, userId, …)`, which sets `app.user_id` for the transaction; row-level
+  security policies then return only rows from the caller's workspaces. Outside a tenant transaction
+  (jobs, public routes) the policies allow everything, so they add protection without changing
+  behaviour.
+- **The application role** can read and write rows and nothing else: no DDL, no `TRUNCATE`, not a
+  superuser, no `BYPASSRLS`, and no `UPDATE`/`DELETE` on `audit_events`.
+- **Concurrency is decided in SQL**: quota reservation, download limits, invitation acceptance,
+  the last-owner rule and code consumption are single conditional statements or row locks, each
+  covered by a test that races two requests.
+- **Keyset pagination** everywhere a list can grow; cursors carry PostgreSQL's own text form of the
+  sort value, because JavaScript dates drop microseconds.
 
 ---
 
-## 7. Storage abstraction (as specified)
+## 7. The job queue
+
+`jobs` table: queue name, JSON payload, `run_at`, attempts, status, dedupe key. Enqueued with the
+caller's transaction (the outbox pattern: no job without its change, no change without its job).
+Workers claim with `FOR UPDATE SKIP LOCKED`, are woken by `NOTIFY`, retry with exponential backoff and
+end in `failed` after `max_attempts`. A dedupe key collapses repeated unfinished work; `once` makes
+scheduled work run once per slot.
+
+| Queue | Does |
+| --- | --- |
+| `email.send` | SMTP (Mailpit locally) |
+| `notifications.fanout` | One notification per workspace member, honouring preferences |
+| `document.scan` | ClamAV `INSTREAM`; quarantine on a hit |
+| `document.process` | Thumbnail, search text, Office preview |
+| `document.checksum` | SHA-256 of direct uploads |
+| `webhook.deliver` | Signed POST, retried with backoff |
+| `workspace.purge` | Deletes a deleted workspace's objects and rows |
+| `maintenance.run` | Hourly: retention, partitions, re-queueing, digests |
+
+---
+
+## 8. Storage and files
 
 ```ts
 export interface FileStorage {
   upload(key: string, stream: Readable, contentType: string): Promise<void>;
   download(key: string): Promise<Readable>;
   delete(key: string): Promise<void>;
-  getSignedUrl(key: string, expiresIn: number): Promise<string>;
+  getSignedUrl(key: string, expiresIn: number, options?: SignedUrlOptions): Promise<string>;
+  copy?(sourceKey: string, targetKey: string): Promise<void>;
 }
 ```
 
-One implementation ships: `S3Storage` against MinIO. Business logic never sees `PutObjectCommand` —
-swapping to AWS S3 is an env change, and swapping to another provider is one new file.
+**Keys** come only from server UUIDs: `workspaces/{ws}/documents/{doc}`, `…/versions/{doc}/{uuid}`,
+`…/derived/{doc}/{uuid}.webp|pdf`. Versions and derived objects never live under a document's own key,
+because a file-system backed store can't hold an object and a "directory" at the same path.
 
-Object keys are built in exactly one module:
-```
-workspaces/{workspaceId}/documents/{documentId}
-```
-Both UUIDs. **No user-controlled path segment**, so traversal via a crafted filename is impossible by
-construction rather than sanitised away. The original filename lives in the `documents` row and is
-re-attached at download time via `response-content-disposition`.
+**Uploads.**
+- *Direct* (the web app): start a session (quota reserved), sign 8 MiB parts, the browser PUTs them to
+  storage in parallel and can resume, `complete` checks the object's first bytes against the declared
+  type, creates the row and queues the scan or processing. Abandoned sessions are aborted and their
+  quota released by maintenance.
+- *Buffered* (API clients, new versions): up to 25 MB in memory so the bytes are checked before
+  anything is stored; at most `MAX_CONCURRENT_UPLOADS` at once, the next gets 503 with `Retry-After`.
+- The object is always written before the row, and deleted again if the row can't be written.
 
-**Never make the bucket public.** The API creates the bucket at boot if it is missing and never applies
-a read policy, so it keeps MinIO's default: private. It does **not** actively verify the policy at
-boot — a bucket made public by hand would not be detected. Verified manually: an anonymous request to
-the bucket returns 403.
+**Downloads** are 302s to signed URLs (60 seconds by default). Revocation blocks new URLs; an
+already-issued URL remains usable until it expires. Zips stream from storage through the API (stored
+entries, exact length, ZIP64 when needed, safe entry names). View-only content streams too.
 
-### The MinIO signing gotcha (documented up front because it costs everyone an hour)
+**The MinIO signing gotcha.** Inside Compose the API reaches MinIO as `minio:9000`, which a browser
+can't resolve, and the signature covers the host. Two clients: one internal, one signing-only for the
+public endpoint.
 
-Inside Compose the API reaches MinIO at `http://minio:9000`. The browser cannot resolve `minio`, and
-an S3 signature covers the `Host` header — so you cannot string-replace the hostname, you get
-`SignatureDoesNotMatch`. Fix: **two S3 clients**, one internal (`S3_ENDPOINT`, for upload/delete) and
-one signing-only client built against `S3_PUBLIC_ENDPOINT` (`http://localhost:9000`, for URLs handed
-to a browser), both `forcePathStyle: true`.
-
----
-
-## 8. Upload flow (as specified)
-
-```
-POST /api/workspaces/:id/documents        multipart/form-data
-  1. validate user        — requireSession
-  2. validate workspace   — workspaces.requireMember(): caller is a member
-  3. validate file        — size ≤ 25 MB (@fastify/multipart stops reading at the limit
-                            and flags the part as truncated; the accepted file is
-                            buffered in memory, up to 25 MB, so its bytes can be sniffed)
-                          — MIME allowlist, checked against sniffed magic bytes,
-                            not the client's declared header
-  4. upload object        — storage.upload(key, stream, contentType)
-  5. persist metadata     — INSERT INTO documents (...)
-     └─ on failure: storage.delete(key) in a finally-guard, then rethrow
-```
-
-Step 5's cleanup is not incidental — it is one of the five tests the blueprint names: *"metadata is
-not persisted when an object upload fails (and cleanup is attempted on partial failure)."*
-
-**Object first, row second.** If the upload succeeds and the insert fails, we delete the object and
-report failure — a brief orphan at worst, cleaned in the same request. The inverse order would leave
-a row pointing at nothing, which is a user-facing 500 on every subsequent download.
-
-Because the object is written before the row exists, there is **no `pending` status and no reaper
-job** — a simplification the blueprint's flow buys us over a presigned-upload design.
+**Processing** (worker, once the scan clears a file): text from PDFs (pdf.js), text files and
+.docx/.pptx/.xlsx (their XML), stored in `document_contents` with a generated English `tsvector`;
+thumbnails from images (sharp) and PDF first pages (pdf.js on @napi-rs/canvas); with Gotenberg, Office
+files become PDFs for preview, thumbnails and text. Everything derived records the object it came
+from, so a new version starts over and late results for an old object are discarded.
 
 ---
 
-## 9. Download flow (as specified)
+## 9. Sharing
 
-```
-GET /api/documents/:id/download
-  1. authorize            — caller is a member of the document's workspace
-  2. verify not deleted   — deleted_at IS NULL
-  3. return               — 302 to a 60-second signed URL,
-                            Content-Disposition: attachment; filename*=UTF-8''<name>
-```
-
-`GET /api/shares/:token` is the same shape with the token as the authorization instead of a session.
-
-Signed URLs are minted per request and expire in 60 seconds. There is no durable object URL anywhere
-in the system.
+- **Tokens** are 256-bit, prefixed (`shr_`, `fsh_`, `inv_`, …), stored as SHA-256, and redacted from
+  logs and traces by pattern.
+- **Unlock grants** are cookies per link: `v2.<expiry>.<email>.<password>.<hmac>` over the link id and
+  the current password hash, so changing the password or removing an address invalidates them.
+- **Restricted links** email a six-digit code (HMAC-hashed, only the newest valid, 5 tries, 10
+  minutes, at most 3 per 15 minutes per address); the answer to "send me a code" never reveals
+  whether the address is on the list.
+- **View-only** links stream the file; PDFs are watermarked into every page with pdf-lib, and one that
+  can't be stamped is refused rather than shown unmarked. Links with a download limit are never shown
+  inline, so viewing can't bypass the limit.
+- **Folder links** check every requested folder and file against the shared subtree in SQL.
+- **Access events** go to a monthly-partitioned table; per-link counters are kept on the row so the
+  document list reads them without scanning history.
 
 ---
 
 ## 10. Error model
 
-One envelope: `{ "error": { "code": "SHARE_EXPIRED", "message": "..." } }`
-
-| Situation | Status |
-| --- | --- |
-| Not authenticated | 401 |
-| Authenticated, **not a member** | **404** — 403 would confirm the workspace exists |
-| Member, action needs OWNER | 403 |
-| Share link revoked / expired | **410 Gone** — the link *was* real; tell the recipient to ask for a new one |
-| Share token unknown | 404 |
-| File too large | 413 |
-| Unsupported MIME type | 415 |
-| Rate limited | 429 |
-
-Unhandled exceptions → opaque 500 with the request id. No stack traces, no SQL, no driver text.
+One envelope: `{ "error": { "code": "…", "message": "…", "details"?: [...] } }`. The status table and
+stable codes are in [`docs/04-api-spec.md`](docs/04-api-spec.md). Unknown errors become an opaque 500
+with the request id; no stack traces, SQL or driver text ever reach a client.
 
 ---
 
 ## 11. Configuration
 
-`config.ts` parses `process.env` through Zod **once at boot and exits on failure**. `process.env`
-appears nowhere else. Every variable is in `.env.example` with a working local default.
+`apps/api/src/config.ts` validates API and worker configuration through Zod at boot. The web
+server reads its own environment, and tracing also uses standard OpenTelemetry variables.
+[`.env.example`](.env.example) documents local defaults; Compose supplies container hostnames and
+the application database role. The example file is intended for Compose, not an unmodified host-run API.
 
-```
-NODE_ENV  API_PORT  WEB_URL  API_URL
-DATABASE_URL
-SESSION_COOKIE_NAME  SESSION_TTL_DAYS  SESSION_COOKIE_SECURE
-S3_ENDPOINT  S3_PUBLIC_ENDPOINT  S3_BUCKET  S3_ACCESS_KEY  S3_SECRET_KEY  S3_REGION
-MAX_UPLOAD_BYTES=26214400          # 25 MB
-SHARE_DEFAULT_TTL_HOURS=168
-INVITE_TTL_HOURS=168
-SIGNED_URL_TTL_SECONDS=60
-# added later
-TRUSTED_PROXIES  IP_HASH_PEPPER  SHARE_GRANT_SECRET
-MAX_CONCURRENT_UPLOADS=4  TRASH_RETENTION_DAYS=30
-LOGIN_LOCKOUT_ATTEMPTS=5  LOGIN_LOCKOUT_MINUTES=15  MAINTENANCE_INTERVAL_MINUTES=60
-# web container
-API_INTERNAL_URL  STORAGE_PUBLIC_ORIGIN (for the CSP)  ENABLE_HSTS
-```
+| Group | Variables |
+| --- | --- |
+| Runtime | `NODE_ENV` `API_PORT` `WEB_URL` `TRUSTED_PROXIES` `ENABLE_HSTS` `SEED_DEMO_DATA` `EXPOSE_INVITE_LINKS` |
+| Database | `DATABASE_URL` `DATABASE_DIRECT_URL` `DATABASE_READ_URL` `APP_DB_PASSWORD` `DB_POOL_MAX` `DB_STATEMENT_TIMEOUT_MS` `POSTGRES_*` |
+| Sessions and accounts | `SESSION_COOKIE_NAME` `SESSION_TTL_DAYS` `SESSION_COOKIE_SECURE` `LOGIN_LOCKOUT_ATTEMPTS` `LOGIN_LOCKOUT_MINUTES` `PASSWORD_RESET_TTL_MINUTES` `EMAIL_VERIFICATION` |
+| Email | `SMTP_URL` `MAIL_FROM` |
+| Object storage | `S3_ENDPOINT` `S3_PUBLIC_ENDPOINT` `S3_BUCKET` `S3_REGION` `S3_ACCESS_KEY` `S3_SECRET_KEY` |
+| Files | `MAX_UPLOAD_BYTES` `MAX_CONCURRENT_UPLOADS` `MAX_DIRECT_UPLOAD_BYTES` `UPLOAD_SESSION_TTL_HOURS` `UPLOAD_PART_URL_TTL_SECONDS` `SIGNED_URL_TTL_SECONDS` `TRASH_RETENTION_DAYS` `DOCUMENT_MAX_VERSIONS` `ARCHIVE_MAX_FILES` `ARCHIVE_MAX_BYTES` `MAX_CONCURRENT_ARCHIVES` |
+| Scanning and processing | `SCAN_MODE` `SCAN_MAX_BYTES` `PROCESSING_MAX_BYTES` `OFFICE_PREVIEWS` |
+| Sharing | `SHARE_DEFAULT_TTL_HOURS` `INVITE_TTL_HOURS` `IP_HASH_PEPPER` `SHARE_GRANT_SECRET` `SHARE_WATERMARK_MAX_BYTES` `SHARE_EVENT_RETENTION_MONTHS` |
+| Platform | `RATE_LIMIT_STORE` `MAINTENANCE_INTERVAL_MINUTES` `NOTIFICATION_STREAM_HEARTBEAT_SECONDS` `WEBHOOK_ALLOW_INSECURE` `WEBHOOK_TIMEOUT_MS` |
+| Observability | `METRICS_PORT` `OTEL_EXPORTER_OTLP_ENDPOINT` (and the standard `OTEL_*` variables) |
+| Web container | `API_INTERNAL_URL` `STORAGE_PUBLIC_ORIGIN` `ENABLE_HSTS` |
 
 ---
 
 ## 12. Docker Compose
 
-`docker compose up --build` is the primary startup path.
+| Service | Notes |
+| --- | --- |
+| `postgres` | PostgreSQL 16, named volume, healthcheck |
+| `minio` | named volume, healthcheck; console on 9001 |
+| `mailpit` | catches every email; UI on 8025 |
+| `migrate` | one-off: migrations, then the application role |
+| `api` | Fastify on 4000; metrics on 9464 inside the network |
+| `worker` | the job loop and the maintenance schedule; metrics on 9464 |
+| `web` | Next.js standalone behind `server.mjs`, fixed address `10.203.14.10` (the only proxy the API trusts) |
+| `clamav` (*antivirus*) · `gotenberg` (*office*) · `prometheus`, `jaeger` (*observability*) · `pgbouncer` (*pgbouncer*) | optional profiles |
 
-| Service | Image / build | Port | Notes |
-| --- | --- | --- | --- |
-| `postgres` | `postgres:16-alpine` | 5432 | named volume; `pg_isready` healthcheck |
-| `minio` | `minio/minio` | 9000 / 9001 | named volume; `/minio/health/live` healthcheck |
-| `api` | build `apps/api` | 4000 | `depends_on: {postgres: healthy, minio: healthy}`; entrypoint runs migrations → `ensureBucket()` → seed (dev) → listen |
-| `web` | build `apps/web` | 3000 | Next.js standalone output run by `server.mjs` (security headers, real client address, 404/410 for dead share links); rewrites `/api/*` → `api:4000`; fixed address `10.203.14.10`, the only proxy the API trusts |
-
-Both application images run as the unprivileged `node` user, and the API runtime stage carries no
-compilers (native modules are built in an earlier stage).
-
-Seed data (dev only, idempotent): two demo users, a shared workspace, a couple of documents, a live
-share link and a pending invitation — so a reviewer sees a working app immediately. Demo credentials
-are printed in the README and on the login page.
-
-URLs: UI `http://localhost:3000` · API `http://localhost:4000` · MinIO console `http://localhost:9001`.
+Application images run as the unprivileged `node` user, carry no compilers and no npm, and every base
+image is pinned by digest. Seed data (development only, idempotent): two demo users, a shared
+workspace, documents, a live link and a pending invitation.
 
 ---
 
 ## 13. Observability
 
-- **Pino** structured logs, `requestId` on every line.
-- A redaction serialiser strips `cookie`, `authorization`, `password`, and anything matching
-  `shr_[A-Za-z0-9_-]+` / `inv_[A-Za-z0-9_-]+`. Tokens in logs are a real leak path and the cheapest
-  one to close.
-- `GET /health` is a liveness check and backs the Compose healthcheck. `GET /ready` checks that the
-  database answers; it does **not** check object storage, and nothing in Compose uses it.
+- **Logs**: pino, a request id on every line, a trace and span id when tracing is on, and redaction of
+  cookies, authorization headers, passwords and every token pattern.
+- **Metrics** (`:9464/metrics`, API and worker): request duration by route template and status,
+  requests in flight, job duration by queue and outcome, queue depth, database pool usage, webhook
+  outcomes, Node process metrics.
+- **Traces** (with `OTEL_EXPORTER_OTLP_ENDPOINT`): HTTP, Fastify and PostgreSQL spans (statements with
+  placeholders, never values), redacted before export.
+- **Health**: `GET /health` (liveness, used by Compose) and `GET /ready` (the database answers).
 
 ---
 
-## 14. Explicitly out of scope
+## 14. Out of scope
 
-Per the blueprint, and stated so the omissions read as decisions:
-
-**Not built:** OAuth · SSO · MFA · billing · comments · document collaboration · **versioning** ·
-search infrastructure · a component library or theming system. (In-app notifications were later
-added on explicit request, overriding the blueprint's exclusion — see README §9.)
-**Not introduced:** microservices · Redis · Kafka · Elasticsearch · Kubernetes · any ORM.
-
-Also out of scope: workspace deletion and quotas.
-Added later on explicit request: member management, rename, preview, notifications, the audit trail,
-the dashboard, trash/restore, folders, server-side search and pagination, password-protected and
-download-limited links, the VIEWER role, login lockout, a maintenance job, web security headers,
-end-to-end tests and CI (README §3, §7, §8).
+OAuth, SSO and MFA; billing; comments and co-editing; account deletion; a separate search engine;
+microservices, Redis, Kafka, Kubernetes, any ORM. Each is a decision rather than an omission: the
+README's trade-offs section says what would change the answer.
 
 ---
 
@@ -397,15 +292,49 @@ end-to-end tests and CI (README §3, §7, §8).
 
 | # | Decision |
 | --- | --- |
-| 001 | Fastify + Zod for the API |
-| 002 | Raw `pg` with parameterized SQL, no ORM |
+| 001 | Fastify + Zod for the API (Zod now also generates the OpenAPI document) |
+| 002 | Raw `pg` with parameterised SQL, no ORM |
 | 003 | Ordered `.sql` migrations with a small runner |
 | 004 | Every document belongs to a workspace; register auto-creates one |
-| 005 | OWNER and MEMBER only (VIEWER added later on request) |
+| 005 | OWNER and MEMBER (VIEWER added later) |
 | 006 | Share links are DB rows with hashed tokens, never long-lived signed URLs |
-| 007 | Bytes stream through the API; object written before the row, with cleanup on failure |
-| 008 | Soft-delete the row, then delete the object (now after a 30-day trash window) |
+| 007 | Object written before the row (bytes later moved to direct uploads: ADR-013) |
+| 008 | Soft-delete the row, then delete the object after the trash window |
 | 009 | Next.js as UI only, with a rewrite proxy to the API |
 | 010 | 404 for non-members, 403 for insufficient role, 410 for dead share links |
+| 011 | A job queue in PostgreSQL, enqueued in the caller's transaction |
+| 012 | Row-level security as a second line, and a least-privilege application role |
+| 013 | Direct, resumable multipart uploads to storage |
+| 014 | A hash-chained audit trail |
+| 015 | Full-text search in PostgreSQL, extracted by the worker |
+| 016 | Webhooks behind an address check in the connection's own DNS lookup |
+| 017 | One contract (Zod) for validation, OpenAPI, web types and the route reference |
 
 Full records: [`docs/adr/README.md`](docs/adr/README.md)
+
+
+## 16. Maintaining the API contract
+
+After changing contract schemas or routes, regenerate the committed artifacts from the repository root:
+
+```bash
+npm --prefix apps/api run openapi
+npm --prefix apps/api run docs:api
+npm --prefix apps/web run api:types
+```
+
+The contract tests check route coverage, response schemas and generated-document drift. CI separately
+checks generated web types. Run the API suite with PostgreSQL and MinIO available, following the
+README, then run `npm run typecheck` for both applications.
+
+## 17. Operational boundaries
+
+The default Compose deployment is a local development setup. Production requires deployment-specific
+HTTPS, secure session cookies, replacement of development credentials and signing secrets, and
+disabling demo seeding and exposed invitation links. Enable ClamAV when malware scanning is required;
+the default does not scan uploads. Configure SMTP for delivery outside Mailpit.
+
+Back up PostgreSQL and object storage together, and verify restores before relying on them. Metadata
+alone cannot recover document bytes. Job retries and hourly maintenance handle application cleanup;
+they do not replace backups. Row-level security is additional protection for tenant-scoped reads:
+public routes and workers still depend on explicit service authorization and query filters.

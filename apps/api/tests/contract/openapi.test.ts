@@ -3,6 +3,7 @@ import path from 'node:path';
 import SwaggerParser from '@apidevtools/swagger-parser';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { allOperations, buildOpenApiDocument } from '../../src/openapi/document';
+import { withReference } from '../../src/openapi/reference';
 import { createHarness, registerUser, SAMPLE_PDF, uploadDocument, type Harness } from '../helpers/harness';
 
 /**
@@ -11,6 +12,13 @@ import { createHarness, registerUser, SAMPLE_PDF, uploadDocument, type Harness }
  * committed copy is current, and real responses match the documented success schemas
  * (response schemas reject unknown fields, so an undocumented field fails too).
  */
+describe('API reference document', () => {
+  it('matches the routes (run `npm run docs:api` after changing one)', () => {
+    const file = readFileSync(path.resolve(__dirname, '../../../../docs/04-api-spec.md'), 'utf8');
+    expect(withReference(file)).toBe(file);
+  });
+});
+
 describe('API contract', () => {
   let h: Harness;
   const covered = new Set<string>();

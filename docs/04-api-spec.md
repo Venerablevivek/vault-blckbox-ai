@@ -1,188 +1,218 @@
 # 04 — API Specification
 
-The routes below are **exactly the blueprint's §6 table**, plus one route the blueprint's §5 requires
-but its §6 table omits (marked ✚).
+REST over JSON under `/api`. The contract is written once, as Zod schemas in
+`apps/api/src/contracts/`: the routes validate requests with them, the OpenAPI 3.1 document is
+generated from them (committed as `apps/api/openapi.json`, served at `GET /api/openapi.json`), and the
+web app's response types are generated from that document. A contract test sends a real request to
+every registered route and checks each response against its documented schema, and fails if a route
+exists that the document doesn't describe.
 
-REST over JSON · session cookie auth · one error envelope:
-`{ "error": { "code": "...", "message": "...", "details"?: [...] } }`
-
-Requests are validated with Zod schemas parsed inside each handler. There is no generated OpenAPI
-document: it would mean a type-provider plugin and a second way of declaring every route, for a
-25-route API whose shape is fully described by this file.
-
----
-
-## Auth
-
-| Method | Route | Purpose |
-| --- | --- | --- |
-| POST | `/api/auth/register` | Create account |
-| POST | `/api/auth/login` | Create session |
-| POST | `/api/auth/logout` | Destroy session |
-| GET | `/api/auth/me` | Current user |
-
-- `register` — `{ email, password, inviteToken? }` → 201 + `Set-Cookie`. Creates the user, their
-  first workspace and the OWNER membership **in one transaction**; consumes `inviteToken` in the
-  same transaction when present.
-- `login` — `{ email, password }` → 200 + `Set-Cookie`. Runs an Argon2 verify even for an unknown
-  email, so response time isn't an oracle for which addresses exist.
-- `logout` — deletes the session row; the cookie is cleared.
-- `me` — `{ user: { id, email }, workspaces: [{ id, name, role }] }`. One call boots the UI.
-
-Rate limited per client IP: register 10/hour, login 20 per 15 minutes. There is no per-email limit,
-so a distributed attempt against one account is limited only per source address. The client IP comes
-from `X-Forwarded-For` only when the request arrives from a trusted proxy (`TRUSTED_PROXIES`).
-
-## Workspaces & members
-
-| Method | Route | Purpose |
-| --- | --- | --- |
-| POST | `/api/workspaces` | Create workspace |
-| GET | `/api/workspaces` | List user workspaces |
-| GET | `/api/workspaces/:id/members` | List members |
-| POST | `/api/workspaces/:id/invitations` | Invite member |
-
-- `POST /api/workspaces` — `{ name }`; the creator becomes OWNER in the same transaction.
-- `GET /api/workspaces` — only workspaces the caller is a member of, each with their own role.
-- `GET /api/workspaces/:id/members` — any member. Returns `{ userId, email, role, createdAt }`.
-- `POST /api/workspaces/:id/invitations` — **OWNER only**. `{ email, role }` → 201.
-  **In development the response includes `inviteUrl`, and the URL is also logged** — per the
-  blueprint's "expose the generated invitation link in development" decision. In production the field
-  is omitted.
-
-## Invitations (accepting)
-
-| Method | Route | Purpose |
-| --- | --- | --- |
-| ✚ GET | `/api/invitations/:token` | Preview an invite (public) |
-| ✚ POST | `/api/invitations/:token/accept` | Accept (authenticated) |
-
-The blueprint's §3 states an invited person *"can create an account or sign in before accepting"* —
-which requires a preview route (to render the landing page before auth) and an accept route. Both are
-that decision made concrete.
-
-Preview returns `{ workspaceName, email, expiresAt }` and nothing else. Accept returns `409` if the
-signed-in account's email doesn't match the invited address.
-
-## Documents
-
-| Method | Route | Purpose |
-| --- | --- | --- |
-| POST | `/api/workspaces/:id/documents` | Upload document |
-| GET | `/api/workspaces/:id/documents` | List documents |
-| DELETE | `/api/documents/:id` | Delete document |
-| ✚ GET | `/api/documents/:id/download` | Download document |
-| ✚ GET | `/api/documents/:id/shares` | List a document's live links (never their tokens) |
-
-- **Upload** — `multipart/form-data`, one `file` part. Enforces 25 MB via `@fastify/multipart`
-  limits (reading stops at the limit and the upload is rejected; an accepted file is buffered in
-  memory, at most 25 MB) and the MIME allowlist against sniffed
-  magic bytes. Streams to MinIO, then inserts the row; if the insert fails the object is deleted and
-  the request fails, so **no metadata is persisted for a failed upload**.
-  Returns `201 { id, filename, mimeType, size, uploadedBy, createdAt }`.
-- **List** — live documents only, newest first. Any member. Each document carries a rollup of its
-  live share links (`links: { count, opens, lastAccessedAt }`) via a lateral join, so the list can
-  answer "has anyone opened this?" without a second request.
-- **Delete** — the uploader or the workspace OWNER. Soft-deletes the row, commits, then deletes the
-  object. `204`.
-- **Download** ✚ — the blueprint's §5 specifies a download flow (*"authorize → verify not deleted →
-  return a short-lived signed URL/stream"*) but §6 has no route for it. This is that flow:
-  `302` to a 60-second signed URL with `Content-Disposition: attachment`.
-
-Note that `DELETE` and `GET download` are addressed by document id **without** a workspace in the
-path, exactly as the blueprint lists. The workspace is therefore resolved *from the document row* and
-membership checked against it in the documents service. Routes with a workspace in the path call
-`workspaces.requireMember()` explicitly instead — no route inherits a check automatically, which is why
-the cross-tenant suite enumerates every route, including these two.
-
-## Shares
-
-| Method | Route | Purpose |
-| --- | --- | --- |
-| POST | `/api/shares` | Create share link |
-| DELETE | `/api/shares/:id` | Revoke share link |
-| GET | `/api/shares/:token` | Resolve a shared file (metadata; records nothing) |
-| ✚ POST | `/api/shares/:token/view` | Page-view beacon from the recipient's browser (204; 410/404 for dead/unknown links) |
-| ✚ GET | `/api/shares/:token/download` | Download a shared file |
-| ✚ GET | `/api/shares/:id/events` | Access history for one link (product improvement) |
-
-The blueprint's table lists one route for "resolve/download". It is implemented as two, because the
-landing page needs metadata as JSON while the download must be a redirect to a signed URL — one
-route cannot be both. Both are public and both re-check every rule.
-
-- **Create** — `{ documentId, expiresIn? }`. Caller must be a member of the document's workspace.
-  Generates a 256-bit token, stores only `sha256(token)`, and returns
-  `201 { id, url: "http://localhost:3000/s/<token>", expiresAt }`.
-  **The plaintext token is returned exactly once and never again.**
-- **Revoke** — creator or workspace OWNER. Sets `revoked_at`; effective on the next request. `204`.
-- **Events** ✚ — any member of the document's workspace. Returns the last 20 accesses as
-  `{ accessedAt, outcome, userAgent, viewer }`, where `viewer` is an 8-character prefix of the hashed
-  address: a stable marker for "the same visitor", never an address. See
-  [`09-product-improvement.md`](09-product-improvement.md).
-- **Resolve / view / download** — **public, no session**. Each rate-limited to 30/min per IP. Each
-  checks `revoked_at`, `expires_at` and the document's `deleted_at` in one query.
-  `GET /api/shares/:token` returns JSON metadata for the landing page
-  (`{ filename, size, mimeType, expiresAt }`); `GET /api/shares/:token/download` returns a `302` to a
-  60-second signed URL; `POST /api/shares/:token/view` records a page view.
-
-Never returned by any share route: the object key, the bucket, the workspace id, or the uploader's
-identity.
+The route table at the end of this file is generated from the same list (`npm run docs:api` in
+`apps/api`), and a test fails if it is out of date.
 
 ---
-
-## Audit & notifications ✚
-
-| Method | Route | Access | Purpose |
-| --- | --- | --- | --- |
-| GET | `/api/workspaces/:id/audit?limit&before` | owner (member 403, outsider 404) | Append-only activity feed |
-| GET | `/api/notifications` | authenticated | `{ unread, notifications[] }` — polled every 20s |
-| POST | `/api/notifications/read` | authenticated | `{ id? }` — one, or all when omitted |
-
-## Status codes
-
-| Situation | Status |
-| --- | --- |
-| Not authenticated | 401 |
-| Authenticated, not a member of the workspace | **404** (403 would confirm it exists) |
-| Member, action requires OWNER | 403 |
-| Share revoked / expired / document deleted | **410 Gone** |
-| Share token unknown | 404 |
-| Duplicate membership, already-accepted invite | 409 |
-| File over 25 MB | 413 |
-| MIME type not allowed | 415 |
-| Rate limited (`RATE_LIMITED`), account locked (`ACCOUNT_LOCKED`), link locked (`LINK_LOCKED`) | 429 |
-| Link needs a password (`PASSWORD_REQUIRED`) or it was wrong (`WRONG_PASSWORD`) | 401 |
-| Download limit used up | 410 |
-| Viewer attempting a write | 403 |
-| Folder name taken (`FOLDER_NAME_TAKEN`), folder not empty (`FOLDER_NOT_EMPTY`) | 409 |
-| Folder moved into itself (`FOLDER_CYCLE`) or too deep (`FOLDER_TOO_DEEP`) | 422 |
-| Tampered pagination cursor (`INVALID_CURSOR`) | 400 |
-| Too many uploads in progress (`UPLOADS_BUSY`, with `Retry-After`) | 503 |
 
 ## Conventions
 
-- Cookie auth only; no bearer tokens, no API keys.
-- All mutations require `Content-Type: application/json` (except the multipart upload), which forces
-  a preflight and blocks classic form-post CSRF.
-- Responses never include `password_hash`, `token_hash`, or `storage_key`.
-- The web app reaches the API through a Next.js rewrite, so everything is same-origin and there is no
-  CORS configuration to get wrong.
+**Errors.** One envelope everywhere: `{ "error": { "code": "...", "message": "...", "details"?: [...] } }`.
+`code` is stable and machine-readable (`EMAIL_NOT_VERIFIED`, `SCAN_PENDING`, `ARCHIVE_TOO_LARGE`, …);
+`message` is written for a person. Validation failures are 400 with `details` naming each field.
+Anything unexpected is an opaque 500: stack traces, SQL and driver messages never reach a client.
+
+**Status codes mean something.**
+
+| Status | Meaning |
+| --- | --- |
+| 404 | Doesn't exist **or you are not a member**: identical, so the API is not an existence oracle |
+| 403 | You are a member but your role doesn't allow it (you already know it exists) |
+| 401 | No credential, or a bad one (`INVALID_TOKEN` for a bad API token, `PASSWORD_REQUIRED` for a locked link) |
+| 409 | Conflicts with the current state (`SCAN_PENDING`, `LAST_OWNER`, `VERSION_UNCHANGED`, …) |
+| 410 | A share link that was real but is dead (revoked, expired, used up, its document trashed) |
+| 413 | Too large (file, quota, zip) |
+| 415 | Type not allowed, checked against the file's bytes |
+| 429 | Rate limited, with `Retry-After` |
+| 503 | At capacity (`UPLOADS_BUSY`, `ARCHIVES_BUSY`), with `Retry-After` |
+
+**Authentication.** Three kinds of routes:
+
+- **Public**: share links, invitations, sign-up and sign-in, password reset, email confirmation.
+- **Session or API token**: everything else. A session is an HttpOnly cookie; an API token is sent
+  as `Authorization: Bearer vlt_...`. A read-only token may only make GET requests.
+- **Signed-in browser**: the account's own security (password, sessions, API tokens, re-sending the
+  confirmation email) and deleting a workspace. API tokens are refused here even with write access.
+
+Membership is read from the database on every request, never from a token claim, so removing
+someone takes effect on their next call.
+
+**Lists** are keyset-paginated: pass back `nextCursor` as `cursor`. Pages never skip or repeat rows
+when data changes in between, including rows that share a sort value.
+
+**Rate limits** are per client address, stored in PostgreSQL (shared by every API instance and kept
+across restarts): sign-in, sign-up, password reset, invitations, uploads, zip downloads, public share
+routes, one-time codes, test webhook pings and API token creation. Separately, an account locks after
+five wrong passwords in 15 minutes from any address, and a share link after ten.
+
+**Downloads** are 302 redirects to 60-second signed URLs on the storage origin, so file bytes never
+pass through the API. The exceptions stream on purpose: zip archives, which are assembled on the fly,
+and the content of view-only links, which must not reveal a URL that downloads the original.
 
 ---
 
-## Later routes (Added later, on explicit request, as recorded overrides of the blueprint)
+## Route reference
 
-| Method | Route | Auth | Notes |
+<!-- api-reference:start (generated by `npm run docs:api` in apps/api) -->
+
+95 operations. Auth: *public* (no credential), *session or API token*,
+or *signed-in browser* (a session cookie; API tokens are refused).
+
+### Auth
+
+| Method | Route | What it does | Auth |
 | --- | --- | --- | --- |
-| GET | `/api/workspaces/:id/documents` | member | Query: `view=active\|trash`, `folderId`, `q` (searches the whole workspace), `filter=all\|shared\|mine`, `sort=date\|name\|size`, `order`, `cursor`, `limit` ≤ 100. Returns `{ role, documents, nextCursor, folders, path, counts, trashRetentionDays }` |
-| POST | `/api/workspaces/:id/documents?folderId=` | member or owner | Upload into a folder. 60 per minute per client; at most 4 in progress (503 beyond) |
-| PATCH | `/api/documents/:id` | uploader or owner | `{ filename?, folderId? }` — rename and/or move (`null` = root) |
-| DELETE | `/api/documents/:id` | uploader or owner | Move to trash; revokes its links. Returns `{ revokedLinks, purgeAt }` |
-| POST | `/api/documents/:id/restore` | uploader or owner | Links stay revoked |
-| DELETE | `/api/documents/:id/permanent` | owner | Trashed documents only; 204 |
-| GET / POST | `/api/workspaces/:id/folders` | member / member or owner | `{ name, parentId? }` |
-| PATCH / DELETE | `/api/workspaces/:id/folders/:folderId` | creator or owner | `{ name?, parentId? }`; delete only when empty |
-| POST | `/api/shares` | member or owner | `{ documentId, expiresInHours?, password? (6–128), maxDownloads? (1–1000) }` |
-| PATCH | `/api/shares/:id` | creator or owner | `{ expiresInHours?, password? \| null, maxDownloads? \| null }` |
-| POST | `/api/shares/:token/unlock` | public | `{ password }` → sets a per-link HttpOnly cookie for one hour. 10 per 15 minutes |
-| GET | `/api/workspaces/:id/overview?tz=` | member | Daily series grouped in the given IANA time zone (unknown → UTC) |
+| POST | `/api/auth/register` | Create an account and its first workspace | public |
+| POST | `/api/auth/login` | Sign in | public |
+| POST | `/api/auth/logout` | Sign out | public |
+| GET | `/api/auth/me` | Current user and their workspaces | session or API token |
+| POST | `/api/auth/password/forgot` | Email a password reset link | public |
+| POST | `/api/auth/password/reset` | Set a new password with a reset token | public |
+| GET | `/api/auth/tokens` | Your API tokens | signed-in browser |
+| POST | `/api/auth/tokens` | Create an API token | signed-in browser |
+| DELETE | `/api/auth/tokens/:id` | Revoke an API token | signed-in browser |
+| POST | `/api/auth/password` | Change password | signed-in browser |
+| POST | `/api/auth/email/verify` | Confirm an email address | public |
+| POST | `/api/auth/email/resend` | Send another confirmation email | signed-in browser |
+| GET | `/api/auth/sessions` | List your sessions | signed-in browser |
+| DELETE | `/api/auth/sessions` | Sign out every other session | signed-in browser |
+| DELETE | `/api/auth/sessions/:sessionId` | Sign out one session | signed-in browser |
+
+### Workspaces
+
+| Method | Route | What it does | Auth |
+| --- | --- | --- | --- |
+| GET | `/api/workspaces` | List your workspaces | session or API token |
+| POST | `/api/workspaces` | Create a workspace | session or API token |
+| PATCH | `/api/workspaces/:id` | Rename a workspace | session or API token |
+| DELETE | `/api/workspaces/:id` | Delete a workspace | signed-in browser |
+| GET | `/api/workspaces/:id/overview` | Dashboard data | session or API token |
+| GET | `/api/workspaces/:id/storage` | Storage used and quota | session or API token |
+
+### Members
+
+| Method | Route | What it does | Auth |
+| --- | --- | --- | --- |
+| GET | `/api/workspaces/:id/members` | Members, and pending invitations for owners | session or API token |
+| PATCH | `/api/workspaces/:id/members/:userId` | Change a member's role | session or API token |
+| DELETE | `/api/workspaces/:id/members/:userId` | Remove a member, or leave | session or API token |
+| POST | `/api/workspaces/:id/invitations` | Invite by email | session or API token |
+| DELETE | `/api/workspaces/:id/invitations/:invitationId` | Cancel an invitation | session or API token |
+| GET | `/api/invitations/:token` | Preview an invitation | public |
+| POST | `/api/invitations/:token/accept` | Accept an invitation | session or API token |
+
+### Documents
+
+| Method | Route | What it does | Auth |
+| --- | --- | --- | --- |
+| GET | `/api/workspaces/:workspaceId/documents` | List, search and page documents | session or API token |
+| POST | `/api/workspaces/:workspaceId/documents` | Upload a document | session or API token |
+| PATCH | `/api/documents/:id` | Rename or move | session or API token |
+| DELETE | `/api/documents/:id` | Move to trash | session or API token |
+| POST | `/api/documents/bulk` | Trash, restore, permanently delete or move many documents | session or API token |
+| GET | `/api/workspaces/:workspaceId/archive` | Download documents or a folder as a zip | session or API token |
+| GET | `/api/workspaces/:workspaceId/archive/summary` | What a zip download would contain, without building it | session or API token |
+| POST | `/api/documents/:id/versions` | Upload a new version (multipart field "file") | session or API token |
+| GET | `/api/documents/:id/versions` | Version history, current first | session or API token |
+| GET | `/api/documents/:id/versions/:version/download` | Download a version (redirect to a signed URL) | session or API token |
+| POST | `/api/documents/:id/versions/:version/restore` | Restore an earlier version | session or API token |
+| DELETE | `/api/documents/:id/versions/:version` | Delete an earlier version for good | session or API token |
+| PUT | `/api/documents/:id/star` | Star a document (for you only) | session or API token |
+| DELETE | `/api/documents/:id/star` | Unstar a document | session or API token |
+| POST | `/api/documents/:id/restore` | Restore from trash | session or API token |
+| DELETE | `/api/documents/:id/permanent` | Delete forever | session or API token |
+| GET | `/api/documents/:id/download` | Download (redirect to a 60-second signed URL) | session or API token |
+| GET | `/api/documents/:id/thumbnail` | A small WebP picture of the document | session or API token |
+| GET | `/api/documents/:id/preview` | Inline preview (PDF and images) | session or API token |
+
+### Sharing
+
+| Method | Route | What it does | Auth |
+| --- | --- | --- | --- |
+| GET | `/api/documents/:id/shares` | A document's live links and their activity | session or API token |
+| POST | `/api/shares` | Create a share link | session or API token |
+| PATCH | `/api/shares/:id` | Edit a link's expiry, password or download limit | session or API token |
+| DELETE | `/api/shares/:id` | Revoke a link | session or API token |
+| GET | `/api/shares/:id/events` | A link's access history | session or API token |
+| GET | `/api/shares/:id/events/export` | A link's full access history as CSV | session or API token |
+| POST | `/api/folder-shares` | Create a link to a folder and everything below it | session or API token |
+| GET | `/api/workspaces/:workspaceId/folders/:folderId/shares` | A folder's live links, with how often each was opened and downloaded | session or API token |
+| DELETE | `/api/folder-shares/:id` | Revoke a folder link | session or API token |
+
+### Uploads
+
+| Method | Route | What it does | Auth |
+| --- | --- | --- | --- |
+| POST | `/api/workspaces/:workspaceId/uploads` | Start a direct upload | session or API token |
+| POST | `/api/uploads/:id/parts` | Get signed URLs for parts | session or API token |
+| GET | `/api/uploads/:id` | Upload status and parts received (for resuming) | session or API token |
+| POST | `/api/uploads/:id/complete` | Finish an upload and create the document | session or API token |
+| DELETE | `/api/uploads/:id` | Cancel an upload | session or API token |
+
+### Folders
+
+| Method | Route | What it does | Auth |
+| --- | --- | --- | --- |
+| GET | `/api/workspaces/:workspaceId/folders` | List folders | session or API token |
+| POST | `/api/workspaces/:workspaceId/folders` | Create a folder | session or API token |
+| PATCH | `/api/workspaces/:workspaceId/folders/:folderId` | Rename or move a folder | session or API token |
+| DELETE | `/api/workspaces/:workspaceId/folders/:folderId` | Delete an empty folder | session or API token |
+
+### Public sharing
+
+| Method | Route | What it does | Auth |
+| --- | --- | --- | --- |
+| GET | `/api/shares/:token` | Resolve a link | public |
+| POST | `/api/shares/:token/unlock` | Enter a link password | public |
+| POST | `/api/shares/:token/code` | Email a one-time code to open a link restricted to named people | public |
+| POST | `/api/shares/:token/verify` | Enter the one-time code | public |
+| GET | `/api/shares/:token/content` | The shared file, for showing in the page (PDFs and images) | public |
+| POST | `/api/shares/:token/view` | Record a page view | public |
+| GET | `/api/shares/:token/download` | Download (redirect to a signed URL) | public |
+| GET | `/api/folder-shares/:token` | Browse a shared folder | public |
+| POST | `/api/folder-shares/:token/unlock` | Enter a folder link password | public |
+| POST | `/api/folder-shares/:token/view` | Record that the shared folder was opened | public |
+| GET | `/api/folder-shares/:token/documents/:documentId/download` | Download one file from a shared folder (redirect to a signed URL) | public |
+| GET | `/api/folder-shares/:token/archive/summary` | What a zip of the shared folder would contain | public |
+| GET | `/api/folder-shares/:token/archive` | Download a shared folder (or a folder inside it) as a zip | public |
+
+### Activity
+
+| Method | Route | What it does | Auth |
+| --- | --- | --- | --- |
+| GET | `/api/workspaces/:id/audit` | Audit trail (owners) | session or API token |
+| GET | `/api/workspaces/:id/audit/export` | The activity trail as CSV (owners only) | session or API token |
+| GET | `/api/workspaces/:id/audit/verify` | Verify the audit hash chain (owners) | session or API token |
+| GET | `/api/notifications` | Your notifications | session or API token |
+| GET | `/api/notifications/stream` | Live notification events (server-sent events) | session or API token |
+| GET | `/api/notifications/preferences` | Your notification settings | session or API token |
+| PUT | `/api/notifications/preferences` | Change your notification settings | session or API token |
+| POST | `/api/notifications/read` | Mark one or all notifications read | session or API token |
+
+### Webhooks
+
+| Method | Route | What it does | Auth |
+| --- | --- | --- | --- |
+| GET | `/api/workspaces/:id/webhooks` | The workspace's webhooks (owners only) | session or API token |
+| POST | `/api/workspaces/:id/webhooks` | Add a webhook | session or API token |
+| PATCH | `/api/workspaces/:id/webhooks/:webhookId` | Change a webhook, or switch it off and on | session or API token |
+| DELETE | `/api/workspaces/:id/webhooks/:webhookId` | Remove a webhook | session or API token |
+| GET | `/api/workspaces/:id/webhooks/:webhookId/deliveries` | The last 50 delivery attempts | session or API token |
+| POST | `/api/workspaces/:id/webhooks/:webhookId/ping` | Send a test delivery (webhook.ping) now | session or API token |
+
+### Operations
+
+| Method | Route | What it does | Auth |
+| --- | --- | --- | --- |
+| GET | `/api/openapi.json` | This OpenAPI document | public |
+| GET | `/health` | Liveness | public |
+| GET | `/ready` | Readiness (database reachable) | public |
+
+<!-- api-reference:end -->

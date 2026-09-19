@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.eslint.json",
     "lint": "eslint .",
-    "openapi": "tsx src/openapi/write.ts"
+    "openapi": "tsx src/openapi/write.ts",
+    "docs:api": "tsx src/openapi/write-reference.ts"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^7.3.4",
