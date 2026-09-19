@@ -175,7 +175,7 @@ services:
   # so it can't be made to fetch anything. Enable with:
   #   OFFICE_PREVIEWS=gotenberg docker compose --profile office up -d
   gotenberg:
-    image: gotenberg/gotenberg:8.24.0@sha256:b116a40a1c24917e2bf3e153692da5acd2e78e7cd67e1b2d243b47c178f31c90
+    image: gotenberg/gotenberg:8.37.0@sha256:f29984bd1e226bf1b93ba90af06000afa8b315853e99d27b9aaa41b93f15c769
     profiles: ['office']
     command:
       - gotenberg
