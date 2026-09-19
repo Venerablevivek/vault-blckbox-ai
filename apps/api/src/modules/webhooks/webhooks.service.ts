@@ -8,6 +8,7 @@ import type { Clock } from '../../types';
 import { auditRepo } from '../audit/audit.repo';
 import type { AuditService } from '../audit/audit.service';
 import { webhooksRepo, type WebhookRow } from './webhooks.repo';
+import { webhookDeliveries } from '../../observability/metrics';
 
 /** Webhooks one workspace may have. */
 export const MAX_WEBHOOKS = 10;
@@ -73,6 +74,7 @@ export function createWebhooksService(deps: {
       error = caught instanceof Error ? caught.message.slice(0, 300) : 'request failed';
     }
     const success = error === null;
+    webhookDeliveries.inc({ success: String(success) });
     const { disabled } = await webhooksRepo.recordDelivery(
       pool,
       {

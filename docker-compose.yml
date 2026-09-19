@@ -61,6 +61,10 @@ x-api-environment: &api-environment
   GOTENBERG_URL: http://gotenberg:3000
   WEBHOOK_ALLOW_INSECURE: ${WEBHOOK_ALLOW_INSECURE:-false}
   WEBHOOK_TIMEOUT_MS: ${WEBHOOK_TIMEOUT_MS:-10000}
+  # Metrics on 9464 (compose network only). Tracing is off unless an OTLP endpoint is set, as the
+  # observability profile does: OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+  METRICS_PORT: 9464
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
   EXPOSE_INVITE_LINKS: ${EXPOSE_INVITE_LINKS:-true}
   SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
 
@@ -121,6 +125,7 @@ services:
       context: ./apps/api
     environment:
       <<: *api-environment
+      OTEL_SERVICE_NAME: vault-api
       # Only the web container may set X-Forwarded-For. Its address is pinned below.
       TRUSTED_PROXIES: 10.203.14.10
     ports:
@@ -183,6 +188,23 @@ services:
       retries: 10
       start_period: 30s
 
+  # Metrics and traces (optional). Prometheus scrapes the API and worker; Jaeger receives traces
+  # over OTLP and shows them at http://localhost:16686. Enable with:
+  #   OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318 docker compose --profile observability up -d
+  prometheus:
+    image: prom/prometheus:v3.5.0@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996
+    profiles: ['observability']
+    volumes:
+      - ./ops/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - '127.0.0.1:9090:9090'
+
+  jaeger:
+    image: jaegertracing/jaeger:2.9.0@sha256:e128b9adbb29c7146ac0b43e26be9dec794fee3478f2f05c4ef7a5b14ddba9a4
+    profiles: ['observability']
+    ports:
+      - '127.0.0.1:16686:16686'
+
   # Applies migrations as the database owner, then creates/updates the vault_app role and its
   # privileges. Runs to completion before the API and worker start; they never see owner credentials.
   migrate:
@@ -239,6 +261,7 @@ services:
     command: ['node', 'dist/worker.js']
     environment:
       <<: *api-environment
+      OTEL_SERVICE_NAME: vault-worker
     depends_on:
       migrate:
         condition: service_completed_successfully

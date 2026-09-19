@@ -124,6 +124,9 @@ const schema = z.object({
   WEBHOOK_ALLOW_INSECURE: booleanish.default(false),
   WEBHOOK_TIMEOUT_MS: z.coerce.number().int().min(1000).max(30_000).default(10_000),
 
+  /** Prometheus metrics on their own port (never the public API port); 0 turns them off. */
+  METRICS_PORT: z.coerce.number().int().min(0).max(65535).default(9464),
+
   /** Days a deleted document stays restorable before it is purged. */
   TRASH_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(30),
 

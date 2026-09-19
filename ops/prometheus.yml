@@ -1,0 +1,12 @@
+# Prometheus for the optional "observability" compose profile. Scrapes the API and the worker on
+# their metrics port (9464), which is on the compose network only and never published.
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: vault-api
+    static_configs:
+      - targets: ['api:9464']
+  - job_name: vault-worker
+    static_configs:
+      - targets: ['worker:9464']

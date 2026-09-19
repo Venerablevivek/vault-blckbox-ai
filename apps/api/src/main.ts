@@ -1,3 +1,5 @@
+// Tracing first, so the libraries below are instrumented as they load.
+import './observability/tracing';
 import path from 'node:path';
 import { loadConfig } from './config';
 import { createDatabase } from './db/pool';
@@ -6,6 +8,7 @@ import { buildLoggerOptions, pino } from './lib/logger';
 import { seedDemoData } from './seed';
 import { S3Storage } from './storage/s3-storage';
 import { buildApp } from './server';
+import { startMetricsServer } from './observability/metrics';
 
 /**
  * The only place that touches process.env, opens sockets, or has side effects.
@@ -44,6 +47,7 @@ async function main(): Promise<void> {
   // Background work (email, notifications, purges, scheduled maintenance) runs in the worker
   // process (src/worker.ts), not here, so request handling never waits on it.
   logger.info({ port: config.API_PORT }, 'api listening');
+  if (config.METRICS_PORT > 0) startMetricsServer(config.METRICS_PORT, logger);
 
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'shutting down');

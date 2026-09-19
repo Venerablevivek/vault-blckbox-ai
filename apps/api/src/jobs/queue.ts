@@ -3,6 +3,7 @@ import type { Pool, PoolClient } from 'pg';
 import type { Logger } from 'pino';
 import type { Db } from '../db/pool';
 import type { Clock } from '../types';
+import { jobDuration } from '../observability/metrics';
 import { jobsRepo, type JobRow } from './jobs.repo';
 
 /** Payload type for each queue. Adding a queue means adding it here and a handler in the worker. */
@@ -96,11 +97,14 @@ export function createJobQueue(deps: { pool: Pool; listenPool?: Pool; clock: Clo
         processed += 1;
         const handler = handlers[job.queue as QueueName] as
           ((payload: unknown, job: JobRow) => Promise<void>) | undefined;
+        const timer = jobDuration.startTimer({ queue: job.queue });
         try {
           if (!handler) throw new Error(`no handler for queue ${job.queue}`);
           await handler(job.payload, job);
           await jobsRepo.complete(pool, job.id, clock.now());
+          timer({ outcome: 'done' });
         } catch (error) {
+          timer({ outcome: job.attempts >= job.max_attempts ? 'failed' : 'retry' });
           const message = error instanceof Error ? error.message : String(error);
           if (job.attempts >= job.max_attempts) {
             await jobsRepo.fail(pool, job.id, message, clock.now());

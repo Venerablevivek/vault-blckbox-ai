@@ -1,5 +1,6 @@
 import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
+import { httpDuration, httpInFlight, watchPools, watchQueue } from './observability/metrics';
 import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
@@ -107,6 +108,29 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   app.decorate('services', services);
   app.decorate('jobHandlers', createJobHandlers(services, mailer));
   void jobs;
+
+  // HTTP metrics, labelled by route template so the number of series stays bounded.
+  watchPools({ main: pool, direct: deps.directPool ?? pool, read: deps.readPool ?? pool });
+  watchQueue(pool);
+  const timers = new WeakMap<object, (labels: { route: string; status_code: string }) => void>();
+  app.addHook('onRequest', async (request) => {
+    httpInFlight.inc();
+    timers.set(request, httpDuration.startTimer({ method: request.method }));
+  });
+  /** Ends a request's timer exactly once, whether it finished or the client went away. */
+  const finish = (request: object, labels: { route: string; status_code: string }) => {
+    const end = timers.get(request);
+    if (!end) return;
+    timers.delete(request);
+    httpInFlight.dec();
+    end(labels);
+  };
+  app.addHook('onResponse', async (request, reply) => {
+    finish(request, { route: request.routeOptions.url ?? 'unmatched', status_code: String(reply.statusCode) });
+  });
+  app.addHook('onRequestAbort', async (request) => {
+    finish(request, { route: request.routeOptions.url ?? 'unmatched', status_code: 'aborted' });
+  });
 
   registerSession(app, config, auth, services.tokens);
 

@@ -1,3 +1,5 @@
+// Tracing first, so the libraries below are instrumented as they load.
+import './observability/tracing';
 import path from 'node:path';
 import { loadConfig } from './config';
 import { createDatabase } from './db/pool';
@@ -8,6 +10,7 @@ import { LogMailer, SmtpMailer } from './mail/mailer';
 import { createServices } from './services';
 import { S3Storage } from './storage/s3-storage';
 import { systemClock } from './types';
+import { startMetricsServer, watchPools, watchQueue } from './observability/metrics';
 
 /**
  * The background worker: sends email, fans out notifications, computes checksums, purges
@@ -52,6 +55,9 @@ async function main(): Promise<void> {
   });
 
   logger.info('worker started');
+  watchPools({ main: pool, direct: db.directPool });
+  watchQueue(pool);
+  if (config.METRICS_PORT > 0) startMetricsServer(config.METRICS_PORT, logger);
 
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'worker shutting down; finishing the current job');

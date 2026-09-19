@@ -1,3 +1,4 @@
+import { trace } from '@opentelemetry/api';
 import pino, { type LoggerOptions } from 'pino';
 
 /**
@@ -14,6 +15,13 @@ function redactTokens(value: string): string {
 export function buildLoggerOptions(env: string): LoggerOptions {
   return {
     level: env === 'test' ? 'silent' : env === 'production' ? 'info' : 'debug',
+    // With tracing on, every log line names its trace, so logs and traces can be joined.
+    mixin() {
+      const span = trace.getActiveSpan();
+      if (!span) return {};
+      const { traceId, spanId } = span.spanContext();
+      return { trace_id: traceId, span_id: spanId };
+    },
     redact: {
       paths: [
         'req.headers.cookie',
