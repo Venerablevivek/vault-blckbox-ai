@@ -86,9 +86,18 @@ describe('upload capacity', () => {
   });
 
   it('turns away uploads beyond the concurrent limit with 503 and Retry-After', async () => {
+    // Each upload parks in storage until finished by hand. `reached` settles once storage has the
+    // upload, so the test never "finishes" one that hasn't arrived yet (a fixed sleep raced on a
+    // busy machine, and a finish sent too early was lost).
     let finishUpload: () => void = () => undefined;
+    let arrived: () => void = () => undefined;
+    let reached = new Promise<void>((resolve) => (arrived = resolve));
     const slowStorage: FileStorage = {
-      upload: () => new Promise<void>((resolve) => (finishUpload = resolve)),
+      upload: () =>
+        new Promise<void>((resolve) => {
+          finishUpload = resolve;
+          arrived();
+        }),
       download: async () => Readable.from(Buffer.alloc(0)),
       delete: async () => undefined,
       getSignedUrl: async () => 'http://example.invalid/signed',
@@ -99,19 +108,20 @@ describe('upload capacity', () => {
       const alice = await registerUser(h.app, 'alice@example.com');
 
       const first = uploadDocument(h.app, alice.cookie, alice.workspaceId, 'first.pdf');
-      await new Promise((resolve) => setTimeout(resolve, 150)); // let the first take the slot
+      await reached; // the first holds the slot, parked in storage
 
       const second = await uploadDocument(h.app, alice.cookie, alice.workspaceId, 'second.pdf');
       expect(second.statusCode).toBe(503);
       expect(second.json().error.code).toBe('UPLOADS_BUSY');
       expect(second.headers['retry-after']).toBe('5');
 
+      reached = new Promise<void>((resolve) => (arrived = resolve));
       finishUpload();
       expect((await first).statusCode).toBe(201);
 
       // The slot was released, so the next upload is accepted.
       const third = uploadDocument(h.app, alice.cookie, alice.workspaceId, 'third.pdf');
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      await reached;
       finishUpload();
       expect((await third).statusCode).toBe(201);
     } finally {
