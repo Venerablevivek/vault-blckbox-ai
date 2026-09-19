@@ -33,7 +33,7 @@
     "@opentelemetry/sdk-trace-base": "^2.11.0",
     "@opentelemetry/semantic-conventions": "^1.43.0",
     "@prometheus-io/client": "^0.16.1",
-    "argon2": "^0.41.1",
+    "argon2": "^0.45.1",
     "fastify": "^5.2.1",
     "nodemailer": "^10.0.10",
     "pdf-lib": "^1.17.1",
