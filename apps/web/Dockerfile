@@ -1,7 +1,7 @@
 # ---- build ------------------------------------------------------------------
 # Base images are pinned by digest so a build is reproducible and can't silently pick up a
 # changed image; Dependabot proposes digest updates.
-FROM node:22-alpine@sha256:b6f26b36c8ff49624cfdac716b8ea1138d606df02586a77d364bb5536a634f85 AS build
+FROM node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4 AS build
 WORKDIR /app
 # Next.js evaluates next.config's rewrites() at BUILD time and bakes the result into the
 # build output, so the API target has to be known here, not only at runtime.
@@ -15,7 +15,7 @@ RUN npm run build
 # ---- runtime ----------------------------------------------------------------
 # Only Next's standalone output (the files the server actually needs, traced at build time),
 # the static assets and the custom server. No full node_modules, no build tooling.
-FROM node:22-alpine@sha256:b6f26b36c8ff49624cfdac716b8ea1138d606df02586a77d364bb5536a634f85 AS runtime
+FROM node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4 AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 # The running service only needs node. npm, npx and corepack ship in the base image with their own
