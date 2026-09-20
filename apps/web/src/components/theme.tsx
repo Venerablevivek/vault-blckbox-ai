@@ -42,7 +42,10 @@ export function setTheme(next: ThemeChoice): void {
 
 /** System, light or dark. "System" follows the operating system, including when it changes. */
 export function ThemeSwitch() {
-  const [choice, setChoice] = useState<ThemeChoice>('system');
+  // null until the stored choice has been read. The inline script in <head> has already applied
+  // the right theme; applying anything before we know the choice would flash the system theme
+  // over an explicit one for a frame.
+  const [choice, setChoice] = useState<ThemeChoice | null>(null);
 
   useEffect(() => {
     setChoice(readChoice());
@@ -52,6 +55,7 @@ export function ThemeSwitch() {
   }, []);
 
   useEffect(() => {
+    if (choice === null) return;
     apply(choice);
     if (choice !== 'system') return;
     const media = matchMedia('(prefers-color-scheme: dark)');
@@ -77,11 +81,11 @@ export function ThemeSwitch() {
           key={value}
           type="button"
           role="radio"
-          aria-checked={choice === value}
+          aria-checked={(choice ?? 'system') === value}
           aria-label={label}
           title={label}
           onClick={() => choose(value)}
-          className={`flex h-7 flex-1 items-center justify-center rounded-md transition-colors ${choice === value ? 'bg-surface text-ink shadow-card' : 'text-ink-subtle hover:text-ink'}`}
+          className={`flex h-7 flex-1 items-center justify-center rounded-md transition-colors ${(choice ?? 'system') === value ? 'bg-surface text-ink shadow-card' : 'text-ink-subtle hover:text-ink'}`}
         >
           <Icon className="h-3.5 w-3.5" aria-hidden />
         </button>
